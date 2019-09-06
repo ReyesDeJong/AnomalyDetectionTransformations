@@ -19,7 +19,7 @@ from sklearn.externals.joblib import Parallel, delayed
 from keras.models import Model, Input, Sequential
 from keras.layers import Dense, Dropout
 from keras.utils import to_categorical
-from modules.data_loaders.base_line_loaders import load_cifar10, load_fashion_mnist, load_hits, save_roc_pr_curve_data, get_class_name_from_index, get_channels_axis
+from modules.data_loaders.base_line_loaders import load_cifar10, load_fashion_mnist, load_hits_padded, load_hits, save_roc_pr_curve_data, get_class_name_from_index, get_channels_axis
 from utils import save_roc_pr_curve_data, get_class_name_from_index, get_channels_axis
 from transformations import Transformer
 from models.wide_residual_network import create_wide_residual_network
@@ -28,7 +28,7 @@ from models import dsebm, dagmm, adgan
 import keras.backend as K
 
 RESULTS_DIR = ''
-LARGE_DATASET_NAMES = ['cats-vs-dogs', 'hits']
+LARGE_DATASET_NAMES = ['cats-vs-dogs', 'hits', 'hits_padded']
 PARALLEL_N_JOBS = 16
 
 def _transformations_experiment(dataset_load_fn, dataset_name, single_class_ind, gpu_q):
@@ -37,7 +37,7 @@ def _transformations_experiment(dataset_load_fn, dataset_name, single_class_ind,
 
     (x_train, y_train), (x_test, y_test) = dataset_load_fn()
 
-    if dataset_name in LARGE_DATASET_NAMES:
+    if dataset_name in ['cats-vs-dogs']:
         transformer = Transformer(16, 16)
         n, k = (16, 8)
     else:
@@ -48,7 +48,10 @@ def _transformations_experiment(dataset_load_fn, dataset_name, single_class_ind,
                 'categorical_crossentropy',
                 ['acc'])
 
+    # get inliers of specific class
     x_train_task = x_train[y_train.flatten() == single_class_ind]
+    # [0_i, ..., (N_transforms-1)_i, ..., ..., 0_N_samples, ...,
+    # (N_transforms-1)_N_samples] shape: (N_transforms*N_samples,)
     transformations_inds = np.tile(np.arange(transformer.n_transforms), len(x_train_task))
     x_train_task_transformed = transformer.transform_batch(np.repeat(x_train_task, transformer.n_transforms, axis=0),
                                                            transformations_inds)
@@ -344,42 +347,42 @@ def _adgan_experiment(dataset_load_fn, dataset_name, single_class_ind, gpu_q):
 
 def run_experiments(load_dataset_fn, dataset_name, q, n_classes):
 
-    # # CAE OC-SVM
-    # processes = [Process(target=_cae_ocsvm_experiment,
-    #                      args=(load_dataset_fn, dataset_name, c, q)) for c in range(n_classes)]
-    # for p in processes:
-    #     p.start()
-    #     p.join()
-    #
-    # # Raw OC-SVM
-    # for c in range(n_classes):
-    #     _raw_ocsvm_experiment(load_dataset_fn, dataset_name, c)
-    #
+    # CAE OC-SVM
+    processes = [Process(target=_cae_ocsvm_experiment,
+                         args=(load_dataset_fn, dataset_name, c, q)) for c in range(n_classes)]
+    for p in processes:
+        p.start()
+        p.join()
+
+    # Raw OC-SVM
+    for c in range(n_classes):
+        _raw_ocsvm_experiment(load_dataset_fn, dataset_name, c)
+
     n_runs = 1
-    #
-    # # Transformations
-    # for _ in range(n_runs):
-    #     processes = [Process(target=_transformations_experiment,
-    #                          args=(load_dataset_fn, dataset_name, c, q)) for c in range(n_classes)]
-    #     if dataset_name in LARGE_DATASET_NAMES:  # Self-labeled set is memory consuming
-    #         for p in processes:
-    #             p.start()
-    #             p.join()
-    #     else:
-    #         for p in processes:
-    #             p.start()
-    #         for p in processes:
-    #             p.join()
-    #
-    # # DSEBM
-    # for _ in range(n_runs):
-    #     processes = [Process(target=_dsebm_experiment,
-    #                          args=(load_dataset_fn, dataset_name, c, q)) for c in range(n_classes)]
-    #     for p in processes:
-    #         p.start()
-    #     for p in processes:
-    #         p.join()
-    #
+
+    # Transformations
+    for _ in range(n_runs):
+        processes = [Process(target=_transformations_experiment,
+                             args=(load_dataset_fn, dataset_name, c, q)) for c in range(n_classes)]
+        if dataset_name in LARGE_DATASET_NAMES:  # Self-labeled set is memory consuming
+            for p in processes:
+                p.start()
+                p.join()
+        else:
+            for p in processes:
+                p.start()
+            for p in processes:
+                p.join()
+
+    # DSEBM
+    for _ in range(n_runs):
+        processes = [Process(target=_dsebm_experiment,
+                             args=(load_dataset_fn, dataset_name, c, q)) for c in range(n_classes)]
+        for p in processes:
+            p.start()
+        for p in processes:
+            p.join()
+
     # # DAGMM
     # for _ in range(n_runs):
     #     processes = [Process(target=_dagmm_experiment,
@@ -388,14 +391,14 @@ def run_experiments(load_dataset_fn, dataset_name, q, n_classes):
     #         p.start()
     #     for p in processes:
     #         p.join()
-
-    # ADGAN
-    processes = [Process(target=_adgan_experiment,
-                         args=(load_dataset_fn, dataset_name, c, q)) for c in range(n_classes)]
-    for p in processes:
-        p.start()
-    for p in processes:
-        p.join()
+    #
+    # # ADGAN
+    # processes = [Process(target=_adgan_experiment,
+    #                      args=(load_dataset_fn, dataset_name, c, q)) for c in range(n_classes)]
+    # for p in processes:
+    #     p.start()
+    # for p in processes:
+    #     p.join()
 
 
 def create_auc_table(metric='roc_auc'):
@@ -443,9 +446,11 @@ if __name__ == '__main__':
         # (load_cifar10, 'cifar10', 10),
         # (load_fashion_mnist, 'fashion-mnist', 10),
         (load_hits, 'hits', 2),
+        (load_hits_padded, 'hits_padded', 2),
+        (load_cifar10, 'cifar10', 10),
     ]
 
-    #for data_load_fn, dataset_name, n_classes in experiments_list:
-    #    run_experiments(data_load_fn, dataset_name, q, n_classes)
+    for data_load_fn, dataset_name, n_classes in experiments_list:
+       run_experiments(data_load_fn, dataset_name, q, n_classes)
     create_auc_table()
 

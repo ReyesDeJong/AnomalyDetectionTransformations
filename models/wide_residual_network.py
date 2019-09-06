@@ -107,8 +107,8 @@ def create_wide_residual_network(input_shape, num_classes, depth, widen_factor=1
 
     out = batch_norm()(conv4)
     out = Activation('relu')(out)
-    out = AveragePooling2D(8)(out)
-    out = Flatten()(out)
+    out = GlobalAveragePooling2D()(out)#AveragePooling2D()(out)
+    #out = Flatten()(out)
 
     out = dense(num_classes)(out)
     out = Activation(final_activation)(out)
