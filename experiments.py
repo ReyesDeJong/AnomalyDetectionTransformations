@@ -181,6 +181,8 @@ def _cae_ocsvm_experiment(dataset_load_fn, dataset_name, single_class_ind, gpu_q
     input_side = x_train.shape[2]  # channel side will always be at shape[2]
     enc = conv_encoder(input_side, n_channels)
     dec = conv_decoder(input_side, n_channels)
+    # print(input_side)
+    # print(dec.summary())
     x_in = Input(shape=x_train.shape[1:])
     x_rec = dec(enc(x_in))
     cae = Model(x_in, x_rec)
@@ -347,12 +349,12 @@ def _adgan_experiment(dataset_load_fn, dataset_name, single_class_ind, gpu_q):
 
 def run_experiments(load_dataset_fn, dataset_name, q, n_classes):
 
-    # CAE OC-SVM
-    processes = [Process(target=_cae_ocsvm_experiment,
-                         args=(load_dataset_fn, dataset_name, c, q)) for c in range(n_classes)]
-    for p in processes:
-        p.start()
-        p.join()
+    # # CAE OC-SVM
+    # processes = [Process(target=_cae_ocsvm_experiment,
+    #                      args=(load_dataset_fn, dataset_name, c, q)) for c in range(n_classes)]
+    # for p in processes:
+    #     p.start()
+    #     p.join()
 
     # Raw OC-SVM
     for c in range(n_classes):
