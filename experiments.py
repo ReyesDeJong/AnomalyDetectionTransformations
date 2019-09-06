@@ -1,4 +1,9 @@
-import os
+import os, sys
+
+PROJECT_PATH = os.path.abspath(
+    os.path.join(os.path.dirname(__file__), '..'))
+sys.path.append(PROJECT_PATH)
+
 import csv
 from collections import defaultdict
 from glob import glob
@@ -14,7 +19,7 @@ from sklearn.externals.joblib import Parallel, delayed
 from keras.models import Model, Input, Sequential
 from keras.layers import Dense, Dropout
 from keras.utils import to_categorical
-from utils import load_cifar10, load_cats_vs_dogs, load_fashion_mnist, load_cifar100
+from modules.data_loaders.base_line_loaders import load_cifar10, load_fashion_mnist, load_hits, save_roc_pr_curve_data, get_class_name_from_index, get_channels_axis
 from utils import save_roc_pr_curve_data, get_class_name_from_index, get_channels_axis
 from transformations import Transformer
 from models.wide_residual_network import create_wide_residual_network
@@ -23,7 +28,8 @@ from models import dsebm, dagmm, adgan
 import keras.backend as K
 
 RESULTS_DIR = ''
-
+LARGE_DATASET_NAMES = ['cats-vs-dogs', 'hits']
+PARALLEL_N_JOBS = 16
 
 def _transformations_experiment(dataset_load_fn, dataset_name, single_class_ind, gpu_q):
     gpu_to_use = gpu_q.get()
@@ -31,7 +37,7 @@ def _transformations_experiment(dataset_load_fn, dataset_name, single_class_ind,
 
     (x_train, y_train), (x_test, y_test) = dataset_load_fn()
 
-    if dataset_name in ['cats-vs-dogs']:
+    if dataset_name in LARGE_DATASET_NAMES:
         transformer = Transformer(16, 16)
         n, k = (16, 8)
     else:
@@ -137,18 +143,20 @@ def _raw_ocsvm_experiment(dataset_load_fn, dataset_name, single_class_ind):
     x_test = x_test.reshape((len(x_test), -1))
 
     x_train_task = x_train[y_train.flatten() == single_class_ind]
-    if dataset_name in ['cats-vs-dogs']:  # OC-SVM is quadratic on the number of examples, so subsample training set
+    if dataset_name in LARGE_DATASET_NAMES:  # OC-SVM is quadratic on the number of examples, so subsample training set
         subsample_inds = np.random.choice(len(x_train_task), 5000, replace=False)
         x_train_task = x_train_task[subsample_inds]
 
     pg = ParameterGrid({'nu': np.linspace(0.1, 0.9, num=9),
                         'gamma': np.logspace(-7, 2, num=10, base=2)})
 
-    results = Parallel(n_jobs=6)(
+    results = Parallel(n_jobs=PARALLEL_N_JOBS)(
         delayed(_train_ocsvm_and_score)(d, x_train_task, y_test.flatten() == single_class_ind, x_test)
         for d in pg)
 
+
     best_params, best_auc_score = max(zip(pg, results), key=lambda t: t[-1])
+    print(best_params)
     best_ocsvm = OneClassSVM(**best_params).fit(x_train_task)
     scores = best_ocsvm.decision_function(x_test)
     labels = y_test.flatten() == single_class_ind
@@ -180,7 +188,7 @@ def _cae_ocsvm_experiment(dataset_load_fn, dataset_name, single_class_ind, gpu_q
     cae.fit(x=x_train_task, y=x_train_task, batch_size=128, epochs=200, validation_data=(x_test_task, x_test_task))
 
     x_train_task_rep = enc.predict(x_train_task, batch_size=128)
-    if dataset_name in ['cats-vs-dogs']:  # OC-SVM is quadratic on the number of examples, so subsample training set
+    if dataset_name in LARGE_DATASET_NAMES:  # OC-SVM is quadratic on the number of examples, so subsample training set
         subsample_inds = np.random.choice(len(x_train_task_rep), 2500, replace=False)
         x_train_task_rep = x_train_task_rep[subsample_inds]
 
@@ -188,7 +196,7 @@ def _cae_ocsvm_experiment(dataset_load_fn, dataset_name, single_class_ind, gpu_q
     pg = ParameterGrid({'nu': np.linspace(0.1, 0.9, num=9),
                         'gamma': np.logspace(-7, 2, num=10, base=2)})
 
-    results = Parallel(n_jobs=6)(
+    results = Parallel(n_jobs=PARALLEL_N_JOBS)(
         delayed(_train_ocsvm_and_score)(d, x_train_task_rep, y_test.flatten() == single_class_ind, x_test_rep)
         for d in pg)
 
@@ -336,50 +344,50 @@ def _adgan_experiment(dataset_load_fn, dataset_name, single_class_ind, gpu_q):
 
 def run_experiments(load_dataset_fn, dataset_name, q, n_classes):
 
-    # CAE OC-SVM
-    processes = [Process(target=_cae_ocsvm_experiment,
-                         args=(load_dataset_fn, dataset_name, c, q)) for c in range(n_classes)]
-    for p in processes:
-        p.start()
-        p.join()
-
-    # Raw OC-SVM
-    for c in range(n_classes):
-        _raw_ocsvm_experiment(load_dataset_fn, dataset_name, c)
-
-    n_runs = 5
-
-    # Transformations
-    for _ in range(n_runs):
-        processes = [Process(target=_transformations_experiment,
-                             args=(load_dataset_fn, dataset_name, c, q)) for c in range(n_classes)]
-        if dataset_name in ['cats-vs-dogs']:  # Self-labeled set is memory consuming
-            for p in processes:
-                p.start()
-                p.join()
-        else:
-            for p in processes:
-                p.start()
-            for p in processes:
-                p.join()
-
-    # DSEBM
-    for _ in range(n_runs):
-        processes = [Process(target=_dsebm_experiment,
-                             args=(load_dataset_fn, dataset_name, c, q)) for c in range(n_classes)]
-        for p in processes:
-            p.start()
-        for p in processes:
-            p.join()
-
-    # DAGMM
-    for _ in range(n_runs):
-        processes = [Process(target=_dagmm_experiment,
-                             args=(load_dataset_fn, dataset_name, c, q)) for c in range(n_classes)]
-        for p in processes:
-            p.start()
-        for p in processes:
-            p.join()
+    # # CAE OC-SVM
+    # processes = [Process(target=_cae_ocsvm_experiment,
+    #                      args=(load_dataset_fn, dataset_name, c, q)) for c in range(n_classes)]
+    # for p in processes:
+    #     p.start()
+    #     p.join()
+    #
+    # # Raw OC-SVM
+    # for c in range(n_classes):
+    #     _raw_ocsvm_experiment(load_dataset_fn, dataset_name, c)
+    #
+    n_runs = 1
+    #
+    # # Transformations
+    # for _ in range(n_runs):
+    #     processes = [Process(target=_transformations_experiment,
+    #                          args=(load_dataset_fn, dataset_name, c, q)) for c in range(n_classes)]
+    #     if dataset_name in LARGE_DATASET_NAMES:  # Self-labeled set is memory consuming
+    #         for p in processes:
+    #             p.start()
+    #             p.join()
+    #     else:
+    #         for p in processes:
+    #             p.start()
+    #         for p in processes:
+    #             p.join()
+    #
+    # # DSEBM
+    # for _ in range(n_runs):
+    #     processes = [Process(target=_dsebm_experiment,
+    #                          args=(load_dataset_fn, dataset_name, c, q)) for c in range(n_classes)]
+    #     for p in processes:
+    #         p.start()
+    #     for p in processes:
+    #         p.join()
+    #
+    # # DAGMM
+    # for _ in range(n_runs):
+    #     processes = [Process(target=_dagmm_experiment,
+    #                          args=(load_dataset_fn, dataset_name, c, q)) for c in range(n_classes)]
+    #     for p in processes:
+    #         p.start()
+    #     for p in processes:
+    #         p.join()
 
     # ADGAN
     processes = [Process(target=_adgan_experiment,
@@ -425,19 +433,19 @@ def create_auc_table(metric='roc_auc'):
 
 if __name__ == '__main__':
     freeze_support()
-    N_GPUS = 2
+    N_GPUS = 1
     man = Manager()
     q = man.Queue(N_GPUS)
     for g in range(N_GPUS):
         q.put(str(g))
 
     experiments_list = [
-        (load_cifar10, 'cifar10', 10),
-        (load_cifar100, 'cifar100', 20),
-        (load_fashion_mnist, 'fashion-mnist', 10),
-        (load_cats_vs_dogs, 'cats-vs-dogs', 2),
+        # (load_cifar10, 'cifar10', 10),
+        # (load_fashion_mnist, 'fashion-mnist', 10),
+        (load_hits, 'hits', 2),
     ]
 
-    for data_load_fn, dataset_name, n_classes in experiments_list:
-        run_experiments(data_load_fn, dataset_name, q, n_classes)
+    #for data_load_fn, dataset_name, n_classes in experiments_list:
+    #    run_experiments(data_load_fn, dataset_name, q, n_classes)
+    create_auc_table()
 
