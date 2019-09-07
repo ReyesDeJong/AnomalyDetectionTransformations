@@ -3,7 +3,7 @@ import sys
 from glob import glob
 
 PROJECT_PATH = os.path.abspath(
-    os.path.join(os.path.dirname(__file__)))
+    os.path.join(os.path.dirname(__file__), '..', '..'))
 sys.path.append(PROJECT_PATH)
 import cv2
 from modules.data_loaders.hits_loader import HiTSLoader
@@ -37,6 +37,9 @@ def resize_and_crop_image(input_file, output_side_length, greyscale=False):
 
 def normalize_minus1_1(data):
   return 2 * (data / 255.) - 1
+
+def normalize_hits_minus1_1(data):
+  return 2 * (data / np.max(data)) - 1
 
 
 def get_channels_axis():
@@ -150,7 +153,7 @@ def load_cats_vs_dogs(cats_vs_dogs_path='./'):
   return (x_train, y_train), (x_test, y_test)
 
 
-def load_hits():
+def load_hits_padded(n_samples_by_class=12500*2):
   data_path = os.path.join(PROJECT_PATH, '..', 'datasets',
                            'HiTS2013_300k_samples.pkl')
   params = {
@@ -158,9 +161,30 @@ def load_hits():
     param_keys.BATCH_SIZE: 50
   }
   hits_loader = HiTSLoader(params, label_value=-1,
-                               first_n_samples_by_class=125000)
+                               first_n_samples_by_class=n_samples_by_class)
 
   (X_train, y_train), (X_test, y_test) = hits_loader.load_data()
+
+  X_train = normalize_hits_minus1_1(
+      cast_to_floatx(np.pad(X_train, ((0, 0), (6, 5), (6, 5), (0,0)), 'constant')))
+  X_test = normalize_hits_minus1_1(
+      cast_to_floatx(np.pad(X_test, ((0, 0), (6, 5), (6, 5), (0,0)), 'constant')))
+  return (X_train, y_train), (X_test, y_test)
+
+def load_hits(n_samples_by_class=12500*2):
+  data_path = os.path.join(PROJECT_PATH, '..', 'datasets',
+                           'HiTS2013_300k_samples.pkl')
+  params = {
+    param_keys.DATA_PATH_TRAIN: data_path,
+    param_keys.BATCH_SIZE: 50
+  }
+  hits_loader = HiTSLoader(params, label_value=-1,
+                               first_n_samples_by_class=n_samples_by_class)
+
+  (X_train, y_train), (X_test, y_test) = hits_loader.load_data()
+
+  X_train = normalize_hits_minus1_1(cast_to_floatx(X_train))
+  X_test = normalize_hits_minus1_1(cast_to_floatx(X_test))
   return (X_train, y_train), (X_test, y_test)
 
 
@@ -183,7 +207,8 @@ def get_class_name_from_index(index, dataset_name):
                       'sandal', 'shirt', 'sneaker', 'bag', 'ankle-boot'),
     'mnist': ('0', '1', '2', '3', '4', '5', '6', '7', '8', '9'),
     'cats-vs-dogs': ('cat', 'dog'),
-    'hits': ('real', 'bogus'),
+    'hits': ('bogus', 'real'),
+    'padded_hits': ('bogus', 'real'),
   }
 
   return ind_to_name[dataset_name][index]
