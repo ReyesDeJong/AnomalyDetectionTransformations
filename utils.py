@@ -3,7 +3,7 @@ import sys
 from glob import glob
 
 PROJECT_PATH = os.path.abspath(
-    os.path.join(os.path.dirname(__file__), '..', '..'))
+    os.path.join(os.path.dirname(__file__)))
 sys.path.append(PROJECT_PATH)
 import cv2
 from modules.data_loaders.hits_loader import HiTSLoader
