@@ -208,7 +208,7 @@ def get_class_name_from_index(index, dataset_name):
     'mnist': ('0', '1', '2', '3', '4', '5', '6', '7', '8', '9'),
     'cats-vs-dogs': ('cat', 'dog'),
     'hits': ('bogus', 'real'),
-    'padded_hits': ('bogus', 'real'),
+    'hits_padded': ('bogus', 'real'),
   }
 
   return ind_to_name[dataset_name][index]

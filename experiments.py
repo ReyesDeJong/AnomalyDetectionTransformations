@@ -349,42 +349,42 @@ def _adgan_experiment(dataset_load_fn, dataset_name, single_class_ind, gpu_q):
 
 def run_experiments(load_dataset_fn, dataset_name, q, n_classes):
 
-    # # CAE OC-SVM
-    # processes = [Process(target=_cae_ocsvm_experiment,
-    #                      args=(load_dataset_fn, dataset_name, c, q)) for c in range(n_classes)]
-    # for p in processes:
-    #     p.start()
-    #     p.join()
+    # CAE OC-SVM
+    processes = [Process(target=_cae_ocsvm_experiment,
+                         args=(load_dataset_fn, dataset_name, c, q)) for c in range(n_classes)]
+    for p in processes:
+        p.start()
+        p.join()
 
-    # Raw OC-SVM
-    for c in range(n_classes):
-        _raw_ocsvm_experiment(load_dataset_fn, dataset_name, c)
-
-    n_runs = 1
-
-    # Transformations
-    for _ in range(n_runs):
-        processes = [Process(target=_transformations_experiment,
-                             args=(load_dataset_fn, dataset_name, c, q)) for c in range(n_classes)]
-        if dataset_name in LARGE_DATASET_NAMES:  # Self-labeled set is memory consuming
-            for p in processes:
-                p.start()
-                p.join()
-        else:
-            for p in processes:
-                p.start()
-            for p in processes:
-                p.join()
-
-    # DSEBM
-    for _ in range(n_runs):
-        processes = [Process(target=_dsebm_experiment,
-                             args=(load_dataset_fn, dataset_name, c, q)) for c in range(n_classes)]
-        for p in processes:
-            p.start()
-        for p in processes:
-            p.join()
-
+    # # Raw OC-SVM
+    # for c in range(n_classes):
+    #     _raw_ocsvm_experiment(load_dataset_fn, dataset_name, c)
+    #
+    # n_runs = 1
+    #
+    # # Transformations
+    # for _ in range(n_runs):
+    #     processes = [Process(target=_transformations_experiment,
+    #                          args=(load_dataset_fn, dataset_name, c, q)) for c in range(n_classes)]
+    #     if dataset_name in LARGE_DATASET_NAMES:  # Self-labeled set is memory consuming
+    #         for p in processes:
+    #             p.start()
+    #             p.join()
+    #     else:
+    #         for p in processes:
+    #             p.start()
+    #         for p in processes:
+    #             p.join()
+    #
+    # # DSEBM
+    # for _ in range(n_runs):
+    #     processes = [Process(target=_dsebm_experiment,
+    #                          args=(load_dataset_fn, dataset_name, c, q)) for c in range(n_classes)]
+    #     for p in processes:
+    #         p.start()
+    #     for p in processes:
+    #         p.join()
+    #
     # # DAGMM
     # for _ in range(n_runs):
     #     processes = [Process(target=_dagmm_experiment,
