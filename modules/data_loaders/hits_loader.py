@@ -28,10 +28,10 @@ class HiTSLoader(object):
   Constructor
   """
 
-  def __init__(self, params: dict, label_value=1, first_n_samples_by_class=125000):
+  def __init__(self, params: dict, label_value=1, first_n_samples_by_class=125000, test_size=0.12, validation_size=0.08):
     self.path = params[param_keys.DATA_PATH_TRAIN]
     self.batch_size = params[param_keys.BATCH_SIZE]
-    self.data_splitter = DatasetDivider(test_size=0.12, validation_size=0.08)
+    self.data_splitter = DatasetDivider(data_set_obj=None, test_size=test_size, validation_size=validation_size)
     self.first_n_samples_by_class = first_n_samples_by_class
     self.label_value = label_value
     self.channel_to_get = 2
@@ -116,6 +116,7 @@ class HiTSLoader(object):
     return merged_data_dict
 
   def load_data(self):
+    """get first n_samples_by_class data from each hits class"""
     data_dict = self._load_file(self.path)
     # get dataset by label
     unique_label_values = np.unique(data_dict[general_keys.LABELS])
@@ -130,9 +131,12 @@ class HiTSLoader(object):
     dataset = Dataset(data_array=merged_data_dict[general_keys.IMAGES],
                       data_label=merged_data_dict[general_keys.LABELS],
                       batch_size=self.batch_size)
+
     self.data_splitter.set_dataset_obj(dataset)
     train_dataset, test_dataset, val_dataset = \
       self.data_splitter.get_train_test_val_set_objs()
+    print(np.unique(train_dataset.data_label,
+                    return_counts=True))
 
     return (train_dataset.data_array, train_dataset.data_label), \
            (test_dataset.data_array, test_dataset.data_label)

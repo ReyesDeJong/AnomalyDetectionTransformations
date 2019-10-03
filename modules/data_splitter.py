@@ -41,7 +41,7 @@ class DatasetDivider(object):
         train_array, test_array, train_labels, test_labels = train_test_split(
             data_set_obj.data_array,
             data_set_obj.data_label,
-            test_size=size,
+            test_size=size, stratify=data_set_obj.data_label,
             random_state=random_seed)  #,
             # stratify=data_set_obj.data_label)
         train_data_set = data_set_class(
