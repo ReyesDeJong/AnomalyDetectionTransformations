@@ -448,7 +448,7 @@ if __name__ == '__main__':
         # (load_cifar10, 'cifar10', 10),
         # (load_fashion_mnist, 'fashion-mnist', 10),
         (load_hits, 'hits', 2),
-        (load_hits_padded, 'hits_padded', 2),
+        (load_hits_padded, 'hits-padded', 2),
         (load_cifar10, 'cifar10', 10),
     ]
 
