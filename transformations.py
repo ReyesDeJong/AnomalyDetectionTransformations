@@ -74,3 +74,20 @@ class SimpleTransformer(AbstractTransformer):
 
         self._transformation_list = transformation_list
 
+class TransTransformer(AbstractTransformer):
+    def __init__(self, translation_x=8, translation_y=8):
+        self.max_tx = translation_x
+        self.max_ty = translation_y
+        super().__init__()
+
+    def _create_transformation_list(self):
+        transformation_list = []
+        for tx, ty in itertools.product(
+                                                           (0, -self.max_tx, self.max_tx),
+                                                           (0, -self.max_ty, self.max_ty),
+                                                           ):
+            transformation = AffineTransformation(False, tx, ty, 0)
+            transformation_list.append(transformation)
+
+        self._transformation_list = transformation_list
+

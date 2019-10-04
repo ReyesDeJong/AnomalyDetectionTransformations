@@ -11,7 +11,7 @@ from scipy.special import psi, polygamma
 from keras.utils import to_categorical
 from modules.data_loaders.base_line_loaders import load_hits
 
-from transformations import Transformer
+from transformations import TransTransformer
 from models.wide_residual_network import create_wide_residual_network
 import time
 import datetime
@@ -158,7 +158,7 @@ if __name__ == "__main__":
   print(x_train.shape)
   print(x_test.shape)
 
-  transformer = Transformer(8, 8)
+  transformer = TransTransformer(8, 8)
   n, k = (10, 4)
 
   mdl = create_wide_residual_network(input_shape=x_train.shape[1:],
@@ -251,7 +251,7 @@ if __name__ == "__main__":
   labels = y_test.flatten() == single_class_ind
 
   plot_histogram_disc_loss_acc_thr(scores[labels], scores[~labels],
-                                   x_label_name='Transformations_Dscores_hits')
+                                   x_label_name='TransTransformations_Dscores_hits')
 
   # Dirichlet transforms with arcsin
   neg_scores = -scores
@@ -262,7 +262,7 @@ if __name__ == "__main__":
   outlier_arcsinh_score = arcsinh_scores[~labels]
   plot_histogram_disc_loss_acc_thr(inlier_arcsinh_score, outlier_arcsinh_score,
                                    '../results',
-                                   'Transformations_arcsinh*10000_Dscores')
+                                   'TransTransformations_arcsinh*10000_Dscores')
 
   # Transforms without dirichlet
   plain_scores = np.zeros((len(x_test),))
@@ -277,7 +277,7 @@ if __name__ == "__main__":
   labels = y_test.flatten() == single_class_ind
 
   plot_histogram_disc_loss_acc_thr(plain_scores[labels], plain_scores[~labels],
-                                   x_label_name='Transformations_scores_hits')
+                                   x_label_name='TransTransformations_scores_hits')
 
   # Transforms without dirichlet arcsinh
   plain_neg_scores = -plain_scores
@@ -286,5 +286,5 @@ if __name__ == "__main__":
   plain_arcsinh_scores = np.arcsinh(plain_norm_scores*10000)
 
   plot_histogram_disc_loss_acc_thr(plain_arcsinh_scores[labels], plain_arcsinh_scores[~labels],
-                                   x_label_name='Transformations_arcsinh*10000_scores_hits')
+                                   x_label_name='TransTransformations_arcsinh*10000_scores_hits')
 
