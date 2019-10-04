@@ -191,7 +191,7 @@ if __name__ == "__main__":
   start_time = time.time()
   mdl.fit(x=x_train_task_transformed, y=to_categorical(transformations_inds),
           batch_size=batch_size,
-          epochs=int(np.ceil(200 / transformer.n_transforms))
+          epochs=2,#int(np.ceil(200 / transformer.n_transforms))
           )
   time_usage = str(datetime.timedelta(
       seconds=int(round(time.time() - start_time))))
