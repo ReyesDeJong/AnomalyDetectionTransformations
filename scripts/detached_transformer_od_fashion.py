@@ -5,51 +5,27 @@ PROJECT_PATH = os.path.abspath(
 sys.path.append(PROJECT_PATH)
 
 import numpy as np
+import matplotlib.pyplot as plt
 from scipy.special import psi, polygamma
 from keras.utils import to_categorical
-from modules.data_loaders.base_line_loaders import load_hits
-
+from modules.data_loaders.base_line_loaders import load_fashion_mnist
 from transformations import Transformer
 from models.wide_residual_network import create_wide_residual_network
-
-
-
-def calc_approx_alpha_sum(observations):
-  N = len(observations)
-  f = np.mean(observations, axis=0)
-
-  return (N * (len(f) - 1) * (-psi(1))) / (
-      N * np.sum(f * np.log(f)) - np.sum(
-    f * np.sum(np.log(observations), axis=0)))
-
-
-def inv_psi(y, iters=5):
-  # initial estimate
-  cond = y >= -2.22
-  x = cond * (np.exp(y) + 0.5) + (1 - cond) * -1 / (y - psi(1))
-
-  for _ in range(iters):
-    x = x - (psi(x) - y) / polygamma(1, x)
-  return x
-
-
-def fixed_point_dirichlet_mle(alpha_init, log_p_hat, max_iter=1000):
-  alpha_new = alpha_old = alpha_init
-  for _ in range(max_iter):
-    alpha_new = inv_psi(psi(np.sum(alpha_old)) + log_p_hat)
-    if np.sqrt(np.sum((alpha_old - alpha_new) ** 2)) < 1e-9:
-      break
-    alpha_old = alpha_new
-  return alpha_new
-
-
-def dirichlet_normality_score(alpha, p):
-  return np.sum((alpha - 1) * np.log(p), axis=-1)
+import time
+import datetime
+from keras.backend.tensorflow_backend import set_session
+import tensorflow as tf
+from scripts.detached_transformer_od_hits import calc_approx_alpha_sum, inv_psi, fixed_point_dirichlet_mle, dirichlet_normality_score
 
 if __name__ == "__main__":
+  config = tf.ConfigProto()
+  config.gpu_options.allow_growth = True  # dynamically grow the memory used on the GPU
+  sess = tf.Session(config=config)
+  set_session(sess)
+
   single_class_ind = 1
 
-  (x_train, y_train), (x_test, y_test) = load_hits(n_samples_by_class=10000, test_size=0.4, val_size=0.09999999)
+  (x_train, y_train), (x_test, y_test) = load_fashion_mnist()
   print(x_train.shape)
   print(x_test.shape)
 
@@ -63,20 +39,31 @@ if __name__ == "__main__":
 
   # get inliers of specific class
   x_train_task = x_train[y_train.flatten() == single_class_ind]
+  print(x_train_task.shape)
   # [0_i, ..., (N_transforms-1)_i, ..., ..., 0_N_samples, ...,
   # (N_transforms-1)_N_samples] shape: (N_transforms*N_samples,)
   transformations_inds = np.tile(np.arange(transformer.n_transforms),
                                  len(x_train_task))
+  print(len(transformations_inds))
   #
-  # x_train_task_transformed = transformer.transform_batch(
-  #   np.repeat(x_train_task, transformer.n_transforms, axis=0),
-  #   transformations_inds)
-  # batch_size = 128
-  #
-  # mdl.fit(x=x_train_task_transformed, y=to_categorical(transformations_inds),
-  #         batch_size=batch_size,
-  #         epochs=int(np.ceil(200 / transformer.n_transforms))
-  #         )
+  start_time = time.time()
+  x_train_task_transformed = transformer.transform_batch(
+    np.repeat(x_train_task, transformer.n_transforms, axis=0),
+    transformations_inds)
+  time_usage = str(datetime.timedelta(
+      seconds=int(round(time.time() - start_time))))
+  print("Time to perform transforms: " + time_usage)
+  print(x_train_task_transformed.shape)
+  batch_size = 128
+
+  start_time = time.time()
+  mdl.fit(x=x_train_task_transformed, y=to_categorical(transformations_inds),
+          batch_size=batch_size,
+          epochs=int(np.ceil(200 / transformer.n_transforms))
+          )
+  time_usage = str(datetime.timedelta(
+      seconds=int(round(time.time() - start_time))))
+  print("Time to train model: " + time_usage)
   #
   # scores = np.zeros((len(x_test),))
   # observed_data = x_train_task

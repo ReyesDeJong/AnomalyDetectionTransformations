@@ -135,8 +135,8 @@ class HiTSLoader(object):
     self.data_splitter.set_dataset_obj(dataset)
     train_dataset, test_dataset, val_dataset = \
       self.data_splitter.get_train_test_val_set_objs()
-    print(np.unique(train_dataset.data_label,
-                    return_counts=True))
+    # print(np.unique(train_dataset.data_label,
+    #                 return_counts=True))
 
     return (train_dataset.data_array, train_dataset.data_label), \
            (test_dataset.data_array, test_dataset.data_label)

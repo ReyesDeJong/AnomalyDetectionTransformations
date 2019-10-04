@@ -1,6 +1,7 @@
 import os
 import sys
 from glob import glob
+import pprint
 
 PROJECT_PATH = os.path.abspath(
     os.path.join(os.path.dirname(__file__), '..', '..'))
@@ -89,7 +90,7 @@ def load_cifar100(label_mode='coarse'):
   return (X_train, y_train), (X_test, y_test)
 
 
-def save_roc_pr_curve_data(scores, labels, file_path):
+def save_roc_pr_curve_data(scores, labels, file_path=None):
   scores = scores.flatten()
   labels = labels.flatten()
 
@@ -111,16 +112,26 @@ def save_roc_pr_curve_data(scores, labels, file_path):
       truth, -preds, pos_label=0)
   pr_auc_anom = auc(recall_anom, precision_anom)
 
-  np.savez_compressed(file_path,
-                      preds=preds, truth=truth,
-                      fpr=fpr, tpr=tpr, roc_thresholds=roc_thresholds,
-                      roc_auc=roc_auc,
-                      precision_norm=precision_norm, recall_norm=recall_norm,
-                      pr_thresholds_norm=pr_thresholds_norm,
-                      pr_auc_norm=pr_auc_norm,
-                      precision_anom=precision_anom, recall_anom=recall_anom,
-                      pr_thresholds_anom=pr_thresholds_anom,
-                      pr_auc_anom=pr_auc_anom)
+  if file_path is not None:
+    np.savez_compressed(file_path,
+                        preds=preds, truth=truth,
+                        fpr=fpr, tpr=tpr, roc_thresholds=roc_thresholds,
+                        roc_auc=roc_auc,
+                        precision_norm=precision_norm, recall_norm=recall_norm,
+                        pr_thresholds_norm=pr_thresholds_norm,
+                        pr_auc_norm=pr_auc_norm,
+                        precision_anom=precision_anom, recall_anom=recall_anom,
+                        pr_thresholds_anom=pr_thresholds_anom,
+                        pr_auc_anom=pr_auc_anom)
+  else:
+    pprint.pprint({'fpr':fpr, 'tpr':tpr, 'roc_thresholds':roc_thresholds,
+          'roc_auc':roc_auc,
+          'precision_norm':precision_norm, 'recall_norm':recall_norm,
+          'pr_thresholds_norm':pr_thresholds_norm,
+          'pr_auc_norm':pr_auc_norm,
+          'precision_anom':precision_anom, 'recall_anom':recall_anom,
+          'pr_thresholds_anom':pr_thresholds_anom,
+          'pr_auc_anom':pr_auc_anom})
 
 
 def create_cats_vs_dogs_npz(cats_vs_dogs_path='./'):
@@ -168,10 +179,10 @@ def load_hits_padded(n_samples_by_class=12500 * 2):
 
   X_train = normalize_hits_minus1_1(
       cast_to_floatx(
-        np.pad(X_train, ((0, 0), (6, 5), (6, 5), (0, 0)), 'constant')))
+          np.pad(X_train, ((0, 0), (6, 5), (6, 5), (0, 0)), 'constant')))
   X_test = normalize_hits_minus1_1(
       cast_to_floatx(
-        np.pad(X_test, ((0, 0), (6, 5), (6, 5), (0, 0)), 'constant')))
+          np.pad(X_test, ((0, 0), (6, 5), (6, 5), (0, 0)), 'constant')))
   return (X_train, y_train), (X_test, y_test)
 
 
