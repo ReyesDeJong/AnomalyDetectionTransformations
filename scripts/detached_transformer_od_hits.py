@@ -56,8 +56,22 @@ def dirichlet_normality_score(alpha, p):
 
 
 def plot_histogram_disc_loss_acc_thr(inliers_scores, outliers_scores,
-    path, x_label_name, show=True):
-  thresholds = np.unique([inliers_scores, outliers_scores])
+    path, x_label_name, show=True, balance_classes=False):
+  if balance_classes:
+    print('balancing outlier and inliers')
+    if len(inliers_scores) != len(outliers_scores):
+      print('There are %i inliers and %i outliers' % (
+        len(inliers_scores), len(outliers_scores)))
+      if len(inliers_scores) < len(outliers_scores):
+        outliers_scores = np.random.choice(outliers_scores, len(inliers_scores),
+                                           replace=False)
+      else:
+        inliers_scores = np.random.choice(inliers_scores, len(outliers_scores),
+                                        replace=False)
+    else:
+      print('they are balanced')
+
+  thresholds = np.unique(np.concatenate([inliers_scores, outliers_scores]))
   mean_inliers = np.mean(inliers_scores)
   mean_outliers = np.mean(outliers_scores)
 
@@ -80,7 +94,7 @@ def plot_histogram_disc_loss_acc_thr(inliers_scores, outliers_scores,
       accuracies.append(accuracy)
 
   elif mean_outliers > mean_inliers:
-    print('out>in')
+    print('in<out')
     for thr in thresholds[::-1]:
       FP = np.sum(outliers_scores < thr)
       TP = np.sum(inliers_scores < thr)
@@ -96,14 +110,14 @@ def plot_histogram_disc_loss_acc_thr(inliers_scores, outliers_scores,
 
   auc_roc = auc(fpr_list, tpr_list)
 
-  min = np.min([inliers_scores, outliers_scores])
-  max = np.max([inliers_scores, outliers_scores])
+  min = np.min(np.concatenate([inliers_scores, outliers_scores]))
+  max = np.max(np.concatenate([inliers_scores, outliers_scores]))
 
   # percentil 96 thr
   thr = np.percentile(inliers_scores, 96)
-  arcsinh_scores_preds = (np.concatenate(
+  scores_preds = (np.concatenate(
       [inliers_scores, outliers_scores]) <= thr) * 1
-  accuracy_96_percentil = np.mean(arcsinh_scores_preds == np.concatenate(
+  accuracy_96_percentil = np.mean(scores_preds == np.concatenate(
       [np.ones_like(inliers_scores), np.zeros_like(outliers_scores)]))
 
   fig = plt.figure(figsize=(8, 6))
@@ -127,7 +141,7 @@ def plot_histogram_disc_loss_acc_thr(inliers_scores, outliers_scores,
                          color='black')
   percentil_plot = ax_hist.plot([thr, thr], [0, max_], 'k--',
                                 label='thr percentil 96\n(inliers 2 $\sigma$)')
-  ax_hist.text(thr + 1e-1,
+  ax_hist.text(thr,
                max_ * 0.6,
                'Acc: {:.2f}%'.format(accuracy_96_percentil * 100))
 
@@ -252,7 +266,7 @@ if __name__ == "__main__":
 
   neg_scores = -scores
   norm_scores = neg_scores - np.min(neg_scores)
-  norm_score = norm_scores / norm_scores.max()
+  norm_scores = norm_scores / norm_scores.max()
 
   arcsinh_scores = np.arcsinh(norm_scores)
   inlier_arcsinh_score = np.arcsinh(norm_scores[labels])
@@ -280,5 +294,6 @@ if __name__ == "__main__":
   save_roc_pr_curve_data(scores, labels)
 
   plot_histogram_disc_loss_acc_thr(inlier_arcsinh_score, outlier_arcsinh_score,
-                                   None, 'Transformation scores')
+                                   '../results',
+                                   'Transformations_arcsinh_scores')
   #
