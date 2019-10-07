@@ -1,7 +1,7 @@
 import os
+import pprint
 import sys
 from glob import glob
-import pprint
 
 PROJECT_PATH = os.path.abspath(
     os.path.join(os.path.dirname(__file__), '..', '..'))
@@ -124,14 +124,14 @@ def save_roc_pr_curve_data(scores, labels, file_path=None):
                         pr_thresholds_anom=pr_thresholds_anom,
                         pr_auc_anom=pr_auc_anom)
   else:
-    pprint.pprint({'fpr':fpr, 'tpr':tpr, 'roc_thresholds':roc_thresholds,
-          'roc_auc':roc_auc,
-          'precision_norm':precision_norm, 'recall_norm':recall_norm,
-          'pr_thresholds_norm':pr_thresholds_norm,
-          'pr_auc_norm':pr_auc_norm,
-          'precision_anom':precision_anom, 'recall_anom':recall_anom,
-          'pr_thresholds_anom':pr_thresholds_anom,
-          'pr_auc_anom':pr_auc_anom})
+    pprint.pprint({'fpr': fpr, 'tpr': tpr, 'roc_thresholds': roc_thresholds,
+                   'roc_auc': roc_auc,
+                   'precision_norm': precision_norm, 'recall_norm': recall_norm,
+                   'pr_thresholds_norm': pr_thresholds_norm,
+                   'pr_auc_norm': pr_auc_norm,
+                   'precision_anom': precision_anom, 'recall_anom': recall_anom,
+                   'pr_thresholds_anom': pr_thresholds_anom,
+                   'pr_auc_anom': pr_auc_anom})
 
 
 def create_cats_vs_dogs_npz(cats_vs_dogs_path='./'):
@@ -186,7 +186,8 @@ def load_hits_padded(n_samples_by_class=12500 * 2):
   return (X_train, y_train), (X_test, y_test)
 
 
-def load_hits(n_samples_by_class=12500 * 2, test_size=0.12, val_size=0.08):
+def load_hits(n_samples_by_class=12500 * 2, test_size=0.12, val_size=0.08,
+    return_val=False):
   data_path = os.path.join(PROJECT_PATH, '..', 'datasets',
                            'HiTS2013_300k_samples.pkl')
   params = {
@@ -197,10 +198,14 @@ def load_hits(n_samples_by_class=12500 * 2, test_size=0.12, val_size=0.08):
                            first_n_samples_by_class=n_samples_by_class,
                            test_size=test_size, validation_size=val_size)
 
-  (X_train, y_train), (X_test, y_test) = hits_loader.load_data()
+  (X_train, y_train), (X_val, y_val), (X_test, y_test) = hits_loader.load_data()
 
   X_train = normalize_hits_minus1_1(cast_to_floatx(X_train))
+  X_val = normalize_hits_minus1_1(cast_to_floatx(X_val))
   X_test = normalize_hits_minus1_1(cast_to_floatx(X_test))
+
+  if return_val:
+    return (X_train, y_train), (X_val, y_val), (X_test, y_test)
   return (X_train, y_train), (X_test, y_test)
 
 

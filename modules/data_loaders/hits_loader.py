@@ -139,6 +139,7 @@ class HiTSLoader(object):
     #                 return_counts=True))
 
     return (train_dataset.data_array, train_dataset.data_label), \
+           (val_dataset.data_array, val_dataset.data_label), \
            (test_dataset.data_array, test_dataset.data_label)
 
 

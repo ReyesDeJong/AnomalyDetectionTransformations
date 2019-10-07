@@ -56,7 +56,8 @@ def dirichlet_normality_score(alpha, p):
 
 
 def plot_histogram_disc_loss_acc_thr(inliers_scores, outliers_scores,
-    path=None, x_label_name='score', show=True, balance_classes=False):
+    path=None, x_label_name='score', show=True, balance_classes=False,
+    percentil=96):
   if balance_classes:
     print('balancing outlier and inliers')
     if len(inliers_scores) != len(outliers_scores):
@@ -67,7 +68,7 @@ def plot_histogram_disc_loss_acc_thr(inliers_scores, outliers_scores,
                                            replace=False)
       else:
         inliers_scores = np.random.choice(inliers_scores, len(outliers_scores),
-                                        replace=False)
+                                          replace=False)
     else:
       print('they are balanced')
 
@@ -75,8 +76,8 @@ def plot_histogram_disc_loss_acc_thr(inliers_scores, outliers_scores,
   mean_outliers = np.mean(outliers_scores)
   if mean_outliers < mean_inliers:
     print('scores *-1 to get in<out')
-    inliers_scores = inliers_scores*-1
-    outliers_scores = outliers_scores*-1
+    inliers_scores = inliers_scores * -1
+    outliers_scores = outliers_scores * -1
 
   thresholds = np.unique(np.concatenate([inliers_scores, outliers_scores]))
   accuracies = []
@@ -101,10 +102,10 @@ def plot_histogram_disc_loss_acc_thr(inliers_scores, outliers_scores,
   max = np.max(np.concatenate([inliers_scores, outliers_scores]))
 
   # percentil 96 thr
-  thr = np.percentile(inliers_scores, 96)
+  thr = np.percentile(inliers_scores, percentil)
   scores_preds = (np.concatenate(
-      [inliers_scores, outliers_scores]) <= thr) * 1
-  accuracy_96_percentil = np.mean(scores_preds == np.concatenate(
+      [inliers_scores, outliers_scores]) < thr) * 1
+  accuracy_at_percentil = np.mean(scores_preds == np.concatenate(
       [np.ones_like(inliers_scores), np.zeros_like(outliers_scores)]))
 
   fig = plt.figure(figsize=(8, 6))
@@ -122,17 +123,18 @@ def plot_histogram_disc_loss_acc_thr(inliers_scores, outliers_scores,
   ax_hist.set_xlabel(x_label_name, fontsize=12)
 
   ax_acc.set_ylim([0.5, 1.0])
+  ax_acc.yaxis.set_ticks(np.arange(0.5, 1.05, 0.05))
   ax_acc.set_ylabel('Accuracy', fontsize=12)
   acc_plot = ax_acc.plot(thresholds, accuracies, lw=2,
                          label='Accuracy by\nthresholds',
                          color='black')
   percentil_plot = ax_hist.plot([thr, thr], [0, max_], 'k--',
-                                label='thr percentil 96\n(inliers 2 $\sigma$)')
+                                label='thr percentil %i' % percentil)
   ax_hist.text(thr,
                max_ * 0.6,
-               'Acc: {:.2f}%'.format(accuracy_96_percentil * 100))
+               'Acc: {:.2f}%'.format(accuracy_at_percentil * 100))
 
-  ax_hist.grid(ls='--')
+  ax_acc.grid(ls='--')
   fig.legend(loc="upper right", bbox_to_anchor=(1, 1),
              bbox_transform=ax_hist.transAxes)
   if path:
