@@ -232,7 +232,7 @@ if __name__ == "__main__":
   plain_arcsinh_scores = np.arcsinh(plain_norm_scores * 1000000)
 
   plot_histogram_disc_loss_acc_thr(plain_arcsinh_scores[labels],
-                                   plain_arcsinh_scores[~labels],
+                                   plain_arcsinh_scores[~labels], path='../results',
                                    x_label_name='EnsembleTransformations_arcsinh*10000_scores_hits')
 
   ## matrices
