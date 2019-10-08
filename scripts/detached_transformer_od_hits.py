@@ -252,7 +252,7 @@ if __name__ == "__main__":
   scores /= transformer.n_transforms
   labels = y_test.flatten() == single_class_ind
 
-  plot_histogram_disc_loss_acc_thr(scores[labels], scores[~labels],
+  plot_histogram_disc_loss_acc_thr(scores[labels], scores[~labels], path='../results',
                                    x_label_name='Transformations_Dscores_hits')
 
   # Dirichlet transforms with arcsin
@@ -278,7 +278,7 @@ if __name__ == "__main__":
   plain_scores /= transformer.n_transforms
   labels = y_test.flatten() == single_class_ind
 
-  plot_histogram_disc_loss_acc_thr(plain_scores[labels], plain_scores[~labels],
+  plot_histogram_disc_loss_acc_thr(plain_scores[labels], plain_scores[~labels], path='../results',
                                    x_label_name='Transformations_scores_hits')
 
   # Transforms without dirichlet arcsinh
@@ -288,5 +288,5 @@ if __name__ == "__main__":
   plain_arcsinh_scores = np.arcsinh(plain_norm_scores * 10000)
 
   plot_histogram_disc_loss_acc_thr(plain_arcsinh_scores[labels],
-                                   plain_arcsinh_scores[~labels],
+                                   plain_arcsinh_scores[~labels], path='../results',
                                    x_label_name='Transformations_arcsinh*10000_scores_hits')

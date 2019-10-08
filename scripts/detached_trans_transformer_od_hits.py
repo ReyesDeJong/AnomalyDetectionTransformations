@@ -137,7 +137,7 @@ if __name__ == "__main__":
   outlier_arcsinh_score = arcsinh_scores[~labels]
   plot_histogram_disc_loss_acc_thr(inlier_arcsinh_score, outlier_arcsinh_score,
                                    '../results',
-                                   'TransTransformations_arcsinh*10000_Dscores')
+                                   'TransTransformations_arcsinh*10000_Dscores_hits')
 
   # Transforms without dirichlet
   plain_scores = np.zeros((len(x_test),))
@@ -152,7 +152,7 @@ if __name__ == "__main__":
   labels = y_test.flatten() == single_class_ind
 
   plot_histogram_disc_loss_acc_thr(plain_scores[labels], plain_scores[~labels],
-                                   x_label_name='TransTransformations_scores_hits')
+                                   x_label_name='TransTransformations_scores_hits_hits')
 
   # Transforms without dirichlet arcsinh
   plain_neg_scores = -plain_scores
