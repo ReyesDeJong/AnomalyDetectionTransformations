@@ -19,6 +19,7 @@ from tqdm import tqdm
 from scripts.detached_transformer_od_hits import plot_histogram_disc_loss_acc_thr, \
   dirichlet_normality_score, fixed_point_dirichlet_mle, calc_approx_alpha_sum
 import matplotlib.pyplot as plt
+from sklearn.metrics import roc_curve, precision_recall_curve, auc
 
 def replicate_to_size(data_array, size):
   if len(data_array) < size:
@@ -146,11 +147,11 @@ if __name__ == "__main__":
   plt.show()
 
   bins=100
-  plt.hist(models_list[0].predict(test_in_x)[:,1])
+  plt.hist(models_list[0].predict(test_in_x)[:, 1], bins=bins)
   plt.title('inliers')
   plt.show()
-  plt.hist(models_list[0].predict(test_out_x)[:, 1])
-  plt.title('inliers')
+  plt.hist(models_list[0].predict(test_out_x)[:, 1], bins=bins)
+  plt.title('outliers')
   plt.show()
 
   # Get scores
@@ -160,10 +161,37 @@ if __name__ == "__main__":
     x_test_p = models_list[t_ind].predict(
         transformer.transform_batch(x_test, [t_ind] * len(x_test)),
         batch_size=1024)
-    plain_scores += x_test_p[:, 0]
+    plain_scores += x_test_p[:, 1]
 
   plain_scores /= transformer.n_transforms
   labels = y_test.flatten() == single_class_ind
+
+  bins=100
+  plt.hist(plain_scores[test_in_idxs], bins=bins)
+  plt.title('scores_inliers')
+  plt.show()
+  plt.hist(plain_scores[test_out_idxs], bins=bins)
+  plt.title('scores_outliers')
+  plt.show()
+
+  scores_pos = plain_scores[labels == 1]
+  scores_neg = plain_scores[labels != 1]
+  bins=100
+  plt.hist(scores_pos, bins=bins)
+  plt.title('scores_inliers')
+  plt.show()
+  plt.hist(scores_neg, bins=bins)
+  plt.title('scores_outliers')
+  plt.show()
+
+
+  truth = np.concatenate((np.zeros_like(scores_neg), np.ones_like(scores_pos)))
+  preds = np.concatenate((scores_neg, scores_pos))
+  fpr, tpr, roc_thresholds = roc_curve(truth, preds)
+  roc_auc = auc(fpr, tpr)
+  print(roc_auc)
+
+
 
   plot_histogram_disc_loss_acc_thr(plain_scores[labels], plain_scores[~labels],
                                    x_label_name='EnsembleTransformations_scores_hits')
@@ -172,7 +200,7 @@ if __name__ == "__main__":
   plain_neg_scores = plain_scores
   plain_norm_scores = plain_neg_scores - np.min(plain_neg_scores)
   plain_norm_scores = plain_norm_scores / plain_norm_scores.max()
-  plain_arcsinh_scores = np.arcsinh(plain_norm_scores * 10000)
+  plain_arcsinh_scores = np.arcsinh(plain_norm_scores * 1000000)
 
   plot_histogram_disc_loss_acc_thr(plain_arcsinh_scores[labels],
                                    plain_arcsinh_scores[~labels],

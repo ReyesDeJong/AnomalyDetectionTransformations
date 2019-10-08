@@ -18,7 +18,6 @@ import datetime
 from keras.backend.tensorflow_backend import set_session
 import tensorflow as tf
 from tqdm import tqdm
-from modules.data_loaders.base_line_loaders import save_roc_pr_curve_data
 from sklearn.metrics import auc
 
 
@@ -80,6 +79,7 @@ def plot_histogram_disc_loss_acc_thr(inliers_scores, outliers_scores,
     outliers_scores = outliers_scores * -1
 
   thresholds = np.unique(np.concatenate([inliers_scores, outliers_scores]))
+
   accuracies = []
   tpr_list = []
   fpr_list = []
@@ -125,7 +125,7 @@ def plot_histogram_disc_loss_acc_thr(inliers_scores, outliers_scores,
   ax_acc.set_ylim([0.5, 1.0])
   ax_acc.yaxis.set_ticks(np.arange(0.5, 1.05, 0.05))
   ax_acc.set_ylabel('Accuracy', fontsize=12)
-  acc_plot = ax_acc.plot(thresholds, accuracies, lw=2,
+  acc_plot = ax_acc.plot(thresholds[::-1], accuracies, lw=2,
                          label='Accuracy by\nthresholds',
                          color='black')
   percentil_plot = ax_hist.plot([thr, thr], [0, max_], 'k--',
@@ -259,7 +259,7 @@ if __name__ == "__main__":
   neg_scores = -scores
   norm_scores = neg_scores - np.min(neg_scores)
   norm_scores = norm_scores / np.max(norm_scores)
-  arcsinh_scores = np.arcsinh(norm_scores*10000)
+  arcsinh_scores = np.arcsinh(norm_scores * 10000)
   inlier_arcsinh_score = arcsinh_scores[labels]
   outlier_arcsinh_score = arcsinh_scores[~labels]
   plot_histogram_disc_loss_acc_thr(inlier_arcsinh_score, outlier_arcsinh_score,
@@ -282,11 +282,11 @@ if __name__ == "__main__":
                                    x_label_name='Transformations_scores_hits')
 
   # Transforms without dirichlet arcsinh
-  plain_neg_scores = -plain_scores
+  plain_neg_scores = 1-plain_scores
   plain_norm_scores = plain_neg_scores - np.min(plain_neg_scores)
   plain_norm_scores = plain_norm_scores / plain_norm_scores.max()
-  plain_arcsinh_scores = np.arcsinh(plain_norm_scores*10000)
+  plain_arcsinh_scores = np.arcsinh(plain_norm_scores * 10000)
 
-  plot_histogram_disc_loss_acc_thr(plain_arcsinh_scores[labels], plain_arcsinh_scores[~labels],
+  plot_histogram_disc_loss_acc_thr(plain_arcsinh_scores[labels],
+                                   plain_arcsinh_scores[~labels],
                                    x_label_name='Transformations_arcsinh*10000_scores_hits')
-
