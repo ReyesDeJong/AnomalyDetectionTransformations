@@ -20,6 +20,8 @@ from scripts.detached_transformer_od_hits import \
   plot_histogram_disc_loss_acc_thr
 import matplotlib.pyplot as plt
 from sklearn.metrics import roc_curve, auc
+from keras.layers import *
+from keras.models import Model
 
 
 def replicate_to_size(data_array, size):
@@ -30,7 +32,8 @@ def replicate_to_size(data_array, size):
     return np.concatenate([data_array, data_array[:size_left]])
 
 
-def plot_matrix_score(imgs, matrix_scores, labels, plot_inliers=True, n_to_plot=1):
+def plot_matrix_score(imgs, matrix_scores, labels, plot_inliers=True,
+    n_to_plot=1):
   if plot_inliers:
     inlier_idxs = np.where(labels == True)[0]
     plot_indxs = np.random.choice(inlier_idxs, n_to_plot, replace=False)
@@ -38,12 +41,30 @@ def plot_matrix_score(imgs, matrix_scores, labels, plot_inliers=True, n_to_plot=
     outlier_idxs = np.where(labels == False)[0]
     plot_indxs = np.random.choice(outlier_idxs, n_to_plot, replace=False)
   for indx in plot_indxs:
-    fig, ax = plt.subplots(1,2)
-    ax[0].imshow(imgs[indx,...,0])
+    fig, ax = plt.subplots(1, 2)
+    ax[0].imshow(imgs[indx, ..., 0])
     ax[1].imshow(matrix_scores[indx])
     ax[1].set_title('Inlier: %s index: %i trace: %.4f' % (
-    str(plot_inliers), indx, np.trace(matrix_scores[indx])))
+      str(plot_inliers), indx, np.trace(matrix_scores[indx])))
     plt.show()
+
+
+def get_entropy(matrix_scores, epsilon=1e-10):
+  norm_scores = matrix_scores / np.sum(matrix_scores, axis=(1, 2))[
+    ..., np.newaxis, np.newaxis]
+  log_scores = np.log(norm_scores + epsilon)
+  product = norm_scores * log_scores
+  entropy = -np.sum(product, axis=(1, 2))
+  return entropy
+
+def get_list_of_models_without_softmax(model_list):
+  short_model_list = []
+  for model_i in model_list:
+    logits = model_i.layers[-2].output
+    short_model = Model(inputs=model_i.inputs, outputs=logits)
+    short_model_list.append(short_model)
+  return short_model_list
+
 
 
 if __name__ == "__main__":
@@ -226,13 +247,14 @@ if __name__ == "__main__":
                                    path='../results')
 
   # Scores arcsinh
-  plain_neg_scores = plain_scores
+  plain_neg_scores = 1 - plain_scores
   plain_norm_scores = plain_neg_scores - np.min(plain_neg_scores)
   plain_norm_scores = plain_norm_scores / plain_norm_scores.max()
   plain_arcsinh_scores = np.arcsinh(plain_norm_scores * 1000000)
 
   plot_histogram_disc_loss_acc_thr(plain_arcsinh_scores[labels],
-                                   plain_arcsinh_scores[~labels], path='../results',
+                                   plain_arcsinh_scores[~labels],
+                                   path='../results',
                                    x_label_name='EnsembleTransformations_arcsinh*10000_scores_hits')
 
   ## matrices
@@ -247,22 +269,82 @@ if __name__ == "__main__":
       seconds=int(round(time.time() - start_time))))
   print("Time to perform transforms: " + time_usage)
 
-  # Get scores
+  # Get matrix scores
   matrix_scores = np.zeros(
       (len(x_test), transformer.n_transforms, transformer.n_transforms))
   for model_t_ind in tqdm(range(transformer.n_transforms)):
     for t_ind in range(transformer.n_transforms):
       test_specific_transform_indxs = np.where(
-        transformations_inds_test == t_ind)
+          transformations_inds_test == t_ind)
       x_test_specific_transform = x_test_transformed[
         test_specific_transform_indxs]
       # predictions for a single transformation
       x_test_p = models_list[model_t_ind].predict(x_test_specific_transform,
-                                                  batch_size=1024)
+                                                  batch_size=64)
       matrix_scores[:, model_t_ind, t_ind] += x_test_p[:, 1]
 
   matrix_scores /= transformer.n_transforms
   labels = y_test.flatten() == single_class_ind
 
-  plot_matrix_score(x_test, matrix_scores, labels, plot_inliers=True, n_to_plot=15)
-  plot_matrix_score(x_test, matrix_scores, labels, plot_inliers=False, n_to_plot=15)
+  # plot_matrix_score(x_test, matrix_scores, labels, plot_inliers=True,
+  #                   n_to_plot=15)
+  # plot_matrix_score(x_test, matrix_scores, labels, plot_inliers=False,
+  #                   n_to_plot=15)
+
+  entropy_scores = get_entropy(matrix_scores)
+  plot_histogram_disc_loss_acc_thr(entropy_scores[labels],
+                                   entropy_scores[~labels],
+                                   path='../results',
+                                   x_label_name='EnsembleTransformations_entropy_scores_hits')
+
+
+  # Get scores for xentropy
+  matrix_scores = np.zeros(
+      (len(x_test), transformer.n_transforms, transformer.n_transforms, 2))
+  for model_t_ind in tqdm(range(transformer.n_transforms)):
+    for t_ind in range(transformer.n_transforms):
+      test_specific_transform_indxs = np.where(
+          transformations_inds_test == t_ind)
+      x_test_specific_transform = x_test_transformed[
+        test_specific_transform_indxs]
+      # predictions for a single transformation
+      x_test_p = models_list[model_t_ind].predict(x_test_specific_transform,
+                                                  batch_size=64)
+      matrix_scores[:, model_t_ind, t_ind] += x_test_p
+
+  matrix_scores /= transformer.n_transforms
+  labels = y_test.flatten() == single_class_ind
+
+  # plot_matrix_score(x_test, matrix_scores[...,1], labels, plot_inliers=True,
+  #                   n_to_plot=5)
+  # plot_matrix_score(x_test, matrix_scores[...,1], labels, plot_inliers=False,
+  #                   n_to_plot=5)
+  # plot_matrix_score(x_test, matrix_scores[...,0], labels, plot_inliers=True,
+  #                   n_to_plot=5)
+  # plot_matrix_score(x_test, matrix_scores[...,0], labels, plot_inliers=False,
+  #                   n_to_plot=5)
+
+  # logits = models_list[0].layers[-2].output
+  # short_model = Model(inputs=models_list[0].inputs, outputs=logits)
+  short_models_list = get_list_of_models_without_softmax(models_list)
+  # Get logits for xentropy
+  matrix_logits = np.zeros(
+      (len(x_test), transformer.n_transforms, transformer.n_transforms, 2))
+  for model_t_ind in tqdm(range(transformer.n_transforms)):
+    for t_ind in range(transformer.n_transforms):
+      test_specific_transform_indxs = np.where(
+          transformations_inds_test == t_ind)
+      x_test_specific_transform = x_test_transformed[
+        test_specific_transform_indxs]
+      # predictions for a single transformation
+      x_test_p = short_models_list[model_t_ind].predict(x_test_specific_transform,
+                                                        batch_size=64)
+      matrix_logits[:, model_t_ind, t_ind] += x_test_p
+
+  matrix_logits /= transformer.n_transforms
+  labels = y_test.flatten() == single_class_ind
+  plot_matrix_score(x_test, matrix_logits[...,1], labels, plot_inliers=True,
+                    n_to_plot=5)
+
+
+
