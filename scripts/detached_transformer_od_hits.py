@@ -81,6 +81,7 @@ def plot_histogram_disc_loss_acc_thr(inliers_scores, outliers_scores,
     print('scores *-1 to get in<out')
     inliers_scores = inliers_scores * -1
     outliers_scores = outliers_scores * -1
+    val_inliers_score = val_inliers_score * -1
 
   thresholds = np.unique(np.concatenate([inliers_scores, outliers_scores]))
 

@@ -219,7 +219,7 @@ if __name__ == "__main__":
   matrix_scores_test /= transformer.n_transforms
   #val
   matrix_scores_val = np.zeros(
-      (len(x_test), transformer.n_transforms, transformer.n_transforms))
+      (len(x_val_task), transformer.n_transforms, transformer.n_transforms))
   for t_ind in tqdm(range(transformer.n_transforms)):
     val_specific_transform_indxs = np.where(
         transformations_inds_val == t_ind)

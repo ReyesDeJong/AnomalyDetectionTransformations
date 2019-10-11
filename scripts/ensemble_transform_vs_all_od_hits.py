@@ -211,27 +211,37 @@ if __name__ == "__main__":
   plt.show()
 
   # Get scores
-  plain_scores = np.zeros((len(x_test),))
+  plain_scores_test = np.zeros((len(x_test),))
   for t_ind in tqdm(range(transformer.n_transforms)):
     # predictions for a single transformation
     x_test_p = models_list[t_ind].predict(
         transformer.transform_batch(x_test, [t_ind] * len(x_test)),
         batch_size=1024)
-    plain_scores += x_test_p[:, 1]
+    plain_scores_test += x_test_p[:, 1]
 
-  plain_scores /= transformer.n_transforms
+  plain_scores_test /= transformer.n_transforms
+  #val
+  plain_scores_val = np.zeros((len(x_val_task),))
+  for t_ind in tqdm(range(transformer.n_transforms)):
+    # predictions for a single transformation
+    x_val_p = models_list[t_ind].predict(
+        transformer.transform_batch(x_val_task, [t_ind] * len(x_val_task)),
+        batch_size=1024)
+    plain_scores_val += x_val_p[:, 1]
+
+  plain_scores_val /= transformer.n_transforms
   labels = y_test.flatten() == single_class_ind
 
   bins = 100
-  plt.hist(plain_scores[test_in_idxs], bins=bins)
+  plt.hist(plain_scores_test[test_in_idxs], bins=bins)
   plt.title('scores_inliers')
   plt.show()
-  plt.hist(plain_scores[test_out_idxs], bins=bins)
+  plt.hist(plain_scores_test[test_out_idxs], bins=bins)
   plt.title('scores_outliers')
   plt.show()
 
-  scores_pos = plain_scores[labels == 1]
-  scores_neg = plain_scores[labels != 1]
+  scores_pos = plain_scores_test[labels == 1]
+  scores_neg = plain_scores_test[labels != 1]
   bins = 100
   plt.hist(scores_pos, bins=bins)
   plt.title('scores_inliers')
@@ -246,20 +256,20 @@ if __name__ == "__main__":
   roc_auc = auc(fpr, tpr)
   print(roc_auc)
 
-  plot_histogram_disc_loss_acc_thr(plain_scores[labels], plain_scores[~labels],
+  plot_histogram_disc_loss_acc_thr(plain_scores_test[labels], plain_scores_test[~labels],
                                    x_label_name='EnsembleTransformations_scores_hits',
-                                   path='../results')
+                                   path='../results', val_inliers_score=plain_scores_val)
 
-  # Scores arcsinh
-  plain_neg_scores = 1 - plain_scores
-  plain_norm_scores = plain_neg_scores - np.min(plain_neg_scores)
-  plain_norm_scores = plain_norm_scores / plain_norm_scores.max()
-  plain_arcsinh_scores = np.arcsinh(plain_norm_scores * 1000000)
-
-  plot_histogram_disc_loss_acc_thr(plain_arcsinh_scores[labels],
-                                   plain_arcsinh_scores[~labels],
-                                   path='../results',
-                                   x_label_name='EnsembleTransformations_arcsinh*10000_scores_hits')
+  # # Scores arcsinh
+  # plain_neg_scores = 1 - plain_scores_test
+  # plain_norm_scores = plain_neg_scores - np.min(plain_neg_scores)
+  # plain_norm_scores = plain_norm_scores / plain_norm_scores.max()
+  # plain_arcsinh_scores = np.arcsinh(plain_norm_scores * 1000000)
+  #
+  # plot_histogram_disc_loss_acc_thr(plain_arcsinh_scores[labels],
+  #                                  plain_arcsinh_scores[~labels],
+  #                                  path='../results',
+  #                                  x_label_name='EnsembleTransformations_arcsinh*10000_scores_hits')
 
   ## matrices
   # transform test
@@ -274,7 +284,7 @@ if __name__ == "__main__":
   print("Time to perform transforms: " + time_usage)
 
   # Get matrix scores
-  matrix_scores = np.zeros(
+  matrix_scores_test = np.zeros(
       (len(x_test), transformer.n_transforms, transformer.n_transforms))
   for model_t_ind in tqdm(range(transformer.n_transforms)):
     for t_ind in range(transformer.n_transforms):
@@ -285,9 +295,24 @@ if __name__ == "__main__":
       # predictions for a single transformation
       x_test_p = models_list[model_t_ind].predict(x_test_specific_transform,
                                                   batch_size=64)
-      matrix_scores[:, model_t_ind, t_ind] += x_test_p[:, 1]
+      matrix_scores_test[:, model_t_ind, t_ind] += x_test_p[:, 1]
 
-  matrix_scores /= transformer.n_transforms
+  matrix_scores_test /= transformer.n_transforms
+  #val
+  matrix_scores_val = np.zeros(
+      (len(x_val_task), transformer.n_transforms, transformer.n_transforms))
+  for model_t_ind in tqdm(range(transformer.n_transforms)):
+    for t_ind in range(transformer.n_transforms):
+      val_specific_transform_indxs = np.where(
+          transformations_inds_val == t_ind)
+      x_val_specific_transform = x_val_task_transformed[
+        val_specific_transform_indxs]
+      # predictions for a single transformation
+      x_val_p = models_list[model_t_ind].predict(x_val_specific_transform,
+                                                  batch_size=64)
+      matrix_scores_val[:, model_t_ind, t_ind] += x_val_p[:, 1]
+
+  matrix_scores_val /= transformer.n_transforms
   labels = y_test.flatten() == single_class_ind
 
   # plot_matrix_score(x_test, matrix_scores, labels, plot_inliers=True,
@@ -295,14 +320,15 @@ if __name__ == "__main__":
   # plot_matrix_score(x_test, matrix_scores, labels, plot_inliers=False,
   #                   n_to_plot=15)
 
-  entropy_scores = get_entropy(matrix_scores)
-  plot_histogram_disc_loss_acc_thr(entropy_scores[labels],
-                                   entropy_scores[~labels],
+  entropy_scores_test = get_entropy(matrix_scores_test)
+  entropy_scores_val = get_entropy(matrix_scores_val)
+  plot_histogram_disc_loss_acc_thr(entropy_scores_test[labels],
+                                   entropy_scores_test[~labels],
                                    path='../results',
-                                   x_label_name='EnsembleTransformations_entropy_scores_hits')
+                                   x_label_name='EnsembleTransformations_entropy_scores_hits', val_inliers_score=entropy_scores_val)
 
   # Get scores for xentropy
-  matrix_scores_2class = np.zeros(
+  matrix_scores_2class_test = np.zeros(
       (len(x_test), transformer.n_transforms, transformer.n_transforms, 2))
   for model_t_ind in tqdm(range(transformer.n_transforms)):
     for t_ind in range(transformer.n_transforms):
@@ -313,9 +339,24 @@ if __name__ == "__main__":
       # predictions for a single transformation
       x_test_p = models_list[model_t_ind].predict(x_test_specific_transform,
                                                   batch_size=64)
-      matrix_scores_2class[:, model_t_ind, t_ind] += x_test_p
+      matrix_scores_2class_test[:, model_t_ind, t_ind] += x_test_p
 
-  matrix_scores_2class /= transformer.n_transforms
+  matrix_scores_2class_test /= transformer.n_transforms
+  #val
+  matrix_scores_2class_val = np.zeros(
+      (len(x_val_task), transformer.n_transforms, transformer.n_transforms, 2))
+  for model_t_ind in tqdm(range(transformer.n_transforms)):
+    for t_ind in range(transformer.n_transforms):
+      val_specific_transform_indxs = np.where(
+          transformations_inds_val == t_ind)
+      x_val_specific_transform = x_val_task_transformed[
+        val_specific_transform_indxs]
+      # predictions for a single transformation
+      x_val_p = models_list[model_t_ind].predict(x_val_specific_transform,
+                                                  batch_size=64)
+      matrix_scores_2class_val[:, model_t_ind, t_ind] += x_val_p
+
+  matrix_scores_2class_val /= transformer.n_transforms
   labels = y_test.flatten() == single_class_ind
 
   # plot_matrix_score(x_test, matrix_scores_2class[...,1], labels, plot_inliers=True,
@@ -331,7 +372,7 @@ if __name__ == "__main__":
   # short_model = Model(inputs=models_list[0].inputs, outputs=logits)
   short_models_list = get_list_of_models_without_softmax(models_list)
   # Get logits for xentropy
-  matrix_logits = np.zeros(
+  matrix_logits_test = np.zeros(
       (len(x_test), transformer.n_transforms, transformer.n_transforms, 2))
   for model_t_ind in tqdm(range(transformer.n_transforms)):
     for t_ind in range(transformer.n_transforms):
@@ -343,7 +384,21 @@ if __name__ == "__main__":
       x_test_p = short_models_list[model_t_ind].predict(
         x_test_specific_transform,
         batch_size=64)
-      matrix_logits[:, model_t_ind, t_ind] += x_test_p
+      matrix_logits_test[:, model_t_ind, t_ind] += x_test_p
+  #val
+  matrix_logits_val = np.zeros(
+      (len(x_val_task), transformer.n_transforms, transformer.n_transforms, 2))
+  for model_t_ind in tqdm(range(transformer.n_transforms)):
+    for t_ind in range(transformer.n_transforms):
+      val_specific_transform_indxs = np.where(
+          transformations_inds_val == t_ind)
+      x_val_specific_transform = x_val_task_transformed[
+        val_specific_transform_indxs]
+      # predictions for a single transformation
+      x_val_p = short_models_list[model_t_ind].predict(
+          x_val_specific_transform,
+          batch_size=64)
+      matrix_logits_val[:, model_t_ind, t_ind] += x_val_p
 
   labels = y_test.flatten() == single_class_ind
   # plot_matrix_score(x_test, matrix_logits[..., 1], labels, plot_inliers=True,
@@ -357,34 +412,43 @@ if __name__ == "__main__":
   # # cross_entropy
 
   xH = nn.CrossEntropyLoss(reduction='none')
-  gt_matrix = np.stack([np.eye(transformer.n_transforms)] * len(matrix_logits))
+  gt_matrix = np.stack([np.eye(transformer.n_transforms)] * len(matrix_logits_test))
   gt_torch = torch.LongTensor(gt_matrix)
 
 
-  matrix_logits_torch = torch.FloatTensor(np.swapaxes(np.swapaxes(matrix_logits,1,-1),-1,-2))
+  matrix_logits_torch = torch.FloatTensor(np.swapaxes(np.swapaxes(matrix_logits_test, 1, -1), -1, -2))
   loss_xH = xH(matrix_logits_torch, gt_torch)
-  batch_xH = np.mean(loss_xH.numpy(), axis=(-1,-2))
+  batch_xH_test = np.mean(loss_xH.numpy(), axis=(-1,-2))
 
-  plot_histogram_disc_loss_acc_thr(batch_xH[labels],
-                                   batch_xH[~labels],
+  gt_matrix = np.stack(
+    [np.eye(transformer.n_transforms)] * len(matrix_logits_val))
+  gt_torch = torch.LongTensor(gt_matrix)
+
+  matrix_logits_torch = torch.FloatTensor(
+    np.swapaxes(np.swapaxes(matrix_logits_val, 1, -1), -1, -2))
+  loss_xH = xH(matrix_logits_torch, gt_torch)
+  batch_xH_val = np.mean(loss_xH.numpy(), axis=(-1, -2))
+
+  plot_histogram_disc_loss_acc_thr(batch_xH_test[labels],
+                                   batch_xH_test[~labels],
                                    path='../results',
-                                   x_label_name='EnsembleTransformations_xH_scores_hits')
+                                   x_label_name='EnsembleTransformations_xH_scores_hits', val_inliers_score=batch_xH_val)
 
 
   # get worst n traces for inliers and best n traces for outliers
 
-  in_matrix_score = matrix_scores[labels]
-  out_matrix_score = matrix_scores[~labels]
+  in_matrix_score = matrix_scores_test[labels]
+  out_matrix_score = matrix_scores_test[~labels]
   indx_in = np.argsort(np.trace(in_matrix_score, axis1=1, axis2=2))
   indx_out = np.argsort(np.trace(out_matrix_score, axis1=1, axis2=2))
   x_test_in = x_test[labels]
   x_test_out = x_test[~labels]
 
-  #best in
-  plot_matrix_score(x_test_in, in_matrix_score, n_to_plot=indx_in[-3:], plot_inliers=True)
-  #worst in
-  plot_matrix_score(x_test_in, in_matrix_score, n_to_plot=indx_in[:3], plot_inliers=True)
-  # worst outliers out (high trace)
-  plot_matrix_score(x_test_out, out_matrix_score, n_to_plot=indx_out[-3:], plot_inliers=False)
-  # best outliers out (low trace)
-  plot_matrix_score(x_test_out, out_matrix_score, n_to_plot=indx_out[:3], plot_inliers=False)
+  # #best in
+  # plot_matrix_score(x_test_in, in_matrix_score, n_to_plot=indx_in[-3:], plot_inliers=True)
+  # #worst in
+  # plot_matrix_score(x_test_in, in_matrix_score, n_to_plot=indx_in[:3], plot_inliers=True)
+  # # worst outliers out (high trace)
+  # plot_matrix_score(x_test_out, out_matrix_score, n_to_plot=indx_out[-3:], plot_inliers=False)
+  # # best outliers out (low trace)
+  # plot_matrix_score(x_test_out, out_matrix_score, n_to_plot=indx_out[:3], plot_inliers=False)
