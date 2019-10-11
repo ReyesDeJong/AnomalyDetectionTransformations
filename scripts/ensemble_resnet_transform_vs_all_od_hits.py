@@ -9,7 +9,7 @@ from keras.utils import to_categorical
 from modules.data_loaders.base_line_loaders import load_hits
 
 from transformations import TransTransformer
-from models.simple_network import create_simple_network, create_deep_hits
+from models.wide_residual_network import create_wide_residual_network
 import time
 import datetime
 from keras.backend.tensorflow_backend import set_session
@@ -23,52 +23,8 @@ from keras.layers import *
 from keras.models import Model
 import torch
 import torch.nn as nn
-
-
-def replicate_to_size(data_array, size):
-  if len(data_array) < size:
-    return replicate_to_size(np.concatenate([data_array, data_array]), size)
-  else:
-    size_left = size - len(data_array)
-    return np.concatenate([data_array, data_array[:size_left]])
-
-
-def plot_matrix_score(imgs, matrix_scores, labels=None, plot_inliers=True,
-    n_to_plot=1):
-  if isinstance(n_to_plot, int):
-    if plot_inliers:
-      inlier_idxs = np.where(labels == True)[0]
-      plot_indxs = np.random.choice(inlier_idxs, n_to_plot, replace=False)
-    else:
-      outlier_idxs = np.where(labels == False)[0]
-      plot_indxs = np.random.choice(outlier_idxs, n_to_plot, replace=False)
-  else:
-    plot_indxs = n_to_plot
-  for indx in plot_indxs:
-    fig, ax = plt.subplots(1, 2)
-    ax[0].imshow(imgs[indx, ..., 0])
-    ax[1].imshow(matrix_scores[indx])
-    ax[1].set_title('Inlier: %s index: %i trace: %.4f' % (
-      str(plot_inliers), indx, np.trace(matrix_scores[indx])))
-    plt.show()
-
-
-def get_entropy(matrix_scores, epsilon=1e-10):
-  norm_scores = matrix_scores / np.sum(matrix_scores, axis=(1, 2))[
-    ..., np.newaxis, np.newaxis]
-  log_scores = np.log(norm_scores + epsilon)
-  product = norm_scores * log_scores
-  entropy = -np.sum(product, axis=(1, 2))
-  return entropy
-
-
-def get_list_of_models_without_softmax(model_list):
-  short_model_list = []
-  for model_i in model_list:
-    logits = model_i.layers[-2].output
-    short_model = Model(inputs=model_i.inputs, outputs=logits)
-    short_model_list.append(short_model)
-  return short_model_list
+from scripts.ensemble_transform_vs_all_od_hits import get_entropy, \
+  plot_matrix_score
 
 
 if __name__ == "__main__":
@@ -122,8 +78,10 @@ if __name__ == "__main__":
   models_list = []
   for transform_idx in range(transformer.n_transforms):
     print("Model %i" % transform_idx)
-    mdl = create_deep_hits(input_shape=x_train.shape[1:],
-                                num_classes=2, dropout_rate=0.5)
+    n, k = (10, 4)
+    mdl = create_wide_residual_network(input_shape=x_train.shape[1:],
+                                       num_classes=2,
+                                       depth=n, widen_factor=k)
     mdl.compile(optimizer='adam', loss='categorical_crossentropy',
                 metrics=['acc'])
 

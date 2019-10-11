@@ -1,5 +1,6 @@
-from keras.layers import *
-from keras.models import Model
+# from keras.layers import *
+# from keras.models import Model
+from tensorflow.keras.layers import Concatenate, Conv2D, Dense, Dropout, Flatten, Input, MaxPool2D, Softmax, ZeroPadding2D, Activation
 import tensorflow as tf
 
 def rotate(img):
@@ -19,11 +20,11 @@ def create_simple_network(input_shape, num_classes, dropout_rate=0.0,
   out = ZeroPadding2D(padding=(3, 3))(inp)
   out = Conv2D(32, (4, 4), strides=(1, 1), padding='valid', activation='relu')(out)
   out = Conv2D(32, (3, 3), strides=(1, 1), padding='same', activation='relu')(out)
-  out = MaxPooling2D()(out)
+  out = MaxPool2D()(out)
   out = Conv2D(64, (3, 3), strides=(1, 1), padding='same', activation='relu')(out)
   out = Conv2D(64, (3, 3), strides=(1, 1), padding='same', activation='relu')(out)
   out = Conv2D(64, (3, 3), strides=(1, 1), padding='same', activation='relu')(out)
-  out = MaxPooling2D()(out)
+  out = MaxPool2D()(out)
   out = Flatten()(out)
   out = Dense(64, activation='relu')(out)
   out = Dropout(dropout_rate)(out)
@@ -32,7 +33,7 @@ def create_simple_network(input_shape, num_classes, dropout_rate=0.0,
   out = Dense(num_classes)(out)
   out = Activation(final_activation)(out)
 
-  return Model(inp, out)
+  return tf.keras.Model(inp, out)
 
 def create_deep_hits(input_shape, num_classes, dropout_rate=0.0,
     final_activation='softmax'):
@@ -41,11 +42,11 @@ def create_deep_hits(input_shape, num_classes, dropout_rate=0.0,
   out = rotate(out)
   out = Conv2D(32, (4, 4), strides=(1, 1), padding='valid', activation='relu')(out)
   out = Conv2D(32, (3, 3), strides=(1, 1), padding='same', activation='relu')(out)
-  out = MaxPooling2D()(out)
+  out = MaxPool2D()(out)
   out = Conv2D(64, (3, 3), strides=(1, 1), padding='same', activation='relu')(out)
   out = Conv2D(64, (3, 3), strides=(1, 1), padding='same', activation='relu')(out)
   out = Conv2D(64, (3, 3), strides=(1, 1), padding='same', activation='relu')(out)
-  out = MaxPooling2D()(out)
+  out = MaxPool2D()(out)
   out = Flatten()(out)
   out = Dense(64, activation='relu')(out)
   out = Dropout(dropout_rate)(out)
