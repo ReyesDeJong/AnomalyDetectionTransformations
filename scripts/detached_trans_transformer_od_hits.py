@@ -258,9 +258,11 @@ if __name__ == "__main__":
   x_test_in = x_test[labels]
   x_test_out = x_test[~labels]
 
+  #best in
+  plot_matrix_score(x_test_in, in_matrix_score, n_to_plot=indx_in[-3:], plot_inliers=True)
   #worst in
-  plot_matrix_score(x_test_in, in_matrix_score, n_to_plot=indx_in[:5], plot_inliers=True)
+  plot_matrix_score(x_test_in, in_matrix_score, n_to_plot=indx_in[:3], plot_inliers=True)
   # worst outliers out (high trace)
-  plot_matrix_score(x_test_out, out_matrix_score, n_to_plot=indx_out[-5:], plot_inliers=False)
+  plot_matrix_score(x_test_out, out_matrix_score, n_to_plot=indx_out[-3:], plot_inliers=False)
   # best outliers out (low trace)
-  plot_matrix_score(x_test_out, out_matrix_score, n_to_plot=indx_out[:5], plot_inliers=False)
+  plot_matrix_score(x_test_out, out_matrix_score, n_to_plot=indx_out[:3], plot_inliers=False)
