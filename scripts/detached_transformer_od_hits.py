@@ -56,7 +56,11 @@ def dirichlet_normality_score(alpha, p):
 
 def plot_histogram_disc_loss_acc_thr(inliers_scores, outliers_scores,
     path=None, x_label_name='score', show=True, balance_classes=False,
-    percentil=96):
+    percentil=95.46, val_inliers_score=None):
+  set_name = 'val'
+  if val_inliers_score is None:
+    val_inliers_score = inliers_scores
+    set_name = 'test'
   if balance_classes:
     print('balancing outlier and inliers')
     if len(inliers_scores) != len(outliers_scores):
@@ -102,7 +106,7 @@ def plot_histogram_disc_loss_acc_thr(inliers_scores, outliers_scores,
   max = np.max(np.concatenate([inliers_scores, outliers_scores]))
 
   # percentil 96 thr
-  thr = np.percentile(inliers_scores, percentil)
+  thr = np.percentile(val_inliers_score, percentil)
   scores_preds = (np.concatenate(
       [inliers_scores, outliers_scores]) < thr) * 1
   accuracy_at_percentil = np.mean(scores_preds == np.concatenate(
@@ -129,7 +133,8 @@ def plot_histogram_disc_loss_acc_thr(inliers_scores, outliers_scores,
                          label='Accuracy by\nthresholds',
                          color='black')
   percentil_plot = ax_hist.plot([thr, thr], [0, max_], 'k--',
-                                label='thr percentil %i' % percentil)
+                                label='thr percentil %i on %s' % (
+                                percentil, set_name))
   ax_hist.text(thr,
                max_ * 0.6,
                'Acc: {:.2f}%'.format(accuracy_at_percentil * 100))
@@ -252,7 +257,8 @@ if __name__ == "__main__":
   scores /= transformer.n_transforms
   labels = y_test.flatten() == single_class_ind
 
-  plot_histogram_disc_loss_acc_thr(scores[labels], scores[~labels], path='../results',
+  plot_histogram_disc_loss_acc_thr(scores[labels], scores[~labels],
+                                   path='../results',
                                    x_label_name='Transformations_Dscores_hits')
 
   # Dirichlet transforms with arcsin
@@ -278,15 +284,17 @@ if __name__ == "__main__":
   plain_scores /= transformer.n_transforms
   labels = y_test.flatten() == single_class_ind
 
-  plot_histogram_disc_loss_acc_thr(plain_scores[labels], plain_scores[~labels], path='../results',
+  plot_histogram_disc_loss_acc_thr(plain_scores[labels], plain_scores[~labels],
+                                   path='../results',
                                    x_label_name='Transformations_scores_hits')
 
   # Transforms without dirichlet arcsinh
-  plain_neg_scores = 1-plain_scores
+  plain_neg_scores = 1 - plain_scores
   plain_norm_scores = plain_neg_scores - np.min(plain_neg_scores)
   plain_norm_scores = plain_norm_scores / plain_norm_scores.max()
   plain_arcsinh_scores = np.arcsinh(plain_norm_scores * 10000)
 
   plot_histogram_disc_loss_acc_thr(plain_arcsinh_scores[labels],
-                                   plain_arcsinh_scores[~labels], path='../results',
+                                   plain_arcsinh_scores[~labels],
+                                   path='../results',
                                    x_label_name='Transformations_arcsinh*10000_scores_hits')
