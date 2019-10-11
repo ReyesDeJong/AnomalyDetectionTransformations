@@ -9,7 +9,7 @@ from keras.utils import to_categorical
 from modules.data_loaders.base_line_loaders import load_hits
 
 from transformations import TransTransformer
-from models.simple_network import create_simple_network
+from models.simple_network import create_simple_network, create_deep_hits
 import time
 import datetime
 from keras.backend.tensorflow_backend import set_session
@@ -122,7 +122,7 @@ if __name__ == "__main__":
   models_list = []
   for transform_idx in range(transformer.n_transforms):
     print("Model %i" % transform_idx)
-    mdl = create_simple_network(input_shape=x_train.shape[1:],
+    mdl = create_deep_hits(input_shape=x_train.shape[1:],
                                 num_classes=2, dropout_rate=0.5)
     mdl.compile(optimizer='adam', loss='categorical_crossentropy',
                 metrics=['acc'])
