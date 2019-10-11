@@ -33,14 +33,17 @@ def replicate_to_size(data_array, size):
     return np.concatenate([data_array, data_array[:size_left]])
 
 
-def plot_matrix_score(imgs, matrix_scores, labels, plot_inliers=True,
+def plot_matrix_score(imgs, matrix_scores, labels=None, plot_inliers=True,
     n_to_plot=1):
-  if plot_inliers:
-    inlier_idxs = np.where(labels == True)[0]
-    plot_indxs = np.random.choice(inlier_idxs, n_to_plot, replace=False)
+  if isinstance(n_to_plot, int):
+    if plot_inliers:
+      inlier_idxs = np.where(labels == True)[0]
+      plot_indxs = np.random.choice(inlier_idxs, n_to_plot, replace=False)
+    else:
+      outlier_idxs = np.where(labels == False)[0]
+      plot_indxs = np.random.choice(outlier_idxs, n_to_plot, replace=False)
   else:
-    outlier_idxs = np.where(labels == False)[0]
-    plot_indxs = np.random.choice(outlier_idxs, n_to_plot, replace=False)
+    plot_indxs = n_to_plot
   for indx in plot_indxs:
     fig, ax = plt.subplots(1, 2)
     ax[0].imshow(imgs[indx, ..., 0])
@@ -299,7 +302,7 @@ if __name__ == "__main__":
                                    x_label_name='EnsembleTransformations_entropy_scores_hits')
 
   # Get scores for xentropy
-  matrix_scores = np.zeros(
+  matrix_scores_2class = np.zeros(
       (len(x_test), transformer.n_transforms, transformer.n_transforms, 2))
   for model_t_ind in tqdm(range(transformer.n_transforms)):
     for t_ind in range(transformer.n_transforms):
@@ -310,18 +313,18 @@ if __name__ == "__main__":
       # predictions for a single transformation
       x_test_p = models_list[model_t_ind].predict(x_test_specific_transform,
                                                   batch_size=64)
-      matrix_scores[:, model_t_ind, t_ind] += x_test_p
+      matrix_scores_2class[:, model_t_ind, t_ind] += x_test_p
 
-  matrix_scores /= transformer.n_transforms
+  matrix_scores_2class /= transformer.n_transforms
   labels = y_test.flatten() == single_class_ind
 
-  # plot_matrix_score(x_test, matrix_scores[...,1], labels, plot_inliers=True,
+  # plot_matrix_score(x_test, matrix_scores_2class[...,1], labels, plot_inliers=True,
   #                   n_to_plot=5)
-  # plot_matrix_score(x_test, matrix_scores[...,1], labels, plot_inliers=False,
+  # plot_matrix_score(x_test, matrix_scores_2class[...,1], labels, plot_inliers=False,
   #                   n_to_plot=5)
-  # plot_matrix_score(x_test, matrix_scores[...,0], labels, plot_inliers=True,
+  # plot_matrix_score(x_test, matrix_scores_2class[...,0], labels, plot_inliers=True,
   #                   n_to_plot=5)
-  # plot_matrix_score(x_test, matrix_scores[...,0], labels, plot_inliers=False,
+  # plot_matrix_score(x_test, matrix_scores_2class[...,0], labels, plot_inliers=False,
   #                   n_to_plot=5)
 
   # logits = models_list[0].layers[-2].output
@@ -342,7 +345,6 @@ if __name__ == "__main__":
         batch_size=64)
       matrix_logits[:, model_t_ind, t_ind] += x_test_p
 
-  matrix_logits /= transformer.n_transforms
   labels = y_test.flatten() == single_class_ind
   # plot_matrix_score(x_test, matrix_logits[..., 1], labels, plot_inliers=True,
   #                   n_to_plot=5)
@@ -367,3 +369,20 @@ if __name__ == "__main__":
                                    batch_xH[~labels],
                                    path='../results',
                                    x_label_name='EnsembleTransformations_xH_scores_hits')
+
+
+  # get worst n traces for inliers and best n traces for outliers
+
+  in_matrix_score = matrix_scores[labels]
+  out_matrix_score = matrix_scores[~labels]
+  indx_in = np.argsort(np.trace(in_matrix_score, axis1=1, axis2=2))
+  indx_out = np.argsort(np.trace(out_matrix_score, axis1=1, axis2=2))
+  x_test_in = x_test[labels]
+  x_test_out = x_test[~labels]
+
+  #worst in
+  plot_matrix_score(x_test_in, in_matrix_score, n_to_plot=indx_in[:5], plot_inliers=True)
+  # worst outliers out (high trace)
+  plot_matrix_score(x_test_out, out_matrix_score, n_to_plot=indx_out[-5:], plot_inliers=False)
+  # best outliers out (low trace)
+  plot_matrix_score(x_test_out, out_matrix_score, n_to_plot=indx_out[:5], plot_inliers=False)

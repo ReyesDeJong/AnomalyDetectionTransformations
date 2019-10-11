@@ -16,8 +16,13 @@ import datetime
 from keras.backend.tensorflow_backend import set_session
 import tensorflow as tf
 from tqdm import tqdm
-from scripts.detached_transformer_od_hits import plot_histogram_disc_loss_acc_thr, \
+from scripts.detached_transformer_od_hits import \
+  plot_histogram_disc_loss_acc_thr, \
   dirichlet_normality_score, fixed_point_dirichlet_mle, calc_approx_alpha_sum
+from scripts.ensemble_transform_vs_all_od_hits import get_entropy, \
+  plot_matrix_score
+import torch
+import torch.nn as nn
 
 if __name__ == "__main__":
   config = tf.ConfigProto()
@@ -125,7 +130,8 @@ if __name__ == "__main__":
   scores /= transformer.n_transforms
   labels = y_test.flatten() == single_class_ind
 
-  plot_histogram_disc_loss_acc_thr(scores[labels], scores[~labels], path='../results',
+  plot_histogram_disc_loss_acc_thr(scores[labels], scores[~labels],
+                                   path='../results',
                                    x_label_name='TransTransformations_Dscores_hits')
 
   # Dirichlet transforms with arcsin
@@ -151,7 +157,8 @@ if __name__ == "__main__":
   plain_scores /= transformer.n_transforms
   labels = y_test.flatten() == single_class_ind
 
-  plot_histogram_disc_loss_acc_thr(plain_scores[labels], plain_scores[~labels], path='../results',
+  plot_histogram_disc_loss_acc_thr(plain_scores[labels], plain_scores[~labels],
+                                   path='../results',
                                    x_label_name='TransTransformations_scores_hits_hits')
 
   # Transforms without dirichlet arcsinh
@@ -161,5 +168,99 @@ if __name__ == "__main__":
   plain_arcsinh_scores = np.arcsinh(plain_norm_scores * 10000)
 
   plot_histogram_disc_loss_acc_thr(plain_arcsinh_scores[labels],
-                                   plain_arcsinh_scores[~labels], path='../results',
+                                   plain_arcsinh_scores[~labels],
+                                   path='../results',
                                    x_label_name='TransTransformations_arcsinh*10000_scores_hits')
+
+  ## matrices
+  # transform test
+  transformations_inds_test = np.tile(np.arange(transformer.n_transforms),
+                                      len(x_test))
+  start_time = time.time()
+  x_test_transformed = transformer.transform_batch(
+      np.repeat(x_test, transformer.n_transforms, axis=0),
+      transformations_inds_test)
+  time_usage = str(datetime.timedelta(
+      seconds=int(round(time.time() - start_time))))
+  print("Time to perform transforms: " + time_usage)
+
+  # Get matrix scores
+  matrix_scores = np.zeros(
+      (len(x_test), transformer.n_transforms, transformer.n_transforms))
+  for t_ind in tqdm(range(transformer.n_transforms)):
+    test_specific_transform_indxs = np.where(
+        transformations_inds_test == t_ind)
+    x_test_specific_transform = x_test_transformed[
+      test_specific_transform_indxs]
+    # predictions for a single transformation
+    x_test_p = mdl.predict(x_test_specific_transform, batch_size=64)
+    matrix_scores[:, :, t_ind] += x_test_p
+
+  matrix_scores /= transformer.n_transforms
+  labels = y_test.flatten() == single_class_ind
+
+  # plot_matrix_score(x_test, matrix_scores, labels, plot_inliers=True,
+  #                   n_to_plot=5)
+  # plot_matrix_score(x_test, matrix_scores, labels, plot_inliers=False,
+  #                   n_to_plot=5)
+
+  plot_histogram_disc_loss_acc_thr(
+    np.trace(matrix_scores[labels], axis1=1, axis2=2),
+    np.trace(matrix_scores[~labels], axis1=1, axis2=2), path='../results',
+    x_label_name='TransTransformations_matrixTrace_hits')
+
+  entropy_scores = get_entropy(matrix_scores)
+  plot_histogram_disc_loss_acc_thr(entropy_scores[labels],
+                                   entropy_scores[~labels],
+                                   path='../results',
+                                   x_label_name='TransTransformations_entropy_scores_hits')
+
+
+  ## Get logits for xentropy
+  # Get matrix scores
+  matrix_scores_raw = np.zeros(
+      (len(x_test), transformer.n_transforms, transformer.n_transforms))
+  for t_ind in tqdm(range(transformer.n_transforms)):
+    test_specific_transform_indxs = np.where(
+        transformations_inds_test == t_ind)
+    x_test_specific_transform = x_test_transformed[
+      test_specific_transform_indxs]
+    # predictions for a single transformation
+    x_test_p = mdl.predict(x_test_specific_transform, batch_size=64)
+    matrix_scores_raw[:, :, t_ind] += x_test_p
+
+  matrix_score_compĺement = 1 - matrix_scores_raw
+
+  matrix_scores_stack = np.stack([matrix_score_compĺement, matrix_scores_raw], axis=-1)
+
+
+  xH = nn.NLLLoss(reduction='none')
+  gt_matrix = np.stack([np.eye(transformer.n_transforms)] * len(matrix_scores_stack))
+  gt_torch = torch.LongTensor(gt_matrix)
+
+
+  matrix_logSoftmax_torch = torch.FloatTensor(np.swapaxes(np.swapaxes(matrix_scores_stack,1,-1),-1,-2)).log()
+  loss_xH = xH(matrix_logSoftmax_torch, gt_torch)
+  batch_xH = np.mean(loss_xH.numpy(), axis=(-1,-2))
+
+  plot_histogram_disc_loss_acc_thr(batch_xH[labels],
+                                   batch_xH[~labels],
+                                   path='../results',
+                                   x_label_name='TransTransformations_xH_scores_hits')
+
+
+  # get worst n traces for inliers and best n traces for outliers
+
+  in_matrix_score = matrix_scores[labels]
+  out_matrix_score = matrix_scores[~labels]
+  indx_in = np.argsort(np.trace(in_matrix_score, axis1=1, axis2=2))
+  indx_out = np.argsort(np.trace(out_matrix_score, axis1=1, axis2=2))
+  x_test_in = x_test[labels]
+  x_test_out = x_test[~labels]
+
+  #worst in
+  plot_matrix_score(x_test_in, in_matrix_score, n_to_plot=indx_in[:5], plot_inliers=True)
+  # worst outliers out (high trace)
+  plot_matrix_score(x_test_out, out_matrix_score, n_to_plot=indx_out[-5:], plot_inliers=False)
+  # best outliers out (low trace)
+  plot_matrix_score(x_test_out, out_matrix_score, n_to_plot=indx_out[:5], plot_inliers=False)
