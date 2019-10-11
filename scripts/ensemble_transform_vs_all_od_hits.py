@@ -5,7 +5,6 @@ PROJECT_PATH = os.path.abspath(
     os.path.join(os.path.dirname(__file__), '..'))
 sys.path.append(PROJECT_PATH)
 
-import numpy as np
 from keras.utils import to_categorical
 from modules.data_loaders.base_line_loaders import load_hits
 
@@ -22,6 +21,8 @@ import matplotlib.pyplot as plt
 from sklearn.metrics import roc_curve, auc
 from keras.layers import *
 from keras.models import Model
+import torch
+import torch.nn as nn
 
 
 def replicate_to_size(data_array, size):
@@ -57,6 +58,7 @@ def get_entropy(matrix_scores, epsilon=1e-10):
   entropy = -np.sum(product, axis=(1, 2))
   return entropy
 
+
 def get_list_of_models_without_softmax(model_list):
   short_model_list = []
   for model_i in model_list:
@@ -64,7 +66,6 @@ def get_list_of_models_without_softmax(model_list):
     short_model = Model(inputs=model_i.inputs, outputs=logits)
     short_model_list.append(short_model)
   return short_model_list
-
 
 
 if __name__ == "__main__":
@@ -297,7 +298,6 @@ if __name__ == "__main__":
                                    path='../results',
                                    x_label_name='EnsembleTransformations_entropy_scores_hits')
 
-
   # Get scores for xentropy
   matrix_scores = np.zeros(
       (len(x_test), transformer.n_transforms, transformer.n_transforms, 2))
@@ -337,14 +337,33 @@ if __name__ == "__main__":
       x_test_specific_transform = x_test_transformed[
         test_specific_transform_indxs]
       # predictions for a single transformation
-      x_test_p = short_models_list[model_t_ind].predict(x_test_specific_transform,
-                                                        batch_size=64)
+      x_test_p = short_models_list[model_t_ind].predict(
+        x_test_specific_transform,
+        batch_size=64)
       matrix_logits[:, model_t_ind, t_ind] += x_test_p
 
   matrix_logits /= transformer.n_transforms
   labels = y_test.flatten() == single_class_ind
-  plot_matrix_score(x_test, matrix_logits[...,1], labels, plot_inliers=True,
-                    n_to_plot=5)
+  # plot_matrix_score(x_test, matrix_logits[..., 1], labels, plot_inliers=True,
+  #                   n_to_plot=5)
+
+  # logits_matrix_ph = tf.placeholder(
+  #     dtype=tf.float32,
+  #     shape=(None, transformer.n_transforms, transformer.n_transforms, 2))
+  # eye_tf = tf.constant(np.eye(transformer.n_transforms))
+  # gt_matrix = tf.stack([eye_tf] * len(matrix_logits))
+  # # cross_entropy
+
+  xH = nn.CrossEntropyLoss(reduction='none')
+  gt_matrix = np.stack([np.eye(transformer.n_transforms)] * len(matrix_logits))
+  gt_torch = torch.LongTensor(gt_matrix)
 
 
+  matrix_logits_torch = torch.FloatTensor(np.swapaxes(np.swapaxes(matrix_logits,1,-1),-1,-2))
+  loss_xH = xH(matrix_logits_torch, gt_torch)
+  batch_xH = np.mean(loss_xH.numpy(), axis=(-1,-2))
 
+  plot_histogram_disc_loss_acc_thr(batch_xH[labels],
+                                   batch_xH[~labels],
+                                   path='../results',
+                                   x_label_name='EnsembleTransformations_xH_scores_hits')
