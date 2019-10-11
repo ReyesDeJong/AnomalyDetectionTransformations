@@ -122,7 +122,7 @@ if __name__ == "__main__":
   models_list = []
   for transform_idx in range(transformer.n_transforms):
     print("Model %i" % transform_idx)
-    mdl = create_deep_hits(input_shape=x_train.shape[1:],
+    mdl = create_simple_network(input_shape=x_train.shape[1:],
                                 num_classes=2, dropout_rate=0.5)
     mdl.compile(optimizer='adam', loss='categorical_crossentropy',
                 metrics=['acc'])
