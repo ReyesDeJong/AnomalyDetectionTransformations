@@ -2,7 +2,7 @@ import os
 import sys
 
 """
-Training a on vs all ensemble of models to detect outliers, using Hits without rotations inspired arquitecture
+Training a on vs all ensemble of models to detect outliers, using RESNET without rotations inspired arquitecture, focal loss
 """
 
 PROJECT_PATH = os.path.abspath(
@@ -13,7 +13,7 @@ from keras.utils import to_categorical
 from modules.data_loaders.base_line_loaders import load_hits
 
 from transformations import TransTransformer
-from models.simple_network import create_simple_network
+from models.wide_residual_network import create_wide_residual_network
 import time
 import datetime
 from keras.backend.tensorflow_backend import set_session
@@ -25,55 +25,30 @@ import matplotlib.pyplot as plt
 from sklearn.metrics import roc_curve, auc
 from keras.layers import *
 from keras.models import Model
+import keras.backend as K
 import torch
 import torch.nn as nn
+from scripts.ensemble_transform_vs_all_od_hits import get_entropy, \
+  plot_matrix_score, replicate_to_size, get_list_of_models_without_softmax
+
+EXPERIMENT_NAME = 'ResnetEnsembleTransformationsFocalLoss'
 
 
-def replicate_to_size(data_array, size):
-  if len(data_array) < size:
-    return replicate_to_size(np.concatenate([data_array, data_array]), size)
-  else:
-    size_left = size - len(data_array)
-    return np.concatenate([data_array, data_array[:size_left]])
 
+def focal_loss_keras(layer):
+  # Define focal loss only applyiable for a keras model, not compatible with tensorflow
+  def loss(y_true, y_pred):
+    xH_loss = K.categorical_crossentropy(target=y_true, output=y_pred)
+    proba_correct_class = tf.reduce_sum(
+        y_pred * y_true, axis=-1)
 
-def plot_matrix_score(imgs, matrix_scores, labels=None, plot_inliers=True,
-    n_to_plot=1):
-  if isinstance(n_to_plot, int):
-    if plot_inliers:
-      inlier_idxs = np.where(labels == True)[0]
-      plot_indxs = np.random.choice(inlier_idxs, n_to_plot, replace=False)
-    else:
-      outlier_idxs = np.where(labels == False)[0]
-      plot_indxs = np.random.choice(outlier_idxs, n_to_plot, replace=False)
-  else:
-    plot_indxs = n_to_plot
-  for indx in plot_indxs:
-    fig, ax = plt.subplots(1, 2)
-    ax[0].imshow(imgs[indx, ..., 0])
-    ax[1].imshow(matrix_scores[indx])
-    ax[1].set_title('Inlier: %s index: %i trace: %.4f' % (
-      str(plot_inliers), indx, np.trace(matrix_scores[indx])))
-    plt.show()
+    # Apply focusing parameter
+    gamma = 5
+    focal_loss = ((1.0 - proba_correct_class) ** gamma) * xH_loss
+    return K.mean(focal_loss)
 
-
-def get_entropy(matrix_scores, epsilon=1e-10):
-  norm_scores = matrix_scores / np.sum(matrix_scores, axis=(1, 2))[
-    ..., np.newaxis, np.newaxis]
-  log_scores = np.log(norm_scores + epsilon)
-  product = norm_scores * log_scores
-  entropy = -np.sum(product, axis=(1, 2))
-  return entropy
-
-
-def get_list_of_models_without_softmax(model_list):
-  short_model_list = []
-  for model_i in model_list:
-    logits = model_i.layers[-2].output
-    short_model = Model(inputs=model_i.inputs, outputs=logits)
-    short_model_list.append(short_model)
-  return short_model_list
-
+  # Return a function
+  return loss
 
 if __name__ == "__main__":
   config = tf.ConfigProto()
@@ -126,9 +101,11 @@ if __name__ == "__main__":
   models_list = []
   for transform_idx in range(transformer.n_transforms):
     print("Model %i" % transform_idx)
-    mdl = create_simple_network(input_shape=x_train.shape[1:],
-                                num_classes=2, dropout_rate=0.5)
-    mdl.compile(optimizer='adam', loss='categorical_crossentropy',
+    n, k = (10, 4)
+    mdl = create_wide_residual_network(input_shape=x_train.shape[1:],
+                                       num_classes=2,
+                                       depth=n, widen_factor=k)
+    mdl.compile(optimizer='adam', loss=focal_loss_keras(mdl.output),
                 metrics=['acc'])
 
     # separate inliers as an specific transform an the rest as outlier for an specific classifier, balance by replication
@@ -261,19 +238,8 @@ if __name__ == "__main__":
   print(roc_auc)
 
   plot_histogram_disc_loss_acc_thr(plain_scores_test[labels], plain_scores_test[~labels],
-                                   x_label_name='EnsembleTransformations_scores_hits',
+                                   x_label_name='%s_scores_hits' % EXPERIMENT_NAME,
                                    path='../results', val_inliers_score=plain_scores_val)
-
-  # # Scores arcsinh
-  # plain_neg_scores = 1 - plain_scores_test
-  # plain_norm_scores = plain_neg_scores - np.min(plain_neg_scores)
-  # plain_norm_scores = plain_norm_scores / plain_norm_scores.max()
-  # plain_arcsinh_scores = np.arcsinh(plain_norm_scores * 1000000)
-  #
-  # plot_histogram_disc_loss_acc_thr(plain_arcsinh_scores[labels],
-  #                                  plain_arcsinh_scores[~labels],
-  #                                  path='../results',
-  #                                  x_label_name='EnsembleTransformations_arcsinh*10000_scores_hits')
 
   ## matrices
   # transform test
@@ -329,7 +295,8 @@ if __name__ == "__main__":
   plot_histogram_disc_loss_acc_thr(entropy_scores_test[labels],
                                    entropy_scores_test[~labels],
                                    path='../results',
-                                   x_label_name='EnsembleTransformations_entropy_scores_hits', val_inliers_score=entropy_scores_val)
+                                   x_label_name='%s_entropy_scores_hits' % EXPERIMENT_NAME,
+                                   val_inliers_score=entropy_scores_val)
 
   # Get scores for xentropy
   matrix_scores_2class_test = np.zeros(
@@ -436,7 +403,8 @@ if __name__ == "__main__":
   plot_histogram_disc_loss_acc_thr(batch_xH_test[labels],
                                    batch_xH_test[~labels],
                                    path='../results',
-                                   x_label_name='EnsembleTransformations_xH_scores_hits', val_inliers_score=batch_xH_val)
+                                   x_label_name='%s_xH_scores_hits' % EXPERIMENT_NAME,
+                                   val_inliers_score=batch_xH_val)
 
 
   # get worst n traces for inliers and best n traces for outliers

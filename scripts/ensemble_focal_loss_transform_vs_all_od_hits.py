@@ -27,6 +27,7 @@ from keras.layers import *
 from keras.models import Model
 import torch
 import torch.nn as nn
+from scripts.ensemble_resnet_focal_loss_transform_vs_all_od_hits import focal_loss_keras
 
 
 def replicate_to_size(data_array, size):
@@ -128,7 +129,7 @@ if __name__ == "__main__":
     print("Model %i" % transform_idx)
     mdl = create_simple_network(input_shape=x_train.shape[1:],
                                 num_classes=2, dropout_rate=0.5)
-    mdl.compile(optimizer='adam', loss='categorical_crossentropy',
+    mdl.compile(optimizer='adam', loss=focal_loss_keras(mdl.output),
                 metrics=['acc'])
 
     # separate inliers as an specific transform an the rest as outlier for an specific classifier, balance by replication
