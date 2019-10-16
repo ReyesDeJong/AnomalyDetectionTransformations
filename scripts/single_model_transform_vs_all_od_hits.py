@@ -1,5 +1,8 @@
 import os
 import sys
+"""
+Taining only one model to see how well it separates transformation
+"""
 
 PROJECT_PATH = os.path.abspath(
     os.path.join(os.path.dirname(__file__), '..'))

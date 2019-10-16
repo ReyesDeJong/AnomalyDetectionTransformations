@@ -1,6 +1,10 @@
 import os
 import sys
 
+"""
+Training a on vs all ensemble of models to detect outliers, using RESNET without rotations inspired arquitecture
+"""
+
 PROJECT_PATH = os.path.abspath(
     os.path.join(os.path.dirname(__file__), '..'))
 sys.path.append(PROJECT_PATH)
@@ -24,8 +28,9 @@ from keras.models import Model
 import torch
 import torch.nn as nn
 from scripts.ensemble_transform_vs_all_od_hits import get_entropy, \
-  plot_matrix_score
+  plot_matrix_score, replicate_to_size, get_list_of_models_without_softmax
 
+EXPERIMENT_NAME = 'ResnetEnsembleTransformations'
 
 if __name__ == "__main__":
   config = tf.ConfigProto()
@@ -215,19 +220,8 @@ if __name__ == "__main__":
   print(roc_auc)
 
   plot_histogram_disc_loss_acc_thr(plain_scores_test[labels], plain_scores_test[~labels],
-                                   x_label_name='EnsembleTransformations_scores_hits',
+                                   x_label_name='%s_scores_hits' % EXPERIMENT_NAME,
                                    path='../results', val_inliers_score=plain_scores_val)
-
-  # # Scores arcsinh
-  # plain_neg_scores = 1 - plain_scores_test
-  # plain_norm_scores = plain_neg_scores - np.min(plain_neg_scores)
-  # plain_norm_scores = plain_norm_scores / plain_norm_scores.max()
-  # plain_arcsinh_scores = np.arcsinh(plain_norm_scores * 1000000)
-  #
-  # plot_histogram_disc_loss_acc_thr(plain_arcsinh_scores[labels],
-  #                                  plain_arcsinh_scores[~labels],
-  #                                  path='../results',
-  #                                  x_label_name='EnsembleTransformations_arcsinh*10000_scores_hits')
 
   ## matrices
   # transform test
@@ -283,7 +277,8 @@ if __name__ == "__main__":
   plot_histogram_disc_loss_acc_thr(entropy_scores_test[labels],
                                    entropy_scores_test[~labels],
                                    path='../results',
-                                   x_label_name='EnsembleTransformations_entropy_scores_hits', val_inliers_score=entropy_scores_val)
+                                   x_label_name='%s_entropy_scores_hits' % EXPERIMENT_NAME,
+                                   val_inliers_score=entropy_scores_val)
 
   # Get scores for xentropy
   matrix_scores_2class_test = np.zeros(
@@ -390,7 +385,8 @@ if __name__ == "__main__":
   plot_histogram_disc_loss_acc_thr(batch_xH_test[labels],
                                    batch_xH_test[~labels],
                                    path='../results',
-                                   x_label_name='EnsembleTransformations_xH_scores_hits', val_inliers_score=batch_xH_val)
+                                   x_label_name='%s_xH_scores_hits' % EXPERIMENT_NAME,
+                                   val_inliers_score=batch_xH_val)
 
 
   # get worst n traces for inliers and best n traces for outliers

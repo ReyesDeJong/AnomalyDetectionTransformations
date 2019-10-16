@@ -1,6 +1,10 @@
 import os
 import sys
 
+"""
+Training a on vs all ensemble of models to detect outliers, using Hits without rotations inspired arquitecture
+"""
+
 PROJECT_PATH = os.path.abspath(
     os.path.join(os.path.dirname(__file__), '..'))
 sys.path.append(PROJECT_PATH)
