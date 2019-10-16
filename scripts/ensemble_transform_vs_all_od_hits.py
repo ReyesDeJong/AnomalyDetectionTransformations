@@ -185,7 +185,7 @@ if __name__ == "__main__":
     mdl.fit(x=train_x_binary, y=to_categorical(train_y_binary),
             validation_data=(val_x_binary, to_categorical(val_y_binary)),
             batch_size=batch_size,
-            epochs=3,  # int(np.ceil(200 / transformer.n_transforms))
+            epochs=2,#3,  # int(np.ceil(200 / transformer.n_transforms))
             )
     time_usage = str(datetime.timedelta(
         seconds=int(round(time.time() - start_time))))

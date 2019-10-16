@@ -34,7 +34,7 @@ class HiTSLoader(object):
     self.data_splitter = DatasetDivider(data_set_obj=None, test_size=test_size, validation_size=validation_size)
     self.first_n_samples_by_class = first_n_samples_by_class
     self.label_value = label_value
-    self.channel_to_get = 2
+    self.channel_to_get = [0,1,2,3]
 
   def _init_datasets_dict(self):
     datasets_dict = {
