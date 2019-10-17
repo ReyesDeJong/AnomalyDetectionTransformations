@@ -59,12 +59,19 @@ def check_shape_kernel(kernel, x):
 def cnn2d_depthwise_tf(image: np.ndarray,
     filters: np.ndarray):
   tf.enable_eager_execution()
-
   features_tf = tf.nn.depthwise_conv2d(image[None], filters,
                                        strides=[1, 1, 1, 1], padding='SAME')
 
   return features_tf[0]
 
+def cnn2d_depthwise_tf_transpose(image: np.ndarray,
+    filters: np.ndarray):
+  tf.enable_eager_execution()
+  image = tf.transpose(image, perm=[2, 1, 0])[None]
+  features_tf = tf.nn.depthwise_conv2d(image, filters,
+                                       strides=[1, 1, 1, 1], padding='SAME', data_format="NCHW")
+
+  return tf.transpose(features_tf[0], perm=[2, 1, 0])
 
 def convert_to_torch(image, filters):
   image_torch = torch.tensor(image.transpose([2, 1, 0])[None])
