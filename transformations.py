@@ -40,16 +40,26 @@ def makeGaussian(size, sigma=3, center=None):
     y0 = center[1]
 
   return np.exp(-((x - x0) ** 2 + (y - y0) ** 2) / (2.0 * sigma ** 2))
-  # return np.exp(-4 * np.log(2) * ((x - x0) ** 2 + (y - y0) ** 2) / sigma ** 2)
 
+def makeLoG(size, sigma=3, center=None):
+  """ Make a square gaussian kernel.
 
-def gkern(kernlen=5, nsig=2, mu=0):
-  """Returns a 2D Gaussian kernel."""
-  x, y = np.meshgrid(np.linspace(-1, 1, kernlen), np.linspace(-1, 1, kernlen))
-  d = np.sqrt(x * x + y * y)
-  sigma, mu = nsig, mu
-  g = np.exp(-((d - mu) ** 2 / (2.0 * sigma ** 2)))
-  return g
+  size is the length of a side of the square
+  fwhm is full-width-half-maximum, which
+  can be thought of as an effective radius.
+  """
+
+  x = np.arange(0, size, 1, float)
+  y = x[:, np.newaxis]
+
+  if center is None:
+    x0 = y0 = size // 2
+  else:
+    x0 = center[0]
+    y0 = center[1]
+
+  return np.exp(-((x - x0) ** 2 + (y - y0) ** 2) / (2.0 * sigma ** 2))
+
 
 
 def check_shape_image(image):
