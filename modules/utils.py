@@ -1,20 +1,17 @@
 import os
-import sys
-import numpy as np
-import matplotlib.pyplot as plt
 import pickle as pkl
+import sys
+
+import matplotlib.pyplot as plt
+import numpy as np
 
 PROJECT_PATH = os.path.abspath(
     os.path.join(os.path.dirname(__file__), '..'))
 sys.path.append(PROJECT_PATH)
 
-from models.gans.base_gan import BaseGAN
-from modules.data_loaders.hits_loader import HiTSLoader
 from modules.data_set_generic import Dataset
-from parameters import param_keys, general_keys
+from parameters import general_keys
 from modules.data_splitter import DatasetDivider
-import matplotlib as mpl
-from scipy.special import gammaincinv
 
 
 def plot_n_images(dataset, name, save_path, plot_show=False, n=100,
@@ -58,15 +55,17 @@ def check_path(path):
   if not os.path.exists(path):
     os.makedirs(path)
 
+
 def merge_datasets_dict(datasets_dict1, datasets_dict2):
   merged_datasets_dict = {}
   for set in datasets_dict1.keys():
     data_array = np.concatenate([datasets_dict1[set].data_array,
                                  datasets_dict2[set].data_array])
     data_label = np.concatenate([datasets_dict1[set].data_label,
-                                  datasets_dict2[set].data_label])
+                                 datasets_dict2[set].data_label])
     merged_datasets_dict[set] = Dataset(data_array, data_label, batch_size=50)
   return merged_datasets_dict
+
 
 def save_pickle(data, path):
   with open(path, 'wb') as handle:

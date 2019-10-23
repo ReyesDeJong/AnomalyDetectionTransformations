@@ -28,13 +28,13 @@ class HiTSLoader(object):
   Constructor
   """
 
-  def __init__(self, params: dict, label_value=1, first_n_samples_by_class=125000, test_size=0.12, validation_size=0.08):
+  def __init__(self, params: dict, label_value=1, first_n_samples_by_class=125000, test_size=0.12, validation_size=0.08, channels_to_get=[0,1,2,3]):
     self.path = params[param_keys.DATA_PATH_TRAIN]
     self.batch_size = params[param_keys.BATCH_SIZE]
     self.data_splitter = DatasetDivider(data_set_obj=None, test_size=test_size, validation_size=validation_size)
     self.first_n_samples_by_class = first_n_samples_by_class
     self.label_value = label_value
-    self.channel_to_get = [0,1,2,3]
+    self.channel_to_get = channels_to_get
 
   def _init_datasets_dict(self):
     datasets_dict = {

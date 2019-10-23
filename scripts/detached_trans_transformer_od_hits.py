@@ -37,8 +37,8 @@ if __name__ == "__main__":
   single_class_ind = 1
 
   (x_train, y_train), (x_val, y_val), (x_test, y_test) = load_hits(
-      n_samples_by_class=20000,
-      test_size=0.25,
+      n_samples_by_class=10000,
+      test_size=0.20,
       val_size=0.10, return_val=True)
   print(x_train.shape)
   print(x_val.shape)

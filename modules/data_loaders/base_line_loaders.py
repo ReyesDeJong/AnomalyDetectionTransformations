@@ -186,8 +186,8 @@ def load_hits_padded(n_samples_by_class=12500 * 2):
   return (X_train, y_train), (X_test, y_test)
 
 
-def load_hits(n_samples_by_class=12500 * 2, test_size=0.12, val_size=0.08,
-    return_val=False):
+def load_hits(n_samples_by_class=10000, test_size=0.20, val_size=0.10,
+    return_val=False, channels_to_get=[0, 1, 2, 3]):
   data_path = os.path.join(PROJECT_PATH, '..', 'datasets',
                            'HiTS2013_300k_samples.pkl')
   params = {
@@ -196,7 +196,8 @@ def load_hits(n_samples_by_class=12500 * 2, test_size=0.12, val_size=0.08,
   }
   hits_loader = HiTSLoader(params, label_value=-1,
                            first_n_samples_by_class=n_samples_by_class,
-                           test_size=test_size, validation_size=val_size)
+                           test_size=test_size, validation_size=val_size,
+                           channels_to_get=channels_to_get)
 
   (X_train, y_train), (X_val, y_val), (X_test, y_test) = hits_loader.load_data()
 
