@@ -26,8 +26,9 @@ from models.wide_residual_network import create_wide_residual_network
 from models.encoders_decoders import conv_encoder, conv_decoder
 from models import dsebm, dagmm, adgan
 import keras.backend as K
+from modules.utils import check_path
 
-RESULTS_DIR = ''
+RESULTS_DIR = os.path.join(PROJECT_PATH, 'results/basic_4_channels')
 LARGE_DATASET_NAMES = ['cats-vs-dogs', 'hits', 'hits_padded']
 PARALLEL_N_JOBS = 16
 
@@ -147,9 +148,10 @@ def _raw_ocsvm_experiment(dataset_load_fn, dataset_name, single_class_ind):
 
     x_train_task = x_train[y_train.flatten() == single_class_ind]
     if dataset_name in LARGE_DATASET_NAMES:  # OC-SVM is quadratic on the number of examples, so subsample training set
-        subsample_inds = np.random.choice(len(x_train_task), 5000, replace=False)
+        subsample_inds = np.random.choice(len(x_train_task), 2500, replace=False)
         x_train_task = x_train_task[subsample_inds]
 
+    # ToDO: make gridsearch just one
     pg = ParameterGrid({'nu': np.linspace(0.1, 0.9, num=9),
                         'gamma': np.logspace(-7, 2, num=10, base=2)})
 
@@ -176,6 +178,8 @@ def _cae_ocsvm_experiment(dataset_load_fn, dataset_name, single_class_ind, gpu_q
     os.environ["CUDA_VISIBLE_DEVICES"] = gpu_to_use
 
     (x_train, y_train), (x_test, y_test) = dataset_load_fn()
+
+    print('data_shape', x_train.shape)
 
     n_channels = x_train.shape[get_channels_axis()]
     input_side = x_train.shape[2]  # channel side will always be at shape[2]
@@ -255,6 +259,7 @@ def _dsebm_experiment(dataset_load_fn, dataset_name, single_class_ind, gpu_q):
 
 
 def _dagmm_experiment(dataset_load_fn, dataset_name, single_class_ind, gpu_q):
+    # TODO: check cpu usage
     gpu_to_use = gpu_q.get()
     os.environ["CUDA_VISIBLE_DEVICES"] = gpu_to_use
 
@@ -346,26 +351,26 @@ def _adgan_experiment(dataset_load_fn, dataset_name, single_class_ind, gpu_q):
 
     gpu_q.put(gpu_to_use)
 
-
-def run_experiments(load_dataset_fn, dataset_name, q, n_classes):
-
+#TODO: check real parallelism of tasks
+#ToDo: research how to perform multi gpu training
+def run_experiments(load_dataset_fn, dataset_name, q, class_idx, n_runs):
+    check_path(os.path.join(RESULTS_DIR, dataset_name))
     # CAE OC-SVM
-    processes = [Process(target=_cae_ocsvm_experiment,
-                         args=(load_dataset_fn, dataset_name, c, q)) for c in range(n_classes)]
-    for p in processes:
-        p.start()
-        p.join()
+    for _ in range(n_runs):
+        processes = [Process(target=_cae_ocsvm_experiment,
+                             args=(load_dataset_fn, dataset_name, class_idx, q))]
+        for p in processes:
+            p.start()
+            p.join()
 
     # Raw OC-SVM
-    for c in range(n_classes):
-        _raw_ocsvm_experiment(load_dataset_fn, dataset_name, c)
-
-    n_runs = 1
+    for _ in range(n_runs):
+        _raw_ocsvm_experiment(load_dataset_fn, dataset_name, class_idx)
 
     # Transformations
     for _ in range(n_runs):
         processes = [Process(target=_transformations_experiment,
-                             args=(load_dataset_fn, dataset_name, c, q)) for c in range(n_classes)]
+                             args=(load_dataset_fn, dataset_name, class_idx, q))]
         if dataset_name in LARGE_DATASET_NAMES:  # Self-labeled set is memory consuming
             for p in processes:
                 p.start()
@@ -376,31 +381,31 @@ def run_experiments(load_dataset_fn, dataset_name, q, n_classes):
             for p in processes:
                 p.join()
 
-    # DSEBM
-    for _ in range(n_runs):
-        processes = [Process(target=_dsebm_experiment,
-                             args=(load_dataset_fn, dataset_name, c, q)) for c in range(n_classes)]
-        for p in processes:
-            p.start()
-        for p in processes:
-            p.join()
-
-    # # DAGMM
+    # # DSEBM
     # for _ in range(n_runs):
-    #     processes = [Process(target=_dagmm_experiment,
-    #                          args=(load_dataset_fn, dataset_name, c, q)) for c in range(n_classes)]
+    #     processes = [Process(target=_transformations_experiment,
+    #                          args=(load_dataset_fn, dataset_name, class_idx, q))]
     #     for p in processes:
     #         p.start()
     #     for p in processes:
     #         p.join()
-
-    # ADGAN
-    processes = [Process(target=_adgan_experiment,
-                         args=(load_dataset_fn, dataset_name, c, q)) for c in range(n_classes)]
-    for p in processes:
-        p.start()
-    for p in processes:
-        p.join()
+    #
+    # # DAGMM
+    # for _ in range(n_runs):
+    #     processes = [Process(target=_transformations_experiment,
+    #                              args=(load_dataset_fn, dataset_name, class_idx, q))]
+    #     for p in processes:
+    #         p.start()
+    #     for p in processes:
+    #         p.join()
+    #
+    # # ADGAN
+    # processes = [Process(target=_transformations_experiment,
+    #                          args=(load_dataset_fn, dataset_name, class_idx, q))]
+    # for p in processes:
+    #     p.start()
+    # for p in processes:
+    #     p.join()
 
 
 def create_auc_table(metric='roc_auc'):
@@ -444,15 +449,12 @@ if __name__ == '__main__':
     for g in range(N_GPUS):
         q.put(str(g))
 
+    # data_Set, dataset_name, class_idx_to_run_experiments_on, n_runs
     experiments_list = [
-        # (load_cifar10, 'cifar10', 10),
-        # (load_fashion_mnist, 'fashion-mnist', 10),
-        (load_hits, 'hits', 2),
-        # (load_hits_padded, 'hits-padded', 2),
-        # (load_cifar10, 'cifar10', 10),
+        (load_hits, 'hits', 1, 10),
     ]
 
-    for data_load_fn, dataset_name, n_classes in experiments_list:
-       run_experiments(data_load_fn, dataset_name, q, n_classes)
+    for data_load_fn, dataset_name, class_idx, run_i in experiments_list:
+       run_experiments(data_load_fn, dataset_name, q, class_idx, run_i)
     create_auc_table()
 
