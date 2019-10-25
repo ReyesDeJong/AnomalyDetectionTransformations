@@ -7,7 +7,7 @@ sys.path.append(PROJECT_PATH)
 import csv
 from collections import defaultdict
 from glob import glob
-from datetime import datetime
+#from datetime import datetime
 from multiprocessing import Manager, freeze_support, Process
 import numpy as np
 import scipy.stats
@@ -27,8 +27,10 @@ from models.encoders_decoders import conv_encoder, conv_decoder
 from models import dsebm, dagmm, adgan
 import keras.backend as K
 from modules.utils import check_path
+import time
+import datetime
 
-RESULTS_DIR = os.path.join(PROJECT_PATH, 'results/basic_4_channels')
+RESULTS_DIR = os.path.join(PROJECT_PATH, 'results/basic_Diff_channels')
 LARGE_DATASET_NAMES = ['cats-vs-dogs', 'hits', 'hits_padded']
 PARALLEL_N_JOBS = 16
 
@@ -123,13 +125,13 @@ def _transformations_experiment(dataset_load_fn, dataset_name, single_class_ind,
 
     res_file_name = '{}_transformations_{}_{}.npz'.format(dataset_name,
                                                  get_class_name_from_index(single_class_ind, dataset_name),
-                                                 datetime.now().strftime('%Y-%m-%d-%H%M'))
+                                                 datetime.datetime.now().strftime('%Y-%m-%d-%H%M'))
     res_file_path = os.path.join(RESULTS_DIR, dataset_name, res_file_name)
     save_roc_pr_curve_data(scores, labels, res_file_path)
 
     mdl_weights_name = '{}_transformations_{}_{}_weights.h5'.format(dataset_name,
                                                            get_class_name_from_index(single_class_ind, dataset_name),
-                                                           datetime.now().strftime('%Y-%m-%d-%H%M'))
+                                                           datetime.datetime.now().strftime('%Y-%m-%d-%H%M'))
     mdl_weights_path = os.path.join(RESULTS_DIR, dataset_name, mdl_weights_name)
     mdl.save_weights(mdl_weights_path)
 
@@ -149,14 +151,14 @@ def _raw_ocsvm_experiment(dataset_load_fn, dataset_name, single_class_ind):
     x_train_task = x_train[y_train.flatten() == single_class_ind]
     if dataset_name in LARGE_DATASET_NAMES:  # OC-SVM is quadratic on the number of examples, so subsample training set
         subsample_inds = np.random.choice(len(x_train_task), 2500, replace=False)
-        x_train_task = x_train_task[subsample_inds]
+        x_train_task_tmp = x_train_task[subsample_inds]
 
     # ToDO: make gridsearch just one
     pg = ParameterGrid({'nu': np.linspace(0.1, 0.9, num=9),
                         'gamma': np.logspace(-7, 2, num=10, base=2)})
 
     results = Parallel(n_jobs=PARALLEL_N_JOBS)(
-        delayed(_train_ocsvm_and_score)(d, x_train_task, y_test.flatten() == single_class_ind, x_test)
+        delayed(_train_ocsvm_and_score)(d, x_train_task_tmp, y_test.flatten() == single_class_ind, x_test)
         for d in pg)
 
 
@@ -168,7 +170,7 @@ def _raw_ocsvm_experiment(dataset_load_fn, dataset_name, single_class_ind):
 
     res_file_name = '{}_raw-oc-svm_{}_{}.npz'.format(dataset_name,
                                                      get_class_name_from_index(single_class_ind, dataset_name),
-                                                     datetime.now().strftime('%Y-%m-%d-%H%M'))
+                                                     datetime.datetime.now().strftime('%Y-%m-%d-%H%M'))
     res_file_path = os.path.join(RESULTS_DIR, dataset_name, res_file_name)
     save_roc_pr_curve_data(scores, labels, res_file_path)
 
@@ -199,14 +201,14 @@ def _cae_ocsvm_experiment(dataset_load_fn, dataset_name, single_class_ind, gpu_q
     x_train_task_rep = enc.predict(x_train_task, batch_size=128)
     if dataset_name in LARGE_DATASET_NAMES:  # OC-SVM is quadratic on the number of examples, so subsample training set
         subsample_inds = np.random.choice(len(x_train_task_rep), 2500, replace=False)
-        x_train_task_rep = x_train_task_rep[subsample_inds]
+        x_train_task_rep_temp = x_train_task_rep[subsample_inds]
 
     x_test_rep = enc.predict(x_test, batch_size=128)
     pg = ParameterGrid({'nu': np.linspace(0.1, 0.9, num=9),
                         'gamma': np.logspace(-7, 2, num=10, base=2)})
 
     results = Parallel(n_jobs=PARALLEL_N_JOBS)(
-        delayed(_train_ocsvm_and_score)(d, x_train_task_rep, y_test.flatten() == single_class_ind, x_test_rep)
+        delayed(_train_ocsvm_and_score)(d, x_train_task_rep_temp, y_test.flatten() == single_class_ind, x_test_rep)
         for d in pg)
 
     best_params, best_auc_score = max(zip(pg, results), key=lambda t: t[-1])
@@ -217,7 +219,7 @@ def _cae_ocsvm_experiment(dataset_load_fn, dataset_name, single_class_ind, gpu_q
 
     res_file_name = '{}_cae-oc-svm_{}_{}.npz'.format(dataset_name,
                                                      get_class_name_from_index(single_class_ind, dataset_name),
-                                                     datetime.now().strftime('%Y-%m-%d-%H%M'))
+                                                     datetime.datetime.now().strftime('%Y-%m-%d-%H%M'))
     res_file_path = os.path.join(RESULTS_DIR, dataset_name, res_file_name)
     save_roc_pr_curve_data(scores, labels, res_file_path)
 
@@ -251,7 +253,7 @@ def _dsebm_experiment(dataset_load_fn, dataset_name, single_class_ind, gpu_q):
     labels = y_test.flatten() == single_class_ind
     res_file_name = '{}_dsebm_{}_{}.npz'.format(dataset_name,
                                                 get_class_name_from_index(single_class_ind, dataset_name),
-                                                datetime.now().strftime('%Y-%m-%d-%H%M'))
+                                                datetime.datetime.now().strftime('%Y-%m-%d-%H%M'))
     res_file_path = os.path.join(RESULTS_DIR, dataset_name, res_file_name)
     save_roc_pr_curve_data(scores, labels, res_file_path)
 
@@ -302,7 +304,7 @@ def _dagmm_experiment(dataset_load_fn, dataset_name, single_class_ind, gpu_q):
     labels = y_test.flatten() == single_class_ind
     res_file_name = '{}_dagmm_{}_{}.npz'.format(dataset_name,
                                                 get_class_name_from_index(single_class_ind, dataset_name),
-                                                datetime.now().strftime('%Y-%m-%d-%H%M'))
+                                                datetime.datetime.now().strftime('%Y-%m-%d-%H%M'))
     res_file_path = os.path.join(RESULTS_DIR, dataset_name, res_file_name)
     save_roc_pr_curve_data(scores, labels, res_file_path)
 
@@ -345,7 +347,7 @@ def _adgan_experiment(dataset_load_fn, dataset_name, single_class_ind, gpu_q):
     labels = y_test.flatten() == single_class_ind
     res_file_name = '{}_adgan_{}_{}.npz'.format(dataset_name,
                                                 get_class_name_from_index(single_class_ind, dataset_name),
-                                                datetime.now().strftime('%Y-%m-%d-%H%M'))
+                                                datetime.datetime.now().strftime('%Y-%m-%d-%H%M'))
     res_file_path = os.path.join(RESULTS_DIR, dataset_name, res_file_name)
     save_roc_pr_curve_data(scores, labels, res_file_path)
 
@@ -424,11 +426,12 @@ def create_auc_table(metric='roc_auc'):
         for sc_name in results[ds_name]:
             for method_name in results[ds_name][sc_name]:
                 roc_aucs = results[ds_name][sc_name][method_name]
+                print(method_name, ' ', roc_aucs)
                 results[ds_name][sc_name][method_name] = [np.mean(roc_aucs),
                                                           0 if len(roc_aucs) == 1 else scipy.stats.sem(np.array(roc_aucs))
                                                           ]
 
-    with open('results-{}.csv'.format(metric), 'w') as csvfile:
+    with open(os.path.join(RESULTS_DIR, 'results-{}.csv'.format(metric)), 'w') as csvfile:
         fieldnames = ['dataset', 'single class name'] + sorted(list(methods))
         writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
 
@@ -436,7 +439,7 @@ def create_auc_table(metric='roc_auc'):
         for ds_name in sorted(results.keys()):
             for sc_name in sorted(results[ds_name].keys()):
                 row_dict = {'dataset': ds_name, 'single class name': sc_name}
-                row_dict.update({method_name: '{:.3f} ({:.3f})'.format(*results[ds_name][sc_name][method_name])
+                row_dict.update({method_name: '{:.5f} ({:.5f})'.format(*results[ds_name][sc_name][method_name])
                                  for method_name in results[ds_name][sc_name]})
                 writer.writerow(row_dict)
 
@@ -454,7 +457,10 @@ if __name__ == '__main__':
         (load_hits, 'hits', 1, 10),
     ]
 
+    start_time = time.time()
     for data_load_fn, dataset_name, class_idx, run_i in experiments_list:
        run_experiments(data_load_fn, dataset_name, q, class_idx, run_i)
     create_auc_table()
-
+    time_usage = str(datetime.timedelta(
+        seconds=int(round(time.time() - start_time))))
+    print("Time elapsed to train everything: " + time_usage)
