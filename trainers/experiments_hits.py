@@ -30,7 +30,7 @@ from modules.utils import check_path
 import time
 import datetime
 
-RESULTS_DIR = os.path.join(PROJECT_PATH, 'results/basic_Diff_channels')
+RESULTS_DIR = os.path.join(PROJECT_PATH, 'results/basic_4_channels')
 LARGE_DATASET_NAMES = ['cats-vs-dogs', 'hits', 'hits_padded']
 PARALLEL_N_JOBS = 16
 
@@ -458,8 +458,8 @@ if __name__ == '__main__':
     ]
 
     start_time = time.time()
-    for data_load_fn, dataset_name, class_idx, run_i in experiments_list:
-       run_experiments(data_load_fn, dataset_name, q, class_idx, run_i)
+    # for data_load_fn, dataset_name, class_idx, run_i in experiments_list:
+    #    run_experiments(data_load_fn, dataset_name, q, class_idx, run_i)
     create_auc_table()
     time_usage = str(datetime.timedelta(
         seconds=int(round(time.time() - start_time))))

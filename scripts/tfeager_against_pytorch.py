@@ -3,18 +3,7 @@ import tensorflow as tf
 import torch
 from torch.nn import functional as F
 
-
-def createCircularMask(h, w, center=None, radius=None):
-  if center is None:  # use the middle of the image
-    center = [int(w / 2), int(h / 2)]
-  if radius is None:  # use the smallest distance between the center and image walls
-    radius = min(center[0], center[1], w - center[0], h - center[1])
-
-  Y, X = np.ogrid[:h, :w]
-  dist_from_center = np.sqrt((X - center[0]) ** 2 + (Y - center[1]) ** 2)
-
-  mask = dist_from_center <= radius
-  return mask*1.0
+from modules.utils import createCircularMask
 
 
 def makeGaussian(size, sigma=3, center=None):
@@ -36,6 +25,30 @@ def makeGaussian(size, sigma=3, center=None):
 
   return np.exp(-((x - x0) ** 2 + (y - y0) ** 2) / (2.0 * sigma ** 2))
   # return np.exp(-4 * np.log(2) * ((x - x0) ** 2 + (y - y0) ** 2) / sigma ** 2)
+
+
+def makeLoG(size, sigma=3, center=None):
+  """ Make a square LoG kernel.
+
+  size is the length of a side of the square
+  fwhm is full-width-half-maximum, which
+  can be thought of as an effective radius.
+  """
+
+  x = np.arange(0, size, 1, float)
+  y = x[:, np.newaxis]
+
+  if center is None:
+    x0 = y0 = size // 2
+  else:
+    x0 = center[0]
+    y0 = center[1]
+
+  return (-1 / (np.pi * sigma ** 4)) * (
+      1 - (((x - x0) ** 2 + (y - y0) ** 2) / (2 * sigma ** 2))) * np.exp(
+      -((x - x0) ** 2 + (y - y0) ** 2) / (2.0 * sigma ** 2))
+  # return np.exp(-4 * np.log(2) * ((x - x0) ** 2 + (y - y0) ** 2) / sigma ** 2)
+
 
 def check_shape_image(image):
   if len(image.shape) == 2:
@@ -64,14 +77,17 @@ def cnn2d_depthwise_tf(image: np.ndarray,
 
   return features_tf[0]
 
+
 def cnn2d_depthwise_tf_transpose(image: np.ndarray,
     filters: np.ndarray):
   tf.enable_eager_execution()
   image = tf.transpose(image, perm=[2, 1, 0])[None]
   features_tf = tf.nn.depthwise_conv2d(image, filters,
-                                       strides=[1, 1, 1, 1], padding='SAME', data_format="NCHW")
+                                       strides=[1, 1, 1, 1], padding='SAME',
+                                       data_format="NCHW")
 
   return tf.transpose(features_tf[0], perm=[2, 1, 0])
+
 
 def convert_to_torch(image, filters):
   image_torch = torch.tensor(image.transpose([2, 1, 0])[None])
@@ -117,15 +133,18 @@ if __name__ == "__main__":
   # g3 = makeGaussian(21, 1, (3, 3))
   g1 = createCircularMask(21, 21, radius=4)
   g2 = createCircularMask(21, 21, radius=5)
-  g3 = createCircularMask(21, 21, [3, 3], radius=3)
+  g3 = createCircularMask(21, 21, [3, 3], radius=1)
   gauss_image = np.stack([g1, g2, g3], axis=-1)
   plot_image(gauss_image)
   gauss_kernel = np.stack([makeGaussian(5, 1)] * 3, axis=-1)
+  log_kernel = np.stack([makeLoG(5, 0.5)] * 3, axis=-1)
+
   plot_image(gauss_kernel)
+  plot_image(log_kernel)
 
   tf_convolved = cnn2d_depthwise_tf(gauss_image,
-                                          check_shape_kernel(gauss_kernel,
-                                                             gauss_image))
+                                    check_shape_kernel(gauss_kernel,
+                                                       gauss_image))
   plot_image(tf_convolved)
 
   torch_convolved = cnn2d_depthwise_torch(gauss_image,
@@ -133,12 +152,23 @@ if __name__ == "__main__":
                                                              gauss_image))
   plot_image(torch_convolved)
 
-  print('difference between pytorch and tf ',
+  print('difference between pytorch and tf gauss ',
         np.mean(tf_convolved - torch_convolved))
 
-  
+  tf_convolved = cnn2d_depthwise_tf(gauss_image,
+                                    check_shape_kernel(log_kernel,
+                                                       gauss_image))
+  plot_image(tf_convolved)
 
-  iters=100000
+  torch_convolved = cnn2d_depthwise_torch(gauss_image,
+                                          check_shape_kernel(log_kernel,
+                                                             gauss_image))
+  plot_image(torch_convolved)
+
+  print('difference between pytorch and tf log ',
+        np.mean(tf_convolved - torch_convolved))
+
+  iters = 100000
 
   start_time = time.time()
   for i in range(iters):
@@ -157,8 +187,3 @@ if __name__ == "__main__":
   time_usage = str(datetime.timedelta(
       seconds=int(round(time.time() - start_time))))
   print("Time usage Keras: " + time_usage, flush=True)
-
-
-
-
-
