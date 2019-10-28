@@ -96,11 +96,17 @@ NOISE_DIM = 'noise_dim'
 DISC_TRAINS = 'disc_trains'
 GEN_TRAINS = 'gen_trains'
 
-#classifier keys
 RESULTS_FOLDER_NAME = 'results_folder_name'
+
 WAIT_FIRST_EPOCH = 'wait_first_epoch'
+
 NANS_TO = 'nans_to'
-CHANNEL_TO_USE = 'channel_to_use'
+CROP_SIZE = 'crop_size'
+CONVERTED_DATA_SAVEPATH = "converted_data_savepath"
+CHANNELS_TO_USE = 'channels_to_use'
+
+TEST_SIZE = 'test_size'
+VAL_SIZE = 'val_size'
 
 # Default parameters dictionary
 """
@@ -156,7 +162,7 @@ default_params = {
     RESULTS_FOLDER_NAME: '',
     WAIT_FIRST_EPOCH: False,
     NANS_TO: 1,
-    CHANNEL_TO_USE: 0,
+    CHANNELS_TO_USE: 0,
     DATA_TYPES_DICT: {
         general_keys.TRAIN: general_keys.REAL,
         general_keys.VALIDATION: general_keys.REAL,

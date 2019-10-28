@@ -13,6 +13,7 @@ import numpy as np
 from keras.backend import cast_to_floatx
 from keras.datasets import mnist, fashion_mnist, cifar100, cifar10
 from sklearn.metrics import roc_curve, precision_recall_curve, auc
+from modules.data_loaders.frame_to_input import FrameToInput
 
 
 def resize_and_crop_image(input_file, output_side_length, greyscale=False):
@@ -187,7 +188,7 @@ def load_hits_padded(n_samples_by_class=12500 * 2):
 
 
 def load_hits(n_samples_by_class=10000, test_size=0.20, val_size=0.10,
-    return_val=False, channels_to_get=[0, 1, 2, 3]):
+    return_val=False, channels_to_get=[2]):  # [0, 1, 2, 3]):
   data_path = os.path.join(PROJECT_PATH, '..', 'datasets',
                            'HiTS2013_300k_samples.pkl')
   params = {
@@ -208,6 +209,49 @@ def load_hits(n_samples_by_class=10000, test_size=0.20, val_size=0.10,
   if return_val:
     return (X_train, y_train), (X_val, y_val), (X_test, y_test)
   return (X_train, y_train), (X_test, y_test)
+
+
+def load_ztf_real_bog(n_samples_by_class=10000, test_size=0.20, val_size=0.10,
+    return_val=False, channels_to_get=[0, 1, 2]):
+  folder_path = os.path.join(PROJECT_PATH, '..', 'datasets')
+  data_path = os.path.join(folder_path, 'ztf_v0.pkl')
+  # data_path = "../../pickles/converted_data.pkl"
+
+  n_classes = 5
+  params = {
+    param_keys.DATA_PATH_TRAIN: data_path,
+    param_keys.BATCH_SIZE: 0,
+    param_keys.CHANNELS_TO_USE: [0, 1, 2],
+    param_keys.TEST_SIZE: n_classes * 50,
+    param_keys.VAL_SIZE: n_classes * 50,
+    param_keys.NANS_TO: 0,
+    param_keys.NUMBER_OF_CLASSES: n_classes,
+    param_keys.CROP_SIZE: None,
+    param_keys.CONVERTED_DATA_SAVEPATH: os.path.join(folder_path,
+                                                     "converted_data.pkl")
+  }
+
+  data_loader = FrameToInput(params)
+  data_loader.dataset_preprocessor.set_pipeline(
+      [data_loader.dataset_preprocessor.check_single_image,
+       data_loader.dataset_preprocessor.clean_misshaped,
+       data_loader.dataset_preprocessor.select_channels,
+       data_loader.dataset_preprocessor.normalize_by_image,
+       data_loader.dataset_preprocessor.nan_to_num,
+       data_loader.dataset_preprocessor.crop_at_center
+       ])
+  dataset = data_loader.get_single_dataset()
+
+  # (X_train, y_train), (X_val, y_val), (X_test, y_test) = hits_loader.load_data()
+  #
+  # X_train = normalize_hits_minus1_1(cast_to_floatx(X_train))
+  # X_val = normalize_hits_minus1_1(cast_to_floatx(X_val))
+  # X_test = normalize_hits_minus1_1(cast_to_floatx(X_test))
+  #
+  # if return_val:
+  #   return (X_train, y_train), (X_val, y_val), (X_test, y_test)
+  # return (X_train, y_train), (X_test, y_test)
+  return dataset
 
 
 def get_class_name_from_index(index, dataset_name):
@@ -234,3 +278,10 @@ def get_class_name_from_index(index, dataset_name):
   }
 
   return ind_to_name[dataset_name][index]
+
+
+if __name__ == '__main__':
+  data = load_ztf_real_bog()
+  bogus_class_indx = 4
+  new_labels = (~(data.data_label.flatten() == bogus_class_indx))*1.0
+  print('')
