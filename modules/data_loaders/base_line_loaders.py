@@ -211,26 +211,25 @@ def load_hits(n_samples_by_class=10000, test_size=0.20, val_size=0.10,
   return (X_train, y_train), (X_test, y_test)
 
 
-def load_ztf_real_bog(n_samples_by_class=10000, test_size=0.20, val_size=0.10,
-    return_val=False, channels_to_get=[0, 1, 2]):
+def load_ztf_real_bog(val_percentage_of_inliers=0.10,
+    return_val=False, channels_to_get=[0, 1, 2], data_file_name = 'converted_data.pkl'):
+  """Load and already separated inlier-outlier as real-bogus dataset, where label 1 is real."""
   folder_path = os.path.join(PROJECT_PATH, '..', 'datasets')
-  data_path = os.path.join(folder_path, 'ztf_v0.pkl')
-  # data_path = "../../pickles/converted_data.pkl"
+  data_path = os.path.join(folder_path, data_file_name)
 
-  n_classes = 5
+  # params for Frame input ztf loader and preprocessing
   params = {
     param_keys.DATA_PATH_TRAIN: data_path,
     param_keys.BATCH_SIZE: 0,
-    param_keys.CHANNELS_TO_USE: [0, 1, 2],
-    param_keys.TEST_SIZE: n_classes * 50,
-    param_keys.VAL_SIZE: n_classes * 50,
+    param_keys.CHANNELS_TO_USE: channels_to_get,
+    param_keys.TEST_SIZE: 0,  # not used
+    param_keys.VAL_SIZE: 0,  # not used
     param_keys.NANS_TO: 0,
-    param_keys.NUMBER_OF_CLASSES: n_classes,
-    param_keys.CROP_SIZE: None,
+    param_keys.CROP_SIZE: 21,
     param_keys.CONVERTED_DATA_SAVEPATH: os.path.join(folder_path,
                                                      "converted_data.pkl")
   }
-
+  # instantiate laoder, set preprocessor, load dataset
   data_loader = FrameToInput(params)
   data_loader.dataset_preprocessor.set_pipeline(
       [data_loader.dataset_preprocessor.check_single_image,
@@ -241,17 +240,41 @@ def load_ztf_real_bog(n_samples_by_class=10000, test_size=0.20, val_size=0.10,
        data_loader.dataset_preprocessor.crop_at_center
        ])
   dataset = data_loader.get_single_dataset()
+  # labels from 5 classes to 0-1 as bogus-real
+  bogus_class_indx = 4
+  new_labels = (dataset.data_label.flatten() != bogus_class_indx) * 1.0
+  # print(np.unique(new_labels, return_counts=True))
+  inlier_task = 1
 
-  # (X_train, y_train), (X_val, y_val), (X_test, y_test) = hits_loader.load_data()
-  #
-  # X_train = normalize_hits_minus1_1(cast_to_floatx(X_train))
-  # X_val = normalize_hits_minus1_1(cast_to_floatx(X_val))
-  # X_test = normalize_hits_minus1_1(cast_to_floatx(X_test))
-  #
-  # if return_val:
-  #   return (X_train, y_train), (X_val, y_val), (X_test, y_test)
-  # return (X_train, y_train), (X_test, y_test)
-  return dataset
+  # separate data into train-val-test
+  outlier_indexes = np.where(new_labels != inlier_task)[0]
+  inlier_indexes = np.where(new_labels == inlier_task)[0]
+  # real == inliers
+  val_size_inliers = int(np.round(np.sum(
+      (new_labels == inlier_task)) * val_percentage_of_inliers))
+  np.random.shuffle(inlier_indexes)
+  # train-val indexes inlier indexes
+  train_inlier_idxs = inlier_indexes[val_size_inliers:]
+  val_inlier_idxs = inlier_indexes[:val_size_inliers]
+  # train-test inlier indexes
+  n_outliers = np.sum(new_labels != inlier_task)
+  train_inlier_idxs = train_inlier_idxs[n_outliers:]
+  test_inlier_idxs = train_inlier_idxs[:n_outliers]
+
+  X_train, y_train = dataset.data_array[train_inlier_idxs], new_labels[
+    train_inlier_idxs]
+  X_val, y_val = dataset.data_array[val_inlier_idxs], new_labels[
+    val_inlier_idxs]
+  X_test, y_test = np.concatenate(
+      [dataset.data_array[test_inlier_idxs],
+       dataset.data_array[outlier_indexes]]), np.concatenate(
+      [new_labels[test_inlier_idxs], new_labels[outlier_indexes]])
+  # print('train: ', np.unique(y_train, return_counts=True))
+  # print('val: ', np.unique(y_val, return_counts=True))
+  # print('test: ', np.unique(y_test, return_counts=True))
+  if return_val:
+    return (X_train, y_train), (X_val, y_val), (X_test, y_test)
+  return (X_train, y_train), (X_test, y_test)
 
 
 def get_class_name_from_index(index, dataset_name):
@@ -275,13 +298,20 @@ def get_class_name_from_index(index, dataset_name):
     'cats-vs-dogs': ('cat', 'dog'),
     'hits': ('bogus', 'real'),
     'hits-padded': ('bogus', 'real'),
+    'ztf-real-bog': ('bogus', 'real'),
   }
 
   return ind_to_name[dataset_name][index]
 
 
 if __name__ == '__main__':
-  data = load_ztf_real_bog()
-  bogus_class_indx = 4
-  new_labels = (~(data.data_label.flatten() == bogus_class_indx))*1.0
-  print('')
+  (x_train, y_train), (x_val, y_val), (x_test, y_test) = load_ztf_real_bog(
+    return_val=True)
+
+  print('train: ', np.unique(y_train, return_counts=True))
+  print('val: ', np.unique(y_val, return_counts=True))
+  print('test: ', np.unique(y_test, return_counts=True))
+  import matplotlib.pyplot as plt
+
+  plt.imshow(x_test[-1][..., -1])
+  plt.show()
