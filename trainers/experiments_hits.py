@@ -155,7 +155,8 @@ def _if_experiment(dataset_load_fn, dataset_name, single_class_ind):
 
     # ToDO: make gridsearch just one
     pg = ParameterGrid({'n_estimators': np.linspace(100, 800, num=8).astype(int),
-                        'contamination': [0.1, 0.2, 0.3, 0.4, 0.5]})
+                        'contamination': [0.1, 0.2, 0.3, 0.4, 0.5],
+                        'behaviour': ['new']})
 
     results = Parallel(n_jobs=PARALLEL_N_JOBS)(
         delayed(_train_if_and_score)(d, x_train_task, y_test.flatten() == single_class_ind, x_test)
