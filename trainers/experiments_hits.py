@@ -14,6 +14,7 @@ import scipy.stats
 from scipy.special import psi, polygamma
 from sklearn.metrics import roc_auc_score
 from sklearn.svm import OneClassSVM
+from sklearn.ensemble import IsolationForest
 from sklearn.model_selection import ParameterGrid
 from sklearn.externals.joblib import Parallel, delayed
 from keras.models import Model, Input, Sequential
@@ -136,6 +137,43 @@ def _transformations_experiment(dataset_load_fn, dataset_name, single_class_ind,
     mdl.save_weights(mdl_weights_path)
 
     gpu_q.put(gpu_to_use)
+
+def _train_if_and_score(params, xtrain, test_labels, xtest):
+    return roc_auc_score(test_labels, IsolationForest(**params).fit(xtrain).decision_function(xtest))
+
+
+def _raw_ocsvm_experiment(dataset_load_fn, dataset_name, single_class_ind):
+    (x_train, y_train), (x_test, y_test) = dataset_load_fn()
+
+    x_train = x_train.reshape((len(x_train), -1))
+    x_test = x_test.reshape((len(x_test), -1))
+
+    x_train_task = x_train[y_train.flatten() == single_class_ind]
+    if dataset_name in LARGE_DATASET_NAMES:  # OC-SVM is quadratic on the number of examples, so subsample training set
+        subsample_inds = np.random.choice(len(x_train_task), 2500, replace=False)
+        x_train_task_tmp = x_train_task[subsample_inds]
+
+    # ToDO: make gridsearch just one
+    pg = ParameterGrid({'nu': np.linspace(0.1, 0.9, num=9),
+                        'gamma': np.logspace(-7, 2, num=10, base=2)})
+
+    results = Parallel(n_jobs=PARALLEL_N_JOBS)(
+        delayed(_train_ocsvm_and_score)(d, x_train_task_tmp, y_test.flatten() == single_class_ind, x_test)
+        for d in pg)
+
+
+    best_params, best_auc_score = max(zip(pg, results), key=lambda t: t[-1])
+    print(best_params)
+    best_ocsvm = OneClassSVM(**best_params).fit(x_train_task)
+    scores = best_ocsvm.decision_function(x_test)
+    labels = y_test.flatten() == single_class_ind
+
+    res_file_name = '{}_raw-oc-svm_{}_{}.npz'.format(dataset_name,
+                                                     get_class_name_from_index(single_class_ind, dataset_name),
+                                                     datetime.datetime.now().strftime('%Y-%m-%d-%H%M'))
+    res_file_path = os.path.join(RESULTS_DIR, dataset_name, res_file_name)
+    save_roc_pr_curve_data(scores, labels, res_file_path)
+
 
 
 def _train_ocsvm_and_score(params, xtrain, test_labels, xtest):

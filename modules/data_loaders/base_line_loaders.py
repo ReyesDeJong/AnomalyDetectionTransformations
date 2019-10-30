@@ -6,7 +6,7 @@ from glob import glob
 PROJECT_PATH = os.path.abspath(
     os.path.join(os.path.dirname(__file__), '..', '..'))
 sys.path.append(PROJECT_PATH)
-import cv2
+# import cv2
 from modules.data_loaders.hits_loader import HiTSLoader
 from parameters import param_keys
 import numpy as np
@@ -16,26 +16,26 @@ from sklearn.metrics import roc_curve, precision_recall_curve, auc
 from modules.data_loaders.frame_to_input import FrameToInput
 
 
-def resize_and_crop_image(input_file, output_side_length, greyscale=False):
-  img = cv2.imread(input_file)
-  img = cv2.cvtColor(img,
-                     cv2.COLOR_BGR2RGB if not greyscale else cv2.COLOR_BGR2GRAY)
-  height, width = img.shape[:2]
-  new_height = output_side_length
-  new_width = output_side_length
-  if height > width:
-    new_height = int(output_side_length * height / width)
-  else:
-    new_width = int(output_side_length * width / height)
-  resized_img = cv2.resize(img, (new_width, new_height),
-                           interpolation=cv2.INTER_AREA)
-  height_offset = (new_height - output_side_length) // 2
-  width_offset = (new_width - output_side_length) // 2
-  cropped_img = resized_img[height_offset:height_offset + output_side_length,
-                width_offset:width_offset + output_side_length]
-  assert cropped_img.shape[:2] == (output_side_length, output_side_length)
-  return cropped_img
-
+# def resize_and_crop_image(input_file, output_side_length, greyscale=False):
+#   img = cv2.imread(input_file)
+#   img = cv2.cvtColor(img,
+#                      cv2.COLOR_BGR2RGB if not greyscale else cv2.COLOR_BGR2GRAY)
+#   height, width = img.shape[:2]
+#   new_height = output_side_length
+#   new_width = output_side_length
+#   if height > width:
+#     new_height = int(output_side_length * height / width)
+#   else:
+#     new_width = int(output_side_length * width / height)
+#   resized_img = cv2.resize(img, (new_width, new_height),
+#                            interpolation=cv2.INTER_AREA)
+#   height_offset = (new_height - output_side_length) // 2
+#   width_offset = (new_width - output_side_length) // 2
+#   cropped_img = resized_img[height_offset:height_offset + output_side_length,
+#                 width_offset:width_offset + output_side_length]
+#   assert cropped_img.shape[:2] == (output_side_length, output_side_length)
+#   return cropped_img
+#
 
 def normalize_minus1_1(data):
   return 2 * (data / 255.) - 1
@@ -135,35 +135,35 @@ def save_roc_pr_curve_data(scores, labels, file_path=None):
                    'pr_auc_anom': pr_auc_anom})
 
 
-def create_cats_vs_dogs_npz(cats_vs_dogs_path='./'):
-  labels = ['cat', 'dog']
-  label_to_y_dict = {l: i for i, l in enumerate(labels)}
-
-  def _load_from_dir(dir_name):
-    glob_path = os.path.join(cats_vs_dogs_path, dir_name, '*.*.jpg')
-    imgs_paths = glob(glob_path)
-    images = [resize_and_crop_image(p, 64) for p in imgs_paths]
-    x = np.stack(images)
-    y = [label_to_y_dict[os.path.split(p)[-1][:3]] for p in imgs_paths]
-    y = np.array(y)
-    return x, y
-
-  x_train, y_train = _load_from_dir('train')
-  x_test, y_test = _load_from_dir('test')
-
-  np.savez_compressed(os.path.join(cats_vs_dogs_path, 'cats_vs_dogs.npz'),
-                      x_train=x_train, y_train=y_train,
-                      x_test=x_test, y_test=y_test)
-
-
-def load_cats_vs_dogs(cats_vs_dogs_path='./'):
-  npz_file = np.load(os.path.join(cats_vs_dogs_path, 'cats_vs_dogs.npz'))
-  x_train = normalize_minus1_1(cast_to_floatx(npz_file['x_train']))
-  y_train = npz_file['y_train']
-  x_test = normalize_minus1_1(cast_to_floatx(npz_file['x_test']))
-  y_test = npz_file['y_test']
-
-  return (x_train, y_train), (x_test, y_test)
+# def create_cats_vs_dogs_npz(cats_vs_dogs_path='./'):
+#   labels = ['cat', 'dog']
+#   label_to_y_dict = {l: i for i, l in enumerate(labels)}
+#
+#   def _load_from_dir(dir_name):
+#     glob_path = os.path.join(cats_vs_dogs_path, dir_name, '*.*.jpg')
+#     imgs_paths = glob(glob_path)
+#     images = [resize_and_crop_image(p, 64) for p in imgs_paths]
+#     x = np.stack(images)
+#     y = [label_to_y_dict[os.path.split(p)[-1][:3]] for p in imgs_paths]
+#     y = np.array(y)
+#     return x, y
+#
+#   x_train, y_train = _load_from_dir('train')
+#   x_test, y_test = _load_from_dir('test')
+#
+#   np.savez_compressed(os.path.join(cats_vs_dogs_path, 'cats_vs_dogs.npz'),
+#                       x_train=x_train, y_train=y_train,
+#                       x_test=x_test, y_test=y_test)
+#
+#
+# def load_cats_vs_dogs(cats_vs_dogs_path='./'):
+#   npz_file = np.load(os.path.join(cats_vs_dogs_path, 'cats_vs_dogs.npz'))
+#   x_train = normalize_minus1_1(cast_to_floatx(npz_file['x_train']))
+#   y_train = npz_file['y_train']
+#   x_test = normalize_minus1_1(cast_to_floatx(npz_file['x_test']))
+#   y_test = npz_file['y_test']
+#
+#   return (x_train, y_train), (x_test, y_test)
 
 
 def load_hits_padded(n_samples_by_class=12500 * 2):
