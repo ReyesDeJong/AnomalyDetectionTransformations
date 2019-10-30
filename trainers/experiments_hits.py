@@ -33,7 +33,7 @@ import datetime
 
 RESULTS_DIR = os.path.join(PROJECT_PATH, 'results/basic_4_channels')
 LARGE_DATASET_NAMES = ['cats-vs-dogs', 'hits', 'hits_padded']
-PARALLEL_N_JOBS = 12
+PARALLEL_N_JOBS = 16
 
 def _transformations_experiment(dataset_load_fn, dataset_name, single_class_ind, gpu_q):
     gpu_to_use = gpu_q.get()
@@ -142,7 +142,7 @@ def _train_if_and_score(params, xtrain, test_labels, xtest):
     return roc_auc_score(test_labels, IsolationForest(**params).fit(xtrain).decision_function(xtest))
 
 
-def _raw_ocsvm_experiment(dataset_load_fn, dataset_name, single_class_ind):
+def _if_experiment(dataset_load_fn, dataset_name, single_class_ind):
     (x_train, y_train), (x_test, y_test) = dataset_load_fn()
 
     x_train = x_train.reshape((len(x_train), -1))
@@ -423,7 +423,7 @@ def run_experiments(load_dataset_fn, dataset_name, q, class_idx, n_runs):
 
     # DSEBM
     for _ in range(n_runs):
-        processes = [Process(target=_transformations_experiment,
+        processes = [Process(target=_dsebm_experiment,
                              args=(load_dataset_fn, dataset_name, class_idx, q))]
         for p in processes:
             p.start()
@@ -432,7 +432,7 @@ def run_experiments(load_dataset_fn, dataset_name, q, class_idx, n_runs):
     #
     # # DAGMM
     # for _ in range(n_runs):
-    #     processes = [Process(target=_transformations_experiment,
+    #     processes = [Process(target=_dagmm_experiment,
     #                              args=(load_dataset_fn, dataset_name, class_idx, q))]
     #     for p in processes:
     #         p.start()
@@ -441,7 +441,7 @@ def run_experiments(load_dataset_fn, dataset_name, q, class_idx, n_runs):
     #
     # ADGAN
     for _ in range(n_runs):
-        processes = [Process(target=_transformations_experiment,
+        processes = [Process(target=_adgan_experiment,
                                  args=(load_dataset_fn, dataset_name, class_idx, q))]
         for p in processes:
             p.start()
