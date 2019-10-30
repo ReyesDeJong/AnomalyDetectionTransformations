@@ -154,7 +154,7 @@ def _if_experiment(dataset_load_fn, dataset_name, single_class_ind):
     #     x_train_task_tmp = x_train_task[subsample_inds]
 
     # ToDO: make gridsearch just one
-    pg = ParameterGrid({'n_estimators': np.linspace(100, 800, num=8),
+    pg = ParameterGrid({'n_estimators': np.linspace(100, 800, num=8).astype(int),
                         'contamination': [0.1, 0.2, 0.3, 0.4, 0.5]})
 
     results = Parallel(n_jobs=PARALLEL_N_JOBS)(
