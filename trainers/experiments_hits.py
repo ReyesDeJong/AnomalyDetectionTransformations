@@ -395,10 +395,10 @@ def _adgan_experiment(dataset_load_fn, dataset_name, single_class_ind, gpu_q):
 #ToDo: research how to perform multi gpu training
 def run_experiments(load_dataset_fn, dataset_name, q, class_idx, n_runs):
     check_path(os.path.join(RESULTS_DIR, dataset_name))
-    # # IF
-    # for _ in range(n_runs):
-    #     _if_experiment(load_dataset_fn, dataset_name, class_idx)
-    #
+    # IF
+    for _ in range(n_runs):
+        _if_experiment(load_dataset_fn, dataset_name, class_idx)
+
     # # CAE OC-SVM
     # for _ in range(n_runs):
     #     processes = [Process(target=_cae_ocsvm_experiment,
@@ -424,15 +424,15 @@ def run_experiments(load_dataset_fn, dataset_name, q, class_idx, n_runs):
     #             p.start()
     #         for p in processes:
     #             p.join()
-
-    # DSEBM
-    for _ in range(n_runs):
-        processes = [Process(target=_dsebm_experiment,
-                             args=(load_dataset_fn, dataset_name, class_idx, q))]
-        for p in processes:
-            p.start()
-        for p in processes:
-            p.join()
+    #
+    # # DSEBM
+    # for _ in range(n_runs):
+    #     processes = [Process(target=_dsebm_experiment,
+    #                          args=(load_dataset_fn, dataset_name, class_idx, q))]
+    #     for p in processes:
+    #         p.start()
+    #     for p in processes:
+    #         p.join()
     #
     # # DAGMM
     # for _ in range(n_runs):
@@ -443,14 +443,14 @@ def run_experiments(load_dataset_fn, dataset_name, q, class_idx, n_runs):
     #     for p in processes:
     #         p.join()
     #
-    # ADGAN
-    for _ in range(n_runs):
-        processes = [Process(target=_adgan_experiment,
-                                 args=(load_dataset_fn, dataset_name, class_idx, q))]
-        for p in processes:
-            p.start()
-        for p in processes:
-            p.join()
+    # # ADGAN
+    # for _ in range(n_runs):
+    #     processes = [Process(target=_adgan_experiment,
+    #                              args=(load_dataset_fn, dataset_name, class_idx, q))]
+    #     for p in processes:
+    #         p.start()
+    #     for p in processes:
+    #         p.join()
 
 
 def create_auc_table(metric='roc_auc'):
