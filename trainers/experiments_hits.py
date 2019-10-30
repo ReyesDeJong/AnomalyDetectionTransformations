@@ -32,7 +32,7 @@ import datetime
 
 RESULTS_DIR = os.path.join(PROJECT_PATH, 'results/basic_4_channels')
 LARGE_DATASET_NAMES = ['cats-vs-dogs', 'hits', 'hits_padded']
-PARALLEL_N_JOBS = 16
+PARALLEL_N_JOBS = 12
 
 def _transformations_experiment(dataset_load_fn, dataset_name, single_class_ind, gpu_q):
     gpu_to_use = gpu_q.get()
@@ -357,40 +357,40 @@ def _adgan_experiment(dataset_load_fn, dataset_name, single_class_ind, gpu_q):
 #ToDo: research how to perform multi gpu training
 def run_experiments(load_dataset_fn, dataset_name, q, class_idx, n_runs):
     check_path(os.path.join(RESULTS_DIR, dataset_name))
-    # CAE OC-SVM
-    for _ in range(n_runs):
-        processes = [Process(target=_cae_ocsvm_experiment,
-                             args=(load_dataset_fn, dataset_name, class_idx, q))]
-        for p in processes:
-            p.start()
-            p.join()
-
-    # Raw OC-SVM
-    for _ in range(n_runs):
-        _raw_ocsvm_experiment(load_dataset_fn, dataset_name, class_idx)
-
-    # Transformations
-    for _ in range(n_runs):
-        processes = [Process(target=_transformations_experiment,
-                             args=(load_dataset_fn, dataset_name, class_idx, q))]
-        if dataset_name in LARGE_DATASET_NAMES:  # Self-labeled set is memory consuming
-            for p in processes:
-                p.start()
-                p.join()
-        else:
-            for p in processes:
-                p.start()
-            for p in processes:
-                p.join()
-
-    # # DSEBM
+    # # CAE OC-SVM
     # for _ in range(n_runs):
-    #     processes = [Process(target=_transformations_experiment,
+    #     processes = [Process(target=_cae_ocsvm_experiment,
     #                          args=(load_dataset_fn, dataset_name, class_idx, q))]
     #     for p in processes:
     #         p.start()
-    #     for p in processes:
     #         p.join()
+    #
+    # # Raw OC-SVM
+    # for _ in range(n_runs):
+    #     _raw_ocsvm_experiment(load_dataset_fn, dataset_name, class_idx)
+    #
+    # # Transformations
+    # for _ in range(n_runs):
+    #     processes = [Process(target=_transformations_experiment,
+    #                          args=(load_dataset_fn, dataset_name, class_idx, q))]
+    #     if dataset_name in LARGE_DATASET_NAMES:  # Self-labeled set is memory consuming
+    #         for p in processes:
+    #             p.start()
+    #             p.join()
+    #     else:
+    #         for p in processes:
+    #             p.start()
+    #         for p in processes:
+    #             p.join()
+
+    # DSEBM
+    for _ in range(n_runs):
+        processes = [Process(target=_transformations_experiment,
+                             args=(load_dataset_fn, dataset_name, class_idx, q))]
+        for p in processes:
+            p.start()
+        for p in processes:
+            p.join()
     #
     # # DAGMM
     # for _ in range(n_runs):
@@ -401,13 +401,14 @@ def run_experiments(load_dataset_fn, dataset_name, q, class_idx, n_runs):
     #     for p in processes:
     #         p.join()
     #
-    # # ADGAN
-    # processes = [Process(target=_transformations_experiment,
-    #                          args=(load_dataset_fn, dataset_name, class_idx, q))]
-    # for p in processes:
-    #     p.start()
-    # for p in processes:
-    #     p.join()
+    # ADGAN
+    for _ in range(n_runs):
+        processes = [Process(target=_transformations_experiment,
+                                 args=(load_dataset_fn, dataset_name, class_idx, q))]
+        for p in processes:
+            p.start()
+        for p in processes:
+            p.join()
 
 
 def create_auc_table(metric='roc_auc'):
@@ -458,8 +459,8 @@ if __name__ == '__main__':
     ]
 
     start_time = time.time()
-    # for data_load_fn, dataset_name, class_idx, run_i in experiments_list:
-    #    run_experiments(data_load_fn, dataset_name, q, class_idx, run_i)
+    for data_load_fn, dataset_name, class_idx, run_i in experiments_list:
+       run_experiments(data_load_fn, dataset_name, q, class_idx, run_i)
     create_auc_table()
     time_usage = str(datetime.timedelta(
         seconds=int(round(time.time() - start_time))))
