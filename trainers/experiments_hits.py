@@ -32,7 +32,7 @@ import time
 import datetime
 from pyod.models.mo_gaal import MO_GAAL
 
-RESULTS_DIR = os.path.join(PROJECT_PATH, 'results/basic_4_channels')
+RESULTS_DIR = os.path.join(PROJECT_PATH, 'results/basic_Diff_channels')
 LARGE_DATASET_NAMES = ['cats-vs-dogs', 'hits', 'hits_padded']
 PARALLEL_N_JOBS = 16
 
@@ -151,7 +151,7 @@ def _mo_gaal_experiment(dataset_load_fn, dataset_name, single_class_ind):
     scores = best_mo_gaal.decision_function(x_test)
     labels = y_test.flatten() == single_class_ind
 
-    res_file_name = '{}_mo_gaal_{}_{}.npz'.format(dataset_name,
+    res_file_name = '{}_mo-gaal_{}_{}.npz'.format(dataset_name,
                                                      get_class_name_from_index(single_class_ind, dataset_name),
                                                      datetime.datetime.now().strftime('%Y-%m-%d-%H%M'))
     res_file_path = os.path.join(RESULTS_DIR, dataset_name, res_file_name)
@@ -188,9 +188,9 @@ def _if_experiment(dataset_load_fn, dataset_name, single_class_ind):
                                  y_test.flatten() == single_class_ind, x_test)
         )
 
-    print(list(zip(pg, results)))
+    # print(list(zip(pg, results)))
     best_params, best_auc_score = max(zip(pg, results), key=lambda t: t[-1])
-    print(best_params, ' ', best_auc_score)
+    # print(best_params, ' ', best_auc_score)
     best_if = IsolationForest(**best_params).fit(x_train_task)
     scores = best_if.decision_function(x_test)
     labels = y_test.flatten() == single_class_ind
@@ -426,10 +426,10 @@ def run_experiments(load_dataset_fn, dataset_name, q, class_idx, n_runs):
     for _ in range(n_runs):
         _mo_gaal_experiment(load_dataset_fn, dataset_name, class_idx)
 
-    # IF
-    for _ in range(n_runs):
-        _if_experiment(load_dataset_fn, dataset_name, class_idx)
-
+    # # IF
+    # for _ in range(n_runs):
+    #     _if_experiment(load_dataset_fn, dataset_name, class_idx)
+    #
     # # CAE OC-SVM
     # for _ in range(n_runs):
     #     processes = [Process(target=_cae_ocsvm_experiment,
@@ -532,8 +532,8 @@ if __name__ == '__main__':
     ]
 
     start_time = time.time()
-    for data_load_fn, dataset_name, class_idx, run_i in experiments_list:
-       run_experiments(data_load_fn, dataset_name, q, class_idx, run_i)
+    # for data_load_fn, dataset_name, class_idx, run_i in experiments_list:
+    #    run_experiments(data_load_fn, dataset_name, q, class_idx, run_i)
     create_auc_table()
     time_usage = str(datetime.timedelta(
         seconds=int(round(time.time() - start_time))))
