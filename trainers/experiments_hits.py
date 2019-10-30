@@ -164,11 +164,11 @@ def _if_experiment(dataset_load_fn, dataset_name, single_class_ind):
 
     best_params, best_auc_score = max(zip(pg, results), key=lambda t: t[-1])
     print(best_params)
-    best_ocsvm = OneClassSVM(**best_params).fit(x_train_task)
-    scores = best_ocsvm.decision_function(x_test)
+    best_if = IsolationForest(**best_params).fit(x_train_task)
+    scores = best_if.decision_function(x_test)
     labels = y_test.flatten() == single_class_ind
 
-    res_file_name = '{}_raw-oc-svm_{}_{}.npz'.format(dataset_name,
+    res_file_name = '{}_if_{}_{}.npz'.format(dataset_name,
                                                      get_class_name_from_index(single_class_ind, dataset_name),
                                                      datetime.datetime.now().strftime('%Y-%m-%d-%H%M'))
     res_file_path = os.path.join(RESULTS_DIR, dataset_name, res_file_name)
@@ -261,7 +261,7 @@ def _cae_ocsvm_experiment(dataset_load_fn, dataset_name, single_class_ind, gpu_q
     res_file_path = os.path.join(RESULTS_DIR, dataset_name, res_file_name)
     save_roc_pr_curve_data(scores, labels, res_file_path)
 
-    gpu_q.put(gpu_to_use)
+    # gpu_q.put(gpu_to_use)
 
 
 def _dsebm_experiment(dataset_load_fn, dataset_name, single_class_ind, gpu_q):
@@ -295,7 +295,7 @@ def _dsebm_experiment(dataset_load_fn, dataset_name, single_class_ind, gpu_q):
     res_file_path = os.path.join(RESULTS_DIR, dataset_name, res_file_name)
     save_roc_pr_curve_data(scores, labels, res_file_path)
 
-    gpu_q.put(gpu_to_use)
+    # gpu_q.put(gpu_to_use)
 
 
 def _dagmm_experiment(dataset_load_fn, dataset_name, single_class_ind, gpu_q):
@@ -346,7 +346,7 @@ def _dagmm_experiment(dataset_load_fn, dataset_name, single_class_ind, gpu_q):
     res_file_path = os.path.join(RESULTS_DIR, dataset_name, res_file_name)
     save_roc_pr_curve_data(scores, labels, res_file_path)
 
-    gpu_q.put(gpu_to_use)
+    # gpu_q.put(gpu_to_use)
 
 
 def _adgan_experiment(dataset_load_fn, dataset_name, single_class_ind, gpu_q):
@@ -389,12 +389,16 @@ def _adgan_experiment(dataset_load_fn, dataset_name, single_class_ind, gpu_q):
     res_file_path = os.path.join(RESULTS_DIR, dataset_name, res_file_name)
     save_roc_pr_curve_data(scores, labels, res_file_path)
 
-    gpu_q.put(gpu_to_use)
+    # gpu_q.put(gpu_to_use)
 
 #TODO: check real parallelism of tasks
 #ToDo: research how to perform multi gpu training
 def run_experiments(load_dataset_fn, dataset_name, q, class_idx, n_runs):
     check_path(os.path.join(RESULTS_DIR, dataset_name))
+    # # IF
+    # for _ in range(n_runs):
+    #     _if_experiment(load_dataset_fn, dataset_name, class_idx)
+    #
     # # CAE OC-SVM
     # for _ in range(n_runs):
     #     processes = [Process(target=_cae_ocsvm_experiment,
