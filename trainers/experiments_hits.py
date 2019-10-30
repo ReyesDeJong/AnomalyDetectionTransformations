@@ -158,7 +158,7 @@ def _if_experiment(dataset_load_fn, dataset_name, single_class_ind):
                         'contamination': [0.1, 0.2, 0.3, 0.4, 0.5]})
 
     results = Parallel(n_jobs=PARALLEL_N_JOBS)(
-        delayed(_train_if_and_score())(d, x_train_task, y_test.flatten() == single_class_ind, x_test)
+        delayed(_train_if_and_score)(d, x_train_task, y_test.flatten() == single_class_ind, x_test)
         for d in pg)
 
 
