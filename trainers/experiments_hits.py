@@ -156,15 +156,22 @@ def _if_experiment(dataset_load_fn, dataset_name, single_class_ind):
     # ToDO: make gridsearch just one
     pg = ParameterGrid({'n_estimators': np.linspace(100, 800, num=8).astype(int),
                         'contamination': [0.1, 0.2, 0.3, 0.4, 0.5],
-                        'behaviour': ['new']})
+                        'behaviour': ['new'],
+                        'n_jobs': [-1]})
 
-    results = Parallel(n_jobs=PARALLEL_N_JOBS)(
-        delayed(_train_if_and_score)(d, x_train_task, y_test.flatten() == single_class_ind, x_test)
-        for d in pg)
+    # results = Parallel(n_jobs=PARALLEL_N_JOBS)(
+    #     delayed(_train_if_and_score)(d, x_train_task, y_test.flatten() == single_class_ind, x_test)
+    #     for d in pg)
+    results = []
+    for d in pg:
+        results.append(
+            _train_if_and_score(d, x_train_task,
+                                 y_test.flatten() == single_class_ind, x_test)
+        )
 
-
+    print(zip(pg, results))
     best_params, best_auc_score = max(zip(pg, results), key=lambda t: t[-1])
-    print(best_params)
+    print(best_params, ' ', best_auc_score)
     best_if = IsolationForest(**best_params).fit(x_train_task)
     scores = best_if.decision_function(x_test)
     labels = y_test.flatten() == single_class_ind
