@@ -188,7 +188,7 @@ def load_hits_padded(n_samples_by_class=12500 * 2):
 
 
 def load_hits(n_samples_by_class=10000, test_size=0.20, val_size=0.10,
-    return_val=False, channels_to_get=[2]):  # [0, 1, 2, 3]):
+    return_val=False, channels_to_get=[0, 1, 2, 3]):#[2]):  #
   data_path = os.path.join(PROJECT_PATH, '..', 'datasets',
                            'HiTS2013_300k_samples.pkl')
   params = {
