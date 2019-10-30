@@ -30,8 +30,9 @@ import keras.backend as K
 from modules.utils import check_path
 import time
 import datetime
+from pyod.models.mo_gaal import MO_GAAL
 
-RESULTS_DIR = os.path.join(PROJECT_PATH, 'results/basic_Diff_channels')
+RESULTS_DIR = os.path.join(PROJECT_PATH, 'results/basic_4_channels')
 LARGE_DATASET_NAMES = ['cats-vs-dogs', 'hits', 'hits_padded']
 PARALLEL_N_JOBS = 16
 
@@ -138,6 +139,24 @@ def _transformations_experiment(dataset_load_fn, dataset_name, single_class_ind,
 
     gpu_q.put(gpu_to_use)
 
+def _mo_gaal_experiment(dataset_load_fn, dataset_name, single_class_ind):
+    (x_train, y_train), (x_test, y_test) = dataset_load_fn()
+
+    x_train = x_train.reshape((len(x_train), -1))
+    x_test = x_test.reshape((len(x_test), -1))
+
+    x_train_task = x_train[y_train.flatten() == single_class_ind]
+
+    best_mo_gaal = MO_GAAL().fit(x_train_task)
+    scores = best_mo_gaal.decision_function(x_test)
+    labels = y_test.flatten() == single_class_ind
+
+    res_file_name = '{}_mo_gaal_{}_{}.npz'.format(dataset_name,
+                                                     get_class_name_from_index(single_class_ind, dataset_name),
+                                                     datetime.datetime.now().strftime('%Y-%m-%d-%H%M'))
+    res_file_path = os.path.join(RESULTS_DIR, dataset_name, res_file_name)
+    save_roc_pr_curve_data(scores, labels, res_file_path)
+
 def _train_if_and_score(params, xtrain, test_labels, xtest):
     return roc_auc_score(test_labels, IsolationForest(**params).fit(xtrain).decision_function(xtest))
 
@@ -169,7 +188,7 @@ def _if_experiment(dataset_load_fn, dataset_name, single_class_ind):
                                  y_test.flatten() == single_class_ind, x_test)
         )
 
-    print(zip(pg, results))
+    print(list(zip(pg, results)))
     best_params, best_auc_score = max(zip(pg, results), key=lambda t: t[-1])
     print(best_params, ' ', best_auc_score)
     best_if = IsolationForest(**best_params).fit(x_train_task)
@@ -403,6 +422,10 @@ def _adgan_experiment(dataset_load_fn, dataset_name, single_class_ind, gpu_q):
 #ToDo: research how to perform multi gpu training
 def run_experiments(load_dataset_fn, dataset_name, q, class_idx, n_runs):
     check_path(os.path.join(RESULTS_DIR, dataset_name))
+    # MO_GAAL
+    for _ in range(n_runs):
+        _mo_gaal_experiment(load_dataset_fn, dataset_name, class_idx)
+
     # IF
     for _ in range(n_runs):
         _if_experiment(load_dataset_fn, dataset_name, class_idx)
