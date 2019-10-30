@@ -31,7 +31,7 @@ from modules.utils import check_path
 import time
 import datetime
 
-RESULTS_DIR = os.path.join(PROJECT_PATH, 'results/basic_4_channels')
+RESULTS_DIR = os.path.join(PROJECT_PATH, 'results/basic_Diff_channels')
 LARGE_DATASET_NAMES = ['cats-vs-dogs', 'hits', 'hits_padded']
 PARALLEL_N_JOBS = 16
 
@@ -149,16 +149,16 @@ def _if_experiment(dataset_load_fn, dataset_name, single_class_ind):
     x_test = x_test.reshape((len(x_test), -1))
 
     x_train_task = x_train[y_train.flatten() == single_class_ind]
-    if dataset_name in LARGE_DATASET_NAMES:  # OC-SVM is quadratic on the number of examples, so subsample training set
-        subsample_inds = np.random.choice(len(x_train_task), 2500, replace=False)
-        x_train_task_tmp = x_train_task[subsample_inds]
+    # if dataset_name in LARGE_DATASET_NAMES:  # OC-SVM is quadratic on the number of examples, so subsample training set
+    #     subsample_inds = np.random.choice(len(x_train_task), 2500, replace=False)
+    #     x_train_task_tmp = x_train_task[subsample_inds]
 
     # ToDO: make gridsearch just one
-    pg = ParameterGrid({'nu': np.linspace(0.1, 0.9, num=9),
-                        'gamma': np.logspace(-7, 2, num=10, base=2)})
+    pg = ParameterGrid({'n_estimators': np.linspace(100, 800, num=8),
+                        'contamination': [0.1, 0.2, 0.3, 0.4, 0.5]})
 
     results = Parallel(n_jobs=PARALLEL_N_JOBS)(
-        delayed(_train_ocsvm_and_score)(d, x_train_task_tmp, y_test.flatten() == single_class_ind, x_test)
+        delayed(_train_ocsvm_and_score)(d, x_train_task, y_test.flatten() == single_class_ind, x_test)
         for d in pg)
 
 
@@ -214,8 +214,8 @@ def _raw_ocsvm_experiment(dataset_load_fn, dataset_name, single_class_ind):
 
 
 def _cae_ocsvm_experiment(dataset_load_fn, dataset_name, single_class_ind, gpu_q):
-    gpu_to_use = gpu_q.get()
-    os.environ["CUDA_VISIBLE_DEVICES"] = gpu_to_use
+    #gpu_to_use = gpu_q.get()
+    #os.environ["CUDA_VISIBLE_DEVICES"] = gpu_to_use
 
     (x_train, y_train), (x_test, y_test) = dataset_load_fn()
 
@@ -265,8 +265,8 @@ def _cae_ocsvm_experiment(dataset_load_fn, dataset_name, single_class_ind, gpu_q
 
 
 def _dsebm_experiment(dataset_load_fn, dataset_name, single_class_ind, gpu_q):
-    gpu_to_use = gpu_q.get()
-    os.environ["CUDA_VISIBLE_DEVICES"] = gpu_to_use
+    #gpu_to_use = gpu_q.get()
+    #os.environ["CUDA_VISIBLE_DEVICES"] = gpu_to_use
 
     (x_train, y_train), (x_test, y_test) = dataset_load_fn()
 
@@ -300,8 +300,8 @@ def _dsebm_experiment(dataset_load_fn, dataset_name, single_class_ind, gpu_q):
 
 def _dagmm_experiment(dataset_load_fn, dataset_name, single_class_ind, gpu_q):
     # TODO: check cpu usage
-    gpu_to_use = gpu_q.get()
-    os.environ["CUDA_VISIBLE_DEVICES"] = gpu_to_use
+    #gpu_to_use = gpu_q.get()
+    #os.environ["CUDA_VISIBLE_DEVICES"] = gpu_to_use
 
     (x_train, y_train), (x_test, y_test) = dataset_load_fn()
 
@@ -350,8 +350,8 @@ def _dagmm_experiment(dataset_load_fn, dataset_name, single_class_ind, gpu_q):
 
 
 def _adgan_experiment(dataset_load_fn, dataset_name, single_class_ind, gpu_q):
-    gpu_to_use = gpu_q.get()
-    os.environ["CUDA_VISIBLE_DEVICES"] = gpu_to_use
+    #gpu_to_use = gpu_q.get()
+    #os.environ["CUDA_VISIBLE_DEVICES"] = gpu_to_use
 
     (x_train, y_train), (x_test, y_test) = dataset_load_fn()
     if len(x_test) > 5000:
