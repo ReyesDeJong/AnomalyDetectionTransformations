@@ -1,7 +1,6 @@
 import os
 import pprint
 import sys
-from glob import glob
 
 PROJECT_PATH = os.path.abspath(
     os.path.join(os.path.dirname(__file__), '..', '..'))
@@ -188,7 +187,7 @@ def load_hits_padded(n_samples_by_class=12500 * 2):
 
 
 def load_hits(n_samples_by_class=10000, test_size=0.20, val_size=0.10,
-    return_val=False, channels_to_get=[2]):  #[0, 1, 2, 3]):#
+    return_val=False, channels_to_get=[2]):  # [0, 1, 2, 3]):#
   data_path = os.path.join(PROJECT_PATH, '..', 'datasets',
                            'HiTS2013_300k_samples.pkl')
   params = {
@@ -212,7 +211,8 @@ def load_hits(n_samples_by_class=10000, test_size=0.20, val_size=0.10,
 
 
 def load_ztf_real_bog(val_percentage_of_inliers=0.10,
-    return_val=False, channels_to_get=[0, 1, 2], data_file_name = 'converted_data.pkl'):
+    return_val=False, channels_to_get=[0, 1, 2],
+    data_file_name='converted_data.pkl'):
   """Load and already separated inlier-outlier as real-bogus dataset, where label 1 is real."""
   folder_path = os.path.join(PROJECT_PATH, '..', 'datasets')
   data_path = os.path.join(folder_path, data_file_name)
@@ -306,7 +306,7 @@ def get_class_name_from_index(index, dataset_name):
 
 if __name__ == '__main__':
   (x_train, y_train), (x_val, y_val), (x_test, y_test) = load_ztf_real_bog(
-    return_val=True)
+      return_val=True)
 
   print('train: ', np.unique(y_train, return_counts=True))
   print('val: ', np.unique(y_val, return_counts=True))

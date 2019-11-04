@@ -27,10 +27,14 @@ from scripts.ensemble_transform_vs_all_od_hits import get_entropy, \
   plot_matrix_score
 import torch
 import torch.nn as nn
+from modules.utils import check_path
 
 EXPERIMENT_NAME = 'ZTF_v1_TransTransformations'
 
 if __name__ == "__main__":
+  results_folder = os.path.join(PROJECT_PATH, 'results', EXPERIMENT_NAME)
+  check_path(results_folder)
+
   config = tf.ConfigProto()
   config.gpu_options.allow_growth = True  # dynamically grow the memory used on the GPU
   sess = tf.Session(config=config)
@@ -38,7 +42,7 @@ if __name__ == "__main__":
 
   single_class_ind = 1
 
-  (x_train, y_train), (x_val, y_val), (x_test, y_test) = load_ztf_real_bog(return_val=True, data_file_name='ztf_v1_bogus_added.pkl')
+  (x_train, y_train), (x_val, y_val), (x_test, y_test) = load_ztf_real_bog(return_val=True)#, data_file_name='ztf_v1_bogus_added.pkl')
   print(x_train.shape)
   print(x_val.shape)
   print(x_test.shape)
@@ -145,8 +149,8 @@ if __name__ == "__main__":
   labels = y_test.flatten() == single_class_ind
 
   plot_histogram_disc_loss_acc_thr(test_scores[labels], test_scores[~labels],
-                                   path='../results',
-                                   x_label_name='%s_Dscores' % EXPERIMENT_NAME,
+                                   path=results_folder,
+                                   x_label_name='Dscores',
                                    val_inliers_score=val_scores_in)
 
   # Transforms without dirichlet
@@ -173,8 +177,8 @@ if __name__ == "__main__":
   labels = y_test.flatten() == single_class_ind
 
   plot_histogram_disc_loss_acc_thr(plain_scores_test[labels], plain_scores_test[~labels],
-                                   path='../results',
-                                   x_label_name='%s_scores' % EXPERIMENT_NAME,
+                                   path=results_folder,
+                                   x_label_name='scores',
                                    val_inliers_score=plain_scores_val)
 
 
@@ -226,16 +230,16 @@ if __name__ == "__main__":
 
   plot_histogram_disc_loss_acc_thr(
       np.trace(matrix_scores_test[labels], axis1=1, axis2=2),
-      np.trace(matrix_scores_test[~labels], axis1=1, axis2=2), path='../results',
-      x_label_name='%s_matrixTrace' % EXPERIMENT_NAME,
+      np.trace(matrix_scores_test[~labels], axis1=1, axis2=2), path=results_folder,
+      x_label_name='matrixTrace',
       val_inliers_score=np.trace(matrix_scores_val))
 
   entropy_scores_test = get_entropy(matrix_scores_test)
   entropy_scores_val = get_entropy(matrix_scores_val)
   plot_histogram_disc_loss_acc_thr(entropy_scores_test[labels],
                                    entropy_scores_test[~labels],
-                                   path='../results',
-                                   x_label_name='%s_entropy_scores_hits' % EXPERIMENT_NAME,
+                                   path=results_folder,
+                                   x_label_name='entropy_scores',
                                    val_inliers_score=entropy_scores_val)
 
   ## Get logits for xentropy
@@ -295,8 +299,8 @@ if __name__ == "__main__":
 
   plot_histogram_disc_loss_acc_thr(batch_xH_test[labels],
                                    batch_xH_test[~labels],
-                                   path='../results',
-                                   x_label_name='%s_xH_scores' % EXPERIMENT_NAME,
+                                   path=results_folder,
+                                   x_label_name='xH_scores',
                                    val_inliers_score=batch_xH_val)
 
   # get worst n traces for inliers and best n traces for outliers

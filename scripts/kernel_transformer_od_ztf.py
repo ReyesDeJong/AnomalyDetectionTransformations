@@ -26,10 +26,13 @@ from scripts.detached_transformer_od_hits import \
 from scripts.ensemble_transform_vs_all_od_hits import get_entropy
 import torch
 import torch.nn as nn
+from modules.utils import check_path
 
 EXPERIMENT_NAME = 'ZTF_v1_KernelTransformations'
 
 if __name__ == "__main__":
+  results_folder = os.path.join(PROJECT_PATH, 'results', EXPERIMENT_NAME)
+  check_path(results_folder)
   config = tf.ConfigProto()
   config.gpu_options.allow_growth = True  # dynamically grow the memory used on the GPU
   sess = tf.Session(config=config)
@@ -144,8 +147,8 @@ if __name__ == "__main__":
   labels = y_test.flatten() == single_class_ind
 
   plot_histogram_disc_loss_acc_thr(test_scores[labels], test_scores[~labels],
-                                   path='../results',
-                                   x_label_name='%s_Dscores' % EXPERIMENT_NAME,
+                                   path=results_folder,
+                                   x_label_name='Dscores',
                                    val_inliers_score=val_scores_in)
 
 
@@ -174,6 +177,6 @@ if __name__ == "__main__":
 
   plot_histogram_disc_loss_acc_thr(plain_scores_test[labels],
                                    plain_scores_test[~labels],
-                                   path='../results',
-                                   x_label_name='%s_scores' % EXPERIMENT_NAME,
+                                   path=results_folder,
+                                   x_label_name='scores',
                                    val_inliers_score=plain_scores_val)
