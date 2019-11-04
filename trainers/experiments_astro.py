@@ -20,7 +20,7 @@ from sklearn.externals.joblib import Parallel, delayed
 from keras.models import Model, Input, Sequential
 from keras.layers import Dense, Dropout
 from keras.utils import to_categorical
-from modules.data_loaders.base_line_loaders import load_cifar10, load_fashion_mnist, load_hits_padded, load_hits, save_roc_pr_curve_data, get_class_name_from_index, get_channels_axis
+from modules.data_loaders.base_line_loaders import load_cifar10, load_fashion_mnist, load_hits_padded, load_hits, save_roc_pr_curve_data, get_class_name_from_index, get_channels_axis, load_ztf_real_bog
 #from utils import save_roc_pr_curve_data, get_class_name_from_index, get_channels_axis
 from transformations import Transformer, TransTransformer, KernelTransformer
 from models.wide_residual_network import create_wide_residual_network
@@ -34,7 +34,7 @@ from scripts.ensemble_transform_vs_all_od_hits import get_entropy
 import torch
 import torch.nn as nn
 
-RESULTS_DIR = os.path.join(PROJECT_PATH, 'results/basic_Diff_channels')
+RESULTS_DIR = os.path.join(PROJECT_PATH, 'results/ztf')
 LARGE_DATASET_NAMES = ['cats-vs-dogs', 'hits', 'hits_padded']
 PARALLEL_N_JOBS = 16
 
@@ -714,7 +714,7 @@ if __name__ == '__main__':
 
     # data_Set, dataset_name, class_idx_to_run_experiments_on, n_runs
     experiments_list = [
-        (load_hits, 'ztf-real-bog-v1', 1, 10),
+        (load_ztf_real_bog, 'ztf-real-bog-v1', 1, 10),
     ]
 
     start_time = time.time()
