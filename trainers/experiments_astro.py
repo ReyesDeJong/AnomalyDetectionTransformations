@@ -22,23 +22,82 @@ from keras.layers import Dense, Dropout
 from keras.utils import to_categorical
 from modules.data_loaders.base_line_loaders import load_cifar10, load_fashion_mnist, load_hits_padded, load_hits, save_roc_pr_curve_data, get_class_name_from_index, get_channels_axis
 #from utils import save_roc_pr_curve_data, get_class_name_from_index, get_channels_axis
-from transformations import Transformer
+from transformations import Transformer, TransTransformer, KernelTransformer
 from models.wide_residual_network import create_wide_residual_network
 from models.encoders_decoders import conv_encoder, conv_decoder
 from models import dsebm, dagmm, adgan
-import keras.backend as K
 from modules.utils import check_path
 import time
 import datetime
 from pyod.models.mo_gaal import MO_GAAL
+from scripts.ensemble_transform_vs_all_od_hits import get_entropy
+import torch
+import torch.nn as nn
 
 RESULTS_DIR = os.path.join(PROJECT_PATH, 'results/basic_Diff_channels')
 LARGE_DATASET_NAMES = ['cats-vs-dogs', 'hits', 'hits_padded']
 PARALLEL_N_JOBS = 16
 
+def save_results_file(dataset_name, single_class_ind, scores, labels,
+    experiment_name):
+    res_file_name = '{}_{}_{}_{}.npz'.format(dataset_name, experiment_name,
+                                                 get_class_name_from_index(single_class_ind, dataset_name),
+                                                 datetime.datetime.now().strftime('%Y-%m-%d-%H%M'))
+    res_file_path = os.path.join(RESULTS_DIR, dataset_name, res_file_name)
+    save_roc_pr_curve_data(scores, labels, res_file_path)
+
+def get_xH(transformer, matrix_evals):
+    matrix_evals[matrix_evals==0] += 1e-10
+    matrix_evals[matrix_evals == 1] -= 1e-10
+    matrix_evals_compĺement = 1 - matrix_evals
+
+    matrix_vals_stack = np.stack([matrix_evals_compĺement, matrix_evals],
+        axis=-1)
+    xH = nn.NLLLoss(reduction='none')
+    gt_matrix = np.stack(
+        [np.eye(transformer.n_transforms)] * len(matrix_vals_stack))
+    gt_torch = torch.LongTensor(gt_matrix)
+    matrix_logSoftmax_torch = torch.FloatTensor(
+        np.swapaxes(np.swapaxes(matrix_vals_stack, 1, -1), -1, -2)).log()
+    loss_xH = xH(matrix_logSoftmax_torch, gt_torch)
+    batch_xH = np.mean(loss_xH.numpy(), axis=(-1, -2))
+    return batch_xH
+
+def calc_approx_alpha_sum(observations):
+    N = len(observations)
+    f = np.mean(observations, axis=0)
+
+    return (N * (len(f) - 1) * (-psi(1))) / (
+        N * np.sum(f * np.log(f)) - np.sum(
+        f * np.sum(np.log(observations), axis=0)))
+
+
+def inv_psi(y, iters=5):
+    # initial estimate
+    cond = y >= -2.22
+    x = cond * (np.exp(y) + 0.5) + (1 - cond) * -1 / (y - psi(1))
+
+    for _ in range(iters):
+        x = x - (psi(x) - y) / polygamma(1, x)
+    return x
+
+
+def fixed_point_dirichlet_mle(alpha_init, log_p_hat, max_iter=1000):
+    alpha_new = alpha_old = alpha_init
+    for _ in range(max_iter):
+        alpha_new = inv_psi(psi(np.sum(alpha_old)) + log_p_hat)
+        if np.sqrt(np.sum((alpha_old - alpha_new) ** 2)) < 1e-9:
+            break
+        alpha_old = alpha_new
+    return alpha_new
+
+
+def dirichlet_normality_score(alpha, p):
+    return np.sum((alpha - 1) * np.log(p), axis=-1)
+
 def _transformations_experiment(dataset_load_fn, dataset_name, single_class_ind, gpu_q):
-    gpu_to_use = gpu_q.get()
-    os.environ["CUDA_VISIBLE_DEVICES"] = gpu_to_use
+    # gpu_to_use = gpu_q.get()
+    # os.environ["CUDA_VISIBLE_DEVICES"] = gpu_to_use
 
     (x_train, y_train), (x_test, y_test) = dataset_load_fn()
 
@@ -66,47 +125,9 @@ def _transformations_experiment(dataset_load_fn, dataset_name, single_class_ind,
             batch_size=batch_size, epochs=int(np.ceil(200/transformer.n_transforms))
             )
 
-    #################################################################################################
-    # simplified normality score
-    #################################################################################################
-    # preds = np.zeros((len(x_test), transformer.n_transforms))
-    # for t in range(transformer.n_transforms):
-    #     preds[:, t] = mdl.predict(transformer.transform_batch(x_test, [t] * len(x_test)),
-    #                               batch_size=batch_size)[:, t]
-    #
-    # labels = y_test.flatten() == single_class_ind
-    # scores = preds.mean(axis=-1)
-    #################################################################################################
-
-    def calc_approx_alpha_sum(observations):
-        N = len(observations)
-        f = np.mean(observations, axis=0)
-
-        return (N * (len(f) - 1) * (-psi(1))) / (
-                N * np.sum(f * np.log(f)) - np.sum(f * np.sum(np.log(observations), axis=0)))
-
-    def inv_psi(y, iters=5):
-        # initial estimate
-        cond = y >= -2.22
-        x = cond * (np.exp(y) + 0.5) + (1 - cond) * -1 / (y - psi(1))
-
-        for _ in range(iters):
-            x = x - (psi(x) - y) / polygamma(1, x)
-        return x
-
-    def fixed_point_dirichlet_mle(alpha_init, log_p_hat, max_iter=1000):
-        alpha_new = alpha_old = alpha_init
-        for _ in range(max_iter):
-            alpha_new = inv_psi(psi(np.sum(alpha_old)) + log_p_hat)
-            if np.sqrt(np.sum((alpha_old - alpha_new) ** 2)) < 1e-9:
-                break
-            alpha_old = alpha_new
-        return alpha_new
-
-    def dirichlet_normality_score(alpha, p):
-        return np.sum((alpha - 1) * np.log(p), axis=-1)
-
     scores = np.zeros((len(x_test),))
+    matrix_evals = np.zeros(
+        (len(x_test), transformer.n_transforms, transformer.n_transforms))
     observed_data = x_train_task
     for t_ind in range(transformer.n_transforms):
         observed_dirichlet = mdl.predict(transformer.transform_batch(observed_data, [t_ind] * len(observed_data)),
@@ -120,16 +141,24 @@ def _transformations_experiment(dataset_load_fn, dataset_name, single_class_ind,
 
         x_test_p = mdl.predict(transformer.transform_batch(x_test, [t_ind] * len(x_test)),
                                batch_size=1024)
+        matrix_evals[:, :, t_ind] += x_test_p
         scores += dirichlet_normality_score(mle_alpha_t, x_test_p)
 
     scores /= transformer.n_transforms
+    matrix_evals /= transformer.n_transforms
+    scores_simple = np.trace(matrix_evals, axis1=1, axis2=2)
+    scores_entropy = get_entropy(matrix_evals)
+    scores_xH = get_xH(transformer, matrix_evals)
     labels = y_test.flatten() == single_class_ind
 
-    res_file_name = '{}_transformations_{}_{}.npz'.format(dataset_name,
-                                                 get_class_name_from_index(single_class_ind, dataset_name),
-                                                 datetime.datetime.now().strftime('%Y-%m-%d-%H%M'))
-    res_file_path = os.path.join(RESULTS_DIR, dataset_name, res_file_name)
-    save_roc_pr_curve_data(scores, labels, res_file_path)
+    save_results_file(dataset_name, single_class_ind, scores=scores,
+                      labels=labels, experiment_name='transformations')
+    save_results_file(dataset_name, single_class_ind, scores=scores_simple,
+                      labels=labels, experiment_name='transformations-simple')
+    save_results_file(dataset_name, single_class_ind, scores=scores_entropy,
+                      labels=labels, experiment_name='transformations-entropy')
+    save_results_file(dataset_name, single_class_ind, scores=scores_xH,
+                      labels=labels, experiment_name='transformations-xH')
 
     mdl_weights_name = '{}_transformations_{}_{}_weights.h5'.format(dataset_name,
                                                            get_class_name_from_index(single_class_ind, dataset_name),
@@ -137,7 +166,150 @@ def _transformations_experiment(dataset_load_fn, dataset_name, single_class_ind,
     mdl_weights_path = os.path.join(RESULTS_DIR, dataset_name, mdl_weights_name)
     mdl.save_weights(mdl_weights_path)
 
-    gpu_q.put(gpu_to_use)
+    # gpu_q.put(gpu_to_use)
+
+def _trans_transformations_experiment(dataset_load_fn, dataset_name, single_class_ind, gpu_q):
+    # gpu_to_use = gpu_q.get()
+    # os.environ["CUDA_VISIBLE_DEVICES"] = gpu_to_use
+
+    (x_train, y_train), (x_test, y_test) = dataset_load_fn()
+
+    if dataset_name in ['cats-vs-dogs']:
+        transformer = TransTransformer(16, 16)
+        n, k = (16, 8)
+    else:
+        transformer = TransTransformer(8, 8)
+        n, k = (10, 4)
+    mdl = create_wide_residual_network(x_train.shape[1:], transformer.n_transforms, n, k)
+    mdl.compile('adam',
+                'categorical_crossentropy',
+                ['acc'])
+
+    # get inliers of specific class
+    x_train_task = x_train[y_train.flatten() == single_class_ind]
+    # [0_i, ..., (N_transforms-1)_i, ..., ..., 0_N_samples, ...,
+    # (N_transforms-1)_N_samples] shape: (N_transforms*N_samples,)
+    transformations_inds = np.tile(np.arange(transformer.n_transforms), len(x_train_task))
+    x_train_task_transformed = transformer.transform_batch(np.repeat(x_train_task, transformer.n_transforms, axis=0),
+                                                           transformations_inds)
+    batch_size = 128
+
+    mdl.fit(x=x_train_task_transformed, y=to_categorical(transformations_inds),
+            batch_size=batch_size, epochs=int(np.ceil(200/transformer.n_transforms))
+            )
+
+    scores = np.zeros((len(x_test),))
+    matrix_evals = np.zeros(
+        (len(x_test), transformer.n_transforms, transformer.n_transforms))
+    observed_data = x_train_task
+    for t_ind in range(transformer.n_transforms):
+        observed_dirichlet = mdl.predict(transformer.transform_batch(observed_data, [t_ind] * len(observed_data)),
+                                         batch_size=1024)
+        log_p_hat_train = np.log(observed_dirichlet).mean(axis=0)
+
+        alpha_sum_approx = calc_approx_alpha_sum(observed_dirichlet)
+        alpha_0 = observed_dirichlet.mean(axis=0) * alpha_sum_approx
+
+        mle_alpha_t = fixed_point_dirichlet_mle(alpha_0, log_p_hat_train)
+
+        x_test_p = mdl.predict(transformer.transform_batch(x_test, [t_ind] * len(x_test)),
+                               batch_size=1024)
+        matrix_evals[:, :, t_ind] += x_test_p
+        scores += dirichlet_normality_score(mle_alpha_t, x_test_p)
+
+    scores /= transformer.n_transforms
+    matrix_evals /= transformer.n_transforms
+    scores_simple = np.trace(matrix_evals, axis1=1, axis2=2)
+    scores_entropy = get_entropy(matrix_evals)
+    scores_xH = get_xH(transformer, matrix_evals)
+    labels = y_test.flatten() == single_class_ind
+
+    save_results_file(dataset_name, single_class_ind, scores=scores,
+                      labels=labels, experiment_name='trans-transformations')
+    save_results_file(dataset_name, single_class_ind, scores=scores_simple,
+                      labels=labels, experiment_name='trans-transformations-simple')
+    save_results_file(dataset_name, single_class_ind, scores=scores_entropy,
+                      labels=labels, experiment_name='trans-transformations-entropy')
+    save_results_file(dataset_name, single_class_ind, scores=scores_xH,
+                      labels=labels, experiment_name='trans-transformations-xH')
+
+    mdl_weights_name = '{}_trans-transformations_{}_{}_weights.h5'.format(dataset_name,
+                                                           get_class_name_from_index(single_class_ind, dataset_name),
+                                                           datetime.datetime.now().strftime('%Y-%m-%d-%H%M'))
+    mdl_weights_path = os.path.join(RESULTS_DIR, dataset_name, mdl_weights_name)
+    mdl.save_weights(mdl_weights_path)
+
+def _kernel_transformations_experiment(dataset_load_fn, dataset_name, single_class_ind, gpu_q):
+    # gpu_to_use = gpu_q.get()
+    # os.environ["CUDA_VISIBLE_DEVICES"] = gpu_to_use
+
+    (x_train, y_train), (x_test, y_test) = dataset_load_fn()
+
+    if dataset_name in ['cats-vs-dogs']:
+        transformer = None
+    else:
+        transformer = KernelTransformer(translation_x=8, translation_y=8,
+                                        rotations=0,
+                                        flips=0, gauss=1, log=1)
+        n, k = (10, 4)
+    mdl = create_wide_residual_network(x_train.shape[1:], transformer.n_transforms, n, k)
+    mdl.compile('adam',
+                'categorical_crossentropy',
+                ['acc'])
+
+    # get inliers of specific class
+    x_train_task = x_train[y_train.flatten() == single_class_ind]
+    # [0_i, ..., (N_transforms-1)_i, ..., ..., 0_N_samples, ...,
+    # (N_transforms-1)_N_samples] shape: (N_transforms*N_samples,)
+    transformations_inds = np.tile(np.arange(transformer.n_transforms), len(x_train_task))
+    x_train_task_transformed = transformer.transform_batch(np.repeat(x_train_task, transformer.n_transforms, axis=0),
+                                                           transformations_inds)
+    batch_size = 128
+
+    mdl.fit(x=x_train_task_transformed, y=to_categorical(transformations_inds),
+            batch_size=batch_size, epochs=int(np.ceil(200/transformer.n_transforms))
+            )
+
+    scores = np.zeros((len(x_test),))
+    matrix_evals = np.zeros(
+        (len(x_test), transformer.n_transforms, transformer.n_transforms))
+    observed_data = x_train_task
+    for t_ind in range(transformer.n_transforms):
+        observed_dirichlet = mdl.predict(transformer.transform_batch(observed_data, [t_ind] * len(observed_data)),
+                                         batch_size=1024)
+        log_p_hat_train = np.log(observed_dirichlet).mean(axis=0)
+
+        alpha_sum_approx = calc_approx_alpha_sum(observed_dirichlet)
+        alpha_0 = observed_dirichlet.mean(axis=0) * alpha_sum_approx
+
+        mle_alpha_t = fixed_point_dirichlet_mle(alpha_0, log_p_hat_train)
+
+        x_test_p = mdl.predict(transformer.transform_batch(x_test, [t_ind] * len(x_test)),
+                               batch_size=1024)
+        matrix_evals[:, :, t_ind] += x_test_p
+        scores += dirichlet_normality_score(mle_alpha_t, x_test_p)
+
+    scores /= transformer.n_transforms
+    matrix_evals /= transformer.n_transforms
+    scores_simple = np.trace(matrix_evals, axis1=1, axis2=2)
+    scores_entropy = get_entropy(matrix_evals)
+    scores_xH = get_xH(transformer, matrix_evals)
+    labels = y_test.flatten() == single_class_ind
+
+    save_results_file(dataset_name, single_class_ind, scores=scores,
+                      labels=labels, experiment_name='kernel-transformations')
+    save_results_file(dataset_name, single_class_ind, scores=scores_simple,
+                      labels=labels, experiment_name='kernel-transformations-simple')
+    save_results_file(dataset_name, single_class_ind, scores=scores_entropy,
+                      labels=labels, experiment_name='kernel-transformations-entropy')
+    save_results_file(dataset_name, single_class_ind, scores=scores_xH,
+                      labels=labels, experiment_name='kernel-transformations-xH')
+
+    mdl_weights_name = '{}_kernel-transformations_{}_{}_weights.h5'.format(dataset_name,
+                                                           get_class_name_from_index(single_class_ind, dataset_name),
+                                                           datetime.datetime.now().strftime('%Y-%m-%d-%H%M'))
+    mdl_weights_path = os.path.join(RESULTS_DIR, dataset_name, mdl_weights_name)
+    mdl.save_weights(mdl_weights_path)
 
 def _mo_gaal_experiment(dataset_load_fn, dataset_name, single_class_ind):
     (x_train, y_train), (x_test, y_test) = dataset_load_fn()
@@ -426,44 +598,58 @@ def run_experiments(load_dataset_fn, dataset_name, q, class_idx, n_runs):
     for _ in range(n_runs):
         _mo_gaal_experiment(load_dataset_fn, dataset_name, class_idx)
 
-    # # IF
-    # for _ in range(n_runs):
-    #     _if_experiment(load_dataset_fn, dataset_name, class_idx)
-    #
-    # # CAE OC-SVM
-    # for _ in range(n_runs):
-    #     processes = [Process(target=_cae_ocsvm_experiment,
-    #                          args=(load_dataset_fn, dataset_name, class_idx, q))]
-    #     for p in processes:
-    #         p.start()
-    #         p.join()
-    #
-    # # Raw OC-SVM
-    # for _ in range(n_runs):
-    #     _raw_ocsvm_experiment(load_dataset_fn, dataset_name, class_idx)
-    #
-    # # Transformations
-    # for _ in range(n_runs):
-    #     processes = [Process(target=_transformations_experiment,
-    #                          args=(load_dataset_fn, dataset_name, class_idx, q))]
-    #     if dataset_name in LARGE_DATASET_NAMES:  # Self-labeled set is memory consuming
-    #         for p in processes:
-    #             p.start()
-    #             p.join()
-    #     else:
-    #         for p in processes:
-    #             p.start()
-    #         for p in processes:
-    #             p.join()
-    #
-    # # DSEBM
-    # for _ in range(n_runs):
-    #     processes = [Process(target=_dsebm_experiment,
-    #                          args=(load_dataset_fn, dataset_name, class_idx, q))]
-    #     for p in processes:
-    #         p.start()
-    #     for p in processes:
-    #         p.join()
+    # IF
+    for _ in range(n_runs):
+        _if_experiment(load_dataset_fn, dataset_name, class_idx)
+
+    # CAE OC-SVM
+    for _ in range(n_runs):
+        processes = [Process(target=_cae_ocsvm_experiment,
+                             args=(load_dataset_fn, dataset_name, class_idx, q))]
+        for p in processes:
+            p.start()
+            p.join()
+
+    # Raw OC-SVM
+    for _ in range(n_runs):
+        _raw_ocsvm_experiment(load_dataset_fn, dataset_name, class_idx)
+
+    # Transformations
+    for _ in range(n_runs):
+        processes = [Process(target=_transformations_experiment,
+                             args=(load_dataset_fn, dataset_name, class_idx, q))]
+        for p in processes:
+            p.start()
+        for p in processes:
+            p.join()
+
+    # Trans-Transformations
+    for _ in range(n_runs):
+        processes = [Process(target=_trans_transformations_experiment,
+                             args=(load_dataset_fn, dataset_name, class_idx, q))]
+        for p in processes:
+            p.start()
+        for p in processes:
+            p.join()
+
+    # Kernel-Transformations
+    for _ in range(n_runs):
+        processes = [Process(target=_kernel_transformations_experiment,
+                             args=(
+                             load_dataset_fn, dataset_name, class_idx, q))]
+        for p in processes:
+            p.start()
+        for p in processes:
+            p.join()
+
+    # DSEBM
+    for _ in range(n_runs):
+        processes = [Process(target=_dsebm_experiment,
+                             args=(load_dataset_fn, dataset_name, class_idx, q))]
+        for p in processes:
+            p.start()
+        for p in processes:
+            p.join()
     #
     # # DAGMM
     # for _ in range(n_runs):
@@ -474,14 +660,14 @@ def run_experiments(load_dataset_fn, dataset_name, q, class_idx, n_runs):
     #     for p in processes:
     #         p.join()
     #
-    # # ADGAN
-    # for _ in range(n_runs):
-    #     processes = [Process(target=_adgan_experiment,
-    #                              args=(load_dataset_fn, dataset_name, class_idx, q))]
-    #     for p in processes:
-    #         p.start()
-    #     for p in processes:
-    #         p.join()
+    # ADGAN
+    for _ in range(n_runs):
+        processes = [Process(target=_adgan_experiment,
+                                 args=(load_dataset_fn, dataset_name, class_idx, q))]
+        for p in processes:
+            p.start()
+        for p in processes:
+            p.join()
 
 
 def create_auc_table(metric='roc_auc'):
@@ -528,12 +714,12 @@ if __name__ == '__main__':
 
     # data_Set, dataset_name, class_idx_to_run_experiments_on, n_runs
     experiments_list = [
-        (load_hits, 'hits', 1, 10),
+        (load_hits, 'ztf-real-bog-v1', 1, 10),
     ]
 
     start_time = time.time()
-    # for data_load_fn, dataset_name, class_idx, run_i in experiments_list:
-    #    run_experiments(data_load_fn, dataset_name, q, class_idx, run_i)
+    for data_load_fn, dataset_name, class_idx, run_i in experiments_list:
+       run_experiments(data_load_fn, dataset_name, q, class_idx, run_i)
     create_auc_table()
     time_usage = str(datetime.timedelta(
         seconds=int(round(time.time() - start_time))))

@@ -187,7 +187,7 @@ def load_hits_padded(n_samples_by_class=12500 * 2):
 
 
 def load_hits(n_samples_by_class=10000, test_size=0.20, val_size=0.10,
-    return_val=False, channels_to_get=[2]):  # [0, 1, 2, 3]):#
+    return_val=False, channels_to_get=[0, 1, 2, 3]):#[2]):  #
   data_path = os.path.join(PROJECT_PATH, '..', 'datasets',
                            'HiTS2013_300k_samples.pkl')
   params = {
@@ -212,10 +212,14 @@ def load_hits(n_samples_by_class=10000, test_size=0.20, val_size=0.10,
 
 def load_ztf_real_bog(val_percentage_of_inliers=0.10,
     return_val=False, channels_to_get=[0, 1, 2],
-    data_file_name='converted_data.pkl'):
+    data_file_name='ztf_v1_bogus_added.pkl', crop_size=21):
   """Load and already separated inlier-outlier as real-bogus dataset, where label 1 is real."""
   folder_path = os.path.join(PROJECT_PATH, '..', 'datasets')
   data_path = os.path.join(folder_path, data_file_name)
+  # check if preprocessed data (converted) already exists
+  converted_data_path = os.path.join(folder_path, 'converted_' + data_file_name)
+  if os.path.exists(converted_data_path):
+    data_path = converted_data_path
 
   # params for Frame input ztf loader and preprocessing
   params = {
@@ -225,9 +229,8 @@ def load_ztf_real_bog(val_percentage_of_inliers=0.10,
     param_keys.TEST_SIZE: 0,  # not used
     param_keys.VAL_SIZE: 0,  # not used
     param_keys.NANS_TO: 0,
-    param_keys.CROP_SIZE: 21,
-    param_keys.CONVERTED_DATA_SAVEPATH: os.path.join(folder_path,
-                                                     "converted_data.pkl")
+    param_keys.CROP_SIZE: crop_size,
+    param_keys.CONVERTED_DATA_SAVEPATH: converted_data_path
   }
   # instantiate laoder, set preprocessor, load dataset
   data_loader = FrameToInput(params)
@@ -299,6 +302,9 @@ def get_class_name_from_index(index, dataset_name):
     'hits': ('bogus', 'real'),
     'hits-padded': ('bogus', 'real'),
     'ztf-real-bog': ('bogus', 'real'),
+    'ztf-real-bog-v0': ('bogus', 'real'),
+    'ztf-real-bog-v1': ('bogus', 'real'),
+    'ztf-real-bog-v1-no-crop': ('bogus', 'real'),
   }
 
   return ind_to_name[dataset_name][index]
