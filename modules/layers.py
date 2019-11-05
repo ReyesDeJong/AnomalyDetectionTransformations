@@ -57,8 +57,8 @@ def dense(
     Dense layer output, that can comprehend batchnorm, activation and dropout,
     in that sequential order.
   """
-  with tf.variable_scope(name):
-    outputs = tf.layers.dense(
+  with tf.name_scope(name):
+    outputs = tf.keras.layers.Dense(
         inputs=inputs, units=units, activation=None,
         kernel_initializer=kernel_initializer,
         bias_initializer=bias_initializer, name=name)
@@ -99,7 +99,7 @@ def deconv2d(
     batchnorm=constants.BN,
     kernel_size=5,
     strides=2,
-    padding=constants.PAD_SAME,
+    padding=constants.SAME,
     data_format='channels_last',
     activation=tf.nn.relu,
     kernel_initializer=None,
@@ -144,7 +144,7 @@ def deconv2d(
     Up sampled layer output, that can comprehend batchnorm and activation.
   """
   errors.check_valid_value(
-      padding, 'padding', [constants.PAD_SAME, constants.PAD_VALID])
+      padding, 'padding', [constants.SAME, constants.VALID])
 
   with tf.variable_scope(name):
     outputs = tf.layers.conv2d_transpose(
@@ -176,7 +176,7 @@ def conv2d(
     training,
     batchnorm=constants.BN,
     activation=tf.nn.relu,
-    padding=constants.PAD_SAME,
+    padding=constants.SAME,
     data_format='channels_last',
     kernel_size=3,
     strides=1,
@@ -208,7 +208,7 @@ def conv2d(
       name: (Optional, string, defaults to None) A name for the operation.
       """
   errors.check_valid_value(
-      padding, 'padding', [constants.PAD_SAME, constants.PAD_VALID])
+      padding, 'padding', [constants.SAME, constants.VALID])
 
   with tf.variable_scope(name):
     outputs = tf.layers.conv2d(
@@ -260,13 +260,12 @@ def batchnorm_layer(
   errors.check_valid_value(
       batchnorm, 'batchnorm', [constants.BN, constants.BN_RENORM])
 
-  if batchnorm == constants.BN_RENORM:
-    name = '%s_renorm' % name
   if batchnorm == constants.BN:
     outputs = tf.layers.batch_normalization(
         inputs=inputs, training=training, scale=scale,
         reuse=reuse, name=name)
   else:  # BN_RENORM
+    name = '%s_renorm' % name
     outputs = tf.layers.batch_normalization(
         inputs=inputs, training=training, scale=scale,
         reuse=reuse, renorm=True, name=name)
@@ -299,11 +298,22 @@ def pooling_layer(inputs, pooling=constants.MAXPOOL, pool_size=2, strides=2,
   return outputs
 
 
-def upsampling_layer(inputs, filters, padding=constants.PAD_SAME, name=None):
+def upsampling_layer(inputs, filters, padding=constants.SAME, name=None):
   errors.check_valid_value(
-      padding, 'padding', [constants.PAD_SAME, constants.PAD_VALID])
+      padding, 'padding', [constants.SAME, constants.VALID])
 
   outputs = tf.layers.conv2d_transpose(
       inputs=inputs, filters=filters, kernel_size=2,
       strides=2, activation=None, padding=padding, name=name)
   return outputs
+
+
+def cyclic_avg_pool(inputs, name=''):
+  with tf.name_scope(name):
+    _, in_feat = inputs.get_shape().as_list()
+    separate_rotations = tf.reshape(inputs, [4, -1, in_feat])
+    return tf.reduce_mean(separate_rotations, axis=0)
+
+
+
+
