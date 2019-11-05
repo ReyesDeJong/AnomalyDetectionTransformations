@@ -147,8 +147,8 @@ def _transformations_experiment(dataset_load_fn, dataset_name, single_class_ind,
     scores /= transformer.n_transforms
     matrix_evals /= transformer.n_transforms
     scores_simple = np.trace(matrix_evals, axis1=1, axis2=2)
-    scores_entropy = get_entropy(matrix_evals)
-    scores_xH = get_xH(transformer, matrix_evals)
+    scores_entropy = -1*get_entropy(matrix_evals)
+    scores_xH = -1*get_xH(transformer, matrix_evals)
     labels = y_test.flatten() == single_class_ind
 
     save_results_file(dataset_name, single_class_ind, scores=scores,
@@ -220,8 +220,8 @@ def _trans_transformations_experiment(dataset_load_fn, dataset_name, single_clas
     scores /= transformer.n_transforms
     matrix_evals /= transformer.n_transforms
     scores_simple = np.trace(matrix_evals, axis1=1, axis2=2)
-    scores_entropy = get_entropy(matrix_evals)
-    scores_xH = get_xH(transformer, matrix_evals)
+    scores_entropy = -1*get_entropy(matrix_evals)
+    scores_xH = -1*get_xH(transformer, matrix_evals)
     labels = y_test.flatten() == single_class_ind
 
     save_results_file(dataset_name, single_class_ind, scores=scores,
@@ -292,8 +292,8 @@ def _kernel_transformations_experiment(dataset_load_fn, dataset_name, single_cla
     scores /= transformer.n_transforms
     matrix_evals /= transformer.n_transforms
     scores_simple = np.trace(matrix_evals, axis1=1, axis2=2)
-    scores_entropy = get_entropy(matrix_evals)
-    scores_xH = get_xH(transformer, matrix_evals)
+    scores_entropy = -1*get_entropy(matrix_evals)
+    scores_xH = -1*get_xH(transformer, matrix_evals)
     labels = y_test.flatten() == single_class_ind
 
     save_results_file(dataset_name, single_class_ind, scores=scores,
@@ -310,6 +310,79 @@ def _kernel_transformations_experiment(dataset_load_fn, dataset_name, single_cla
                                                            datetime.datetime.now().strftime('%Y-%m-%d-%H%M'))
     mdl_weights_path = os.path.join(RESULTS_DIR, dataset_name, mdl_weights_name)
     mdl.save_weights(mdl_weights_path)
+
+def _kernal_plus_transformations_experiment(dataset_load_fn, dataset_name, single_class_ind, gpu_q):
+    # gpu_to_use = gpu_q.get()
+    # os.environ["CUDA_VISIBLE_DEVICES"] = gpu_to_use
+
+    (x_train, y_train), (x_test, y_test) = dataset_load_fn()
+
+    if dataset_name in ['cats-vs-dogs']:
+        transformer = None
+    else:
+        transformer = KernelTransformer(translation_x=8, translation_y=8,
+                                        rotations=1,
+                                        flips=1, gauss=1, log=1)
+        n, k = (10, 4)
+    mdl = create_wide_residual_network(x_train.shape[1:], transformer.n_transforms, n, k)
+    mdl.compile('adam',
+                'categorical_crossentropy',
+                ['acc'])
+
+    # get inliers of specific class
+    x_train_task = x_train[y_train.flatten() == single_class_ind]
+    # [0_i, ..., (N_transforms-1)_i, ..., ..., 0_N_samples, ...,
+    # (N_transforms-1)_N_samples] shape: (N_transforms*N_samples,)
+    transformations_inds = np.tile(np.arange(transformer.n_transforms), len(x_train_task))
+    x_train_task_transformed = transformer.transform_batch(np.repeat(x_train_task, transformer.n_transforms, axis=0),
+                                                           transformations_inds)
+    batch_size = 128
+
+    mdl.fit(x=x_train_task_transformed, y=to_categorical(transformations_inds),
+            batch_size=batch_size, epochs=int(np.ceil(200/transformer.n_transforms))
+            )
+
+    scores = np.zeros((len(x_test),))
+    matrix_evals = np.zeros(
+        (len(x_test), transformer.n_transforms, transformer.n_transforms))
+    observed_data = x_train_task
+    for t_ind in range(transformer.n_transforms):
+        observed_dirichlet = mdl.predict(transformer.transform_batch(observed_data, [t_ind] * len(observed_data)),
+                                         batch_size=1024)
+        log_p_hat_train = np.log(observed_dirichlet).mean(axis=0)
+
+        alpha_sum_approx = calc_approx_alpha_sum(observed_dirichlet)
+        alpha_0 = observed_dirichlet.mean(axis=0) * alpha_sum_approx
+
+        mle_alpha_t = fixed_point_dirichlet_mle(alpha_0, log_p_hat_train)
+
+        x_test_p = mdl.predict(transformer.transform_batch(x_test, [t_ind] * len(x_test)),
+                               batch_size=1024)
+        matrix_evals[:, :, t_ind] += x_test_p
+        scores += dirichlet_normality_score(mle_alpha_t, x_test_p)
+
+    scores /= transformer.n_transforms
+    matrix_evals /= transformer.n_transforms
+    scores_simple = np.trace(matrix_evals, axis1=1, axis2=2)
+    scores_entropy = -1*get_entropy(matrix_evals)
+    scores_xH = -1*get_xH(transformer, matrix_evals)
+    labels = y_test.flatten() == single_class_ind
+
+    save_results_file(dataset_name, single_class_ind, scores=scores,
+                      labels=labels, experiment_name='kernel-plus-transformations')
+    save_results_file(dataset_name, single_class_ind, scores=scores_simple,
+                      labels=labels, experiment_name='kernel-plus-transformations-simple')
+    save_results_file(dataset_name, single_class_ind, scores=scores_entropy,
+                      labels=labels, experiment_name='kernel-plus-transformations-entropy')
+    save_results_file(dataset_name, single_class_ind, scores=scores_xH,
+                      labels=labels, experiment_name='kernel-plus-transformations-xH')
+
+    mdl_weights_name = '{}_kernel-transformations_{}_{}_weights.h5'.format(dataset_name,
+                                                           get_class_name_from_index(single_class_ind, dataset_name),
+                                                           datetime.datetime.now().strftime('%Y-%m-%d-%H%M'))
+    mdl_weights_path = os.path.join(RESULTS_DIR, dataset_name, mdl_weights_name)
+    mdl.save_weights(mdl_weights_path)
+
 
 def _mo_gaal_experiment(dataset_load_fn, dataset_name, single_class_ind):
     (x_train, y_train), (x_test, y_test) = dataset_load_fn()
@@ -594,62 +667,72 @@ def _adgan_experiment(dataset_load_fn, dataset_name, single_class_ind, gpu_q):
 #ToDo: research how to perform multi gpu training
 def run_experiments(load_dataset_fn, dataset_name, q, class_idx, n_runs):
     check_path(os.path.join(RESULTS_DIR, dataset_name))
-    # MO_GAAL
+    # Kernel-plus-Transformations
     for _ in range(n_runs):
-        _mo_gaal_experiment(load_dataset_fn, dataset_name, class_idx)
-
-    # IF
-    for _ in range(n_runs):
-        _if_experiment(load_dataset_fn, dataset_name, class_idx)
-
-    # CAE OC-SVM
-    for _ in range(n_runs):
-        processes = [Process(target=_cae_ocsvm_experiment,
-                             args=(load_dataset_fn, dataset_name, class_idx, q))]
-        for p in processes:
-            p.start()
-            p.join()
-
-    # Raw OC-SVM
-    for _ in range(n_runs):
-        _raw_ocsvm_experiment(load_dataset_fn, dataset_name, class_idx)
-
-    # Transformations
-    for _ in range(n_runs):
-        processes = [Process(target=_transformations_experiment,
-                             args=(load_dataset_fn, dataset_name, class_idx, q))]
-        for p in processes:
-            p.start()
-        for p in processes:
-            p.join()
-
-    # Trans-Transformations
-    for _ in range(n_runs):
-        processes = [Process(target=_trans_transformations_experiment,
-                             args=(load_dataset_fn, dataset_name, class_idx, q))]
-        for p in processes:
-            p.start()
-        for p in processes:
-            p.join()
-
-    # Kernel-Transformations
-    for _ in range(n_runs):
-        processes = [Process(target=_kernel_transformations_experiment,
+        processes = [Process(target=_kernal_plus_transformations_experiment,
                              args=(
                              load_dataset_fn, dataset_name, class_idx, q))]
         for p in processes:
             p.start()
         for p in processes:
             p.join()
-
-    # DSEBM
-    for _ in range(n_runs):
-        processes = [Process(target=_dsebm_experiment,
-                             args=(load_dataset_fn, dataset_name, class_idx, q))]
-        for p in processes:
-            p.start()
-        for p in processes:
-            p.join()
+    #
+    # # MO_GAAL
+    # for _ in range(n_runs):
+    #     _mo_gaal_experiment(load_dataset_fn, dataset_name, class_idx)
+    #
+    # # IF
+    # for _ in range(n_runs):
+    #     _if_experiment(load_dataset_fn, dataset_name, class_idx)
+    #
+    # # CAE OC-SVM
+    # for _ in range(n_runs):
+    #     processes = [Process(target=_cae_ocsvm_experiment,
+    #                          args=(load_dataset_fn, dataset_name, class_idx, q))]
+    #     for p in processes:
+    #         p.start()
+    #         p.join()
+    #
+    # # Raw OC-SVM
+    # for _ in range(n_runs):
+    #     _raw_ocsvm_experiment(load_dataset_fn, dataset_name, class_idx)
+    #
+    # # Transformations
+    # for _ in range(n_runs):
+    #     processes = [Process(target=_transformations_experiment,
+    #                          args=(load_dataset_fn, dataset_name, class_idx, q))]
+    #     for p in processes:
+    #         p.start()
+    #     for p in processes:
+    #         p.join()
+    #
+    # # Trans-Transformations
+    # for _ in range(n_runs):
+    #     processes = [Process(target=_trans_transformations_experiment,
+    #                          args=(load_dataset_fn, dataset_name, class_idx, q))]
+    #     for p in processes:
+    #         p.start()
+    #     for p in processes:
+    #         p.join()
+    #
+    # # Kernel-Transformations
+    # for _ in range(n_runs):
+    #     processes = [Process(target=_kernel_transformations_experiment,
+    #                          args=(
+    #                          load_dataset_fn, dataset_name, class_idx, q))]
+    #     for p in processes:
+    #         p.start()
+    #     for p in processes:
+    #         p.join()
+    #
+    # # DSEBM
+    # for _ in range(n_runs):
+    #     processes = [Process(target=_dsebm_experiment,
+    #                          args=(load_dataset_fn, dataset_name, class_idx, q))]
+    #     for p in processes:
+    #         p.start()
+    #     for p in processes:
+    #         p.join()
     #
     # # DAGMM
     # for _ in range(n_runs):
@@ -660,14 +743,14 @@ def run_experiments(load_dataset_fn, dataset_name, q, class_idx, n_runs):
     #     for p in processes:
     #         p.join()
     #
-    # ADGAN
-    for _ in range(n_runs):
-        processes = [Process(target=_adgan_experiment,
-                                 args=(load_dataset_fn, dataset_name, class_idx, q))]
-        for p in processes:
-            p.start()
-        for p in processes:
-            p.join()
+    # # ADGAN
+    # for _ in range(n_runs):
+    #     processes = [Process(target=_adgan_experiment,
+    #                              args=(load_dataset_fn, dataset_name, class_idx, q))]
+    #     for p in processes:
+    #         p.start()
+    #     for p in processes:
+    #         p.join()
 
 
 def create_auc_table(metric='roc_auc'):
