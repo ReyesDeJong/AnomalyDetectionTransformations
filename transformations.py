@@ -278,42 +278,42 @@ class PlusKernelTransformer(KernelTransformer):
         self.iterable_tx,
         self.iterable_ty,
         self.iterable_rot,
-        (0),
-        (0)):
+        [0],
+        [0]):
       transformation = KernelTransformation(is_flip, tx, ty, k_rotate, is_gauss,
                                             is_log)
       transformation_list.append(transformation)
 
     for is_flip, tx, ty, k_rotate, is_gauss, is_log in itertools.product(
-        (0),
+        [0],
         self.iterable_tx,
         self.iterable_ty,
-        (0),
-        (1),
-        (0)):
+        [0],
+        [1],
+        [0]):
       transformation = KernelTransformation(is_flip, tx, ty, k_rotate, is_gauss,
                                             is_log)
       transformation_list.append(transformation)
 
     for is_flip, tx, ty, k_rotate, is_gauss, is_log in itertools.product(
-        (0),
+        [0],
         self.iterable_tx,
         self.iterable_ty,
-        (0),
-        (0),
-        (1)):
+        [0],
+        [0],
+        [1]):
       transformation = KernelTransformation(is_flip, tx, ty, k_rotate,
                                             is_gauss,
                                             is_log)
       transformation_list.append(transformation)
 
     for is_flip, tx, ty, k_rotate, is_gauss, is_log in itertools.product(
-        (0),
+        [0],
         self.iterable_tx,
         self.iterable_ty,
-        (0),
-        (1),
-        (1)):
+        [0],
+        [1],
+        [1]):
       transformation = KernelTransformation(is_flip, tx, ty, k_rotate,
                                             is_gauss,
                                             is_log)
