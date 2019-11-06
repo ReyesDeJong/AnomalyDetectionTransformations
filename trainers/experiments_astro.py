@@ -100,7 +100,7 @@ def _transformations_experiment(dataset_load_fn, dataset_name, single_class_ind,
     # os.environ["CUDA_VISIBLE_DEVICES"] = gpu_to_use
 
     (x_train, y_train), (x_test, y_test) = dataset_load_fn()
-
+    print(x_train.shape)
     if dataset_name in ['cats-vs-dogs']:
         transformer = Transformer(16, 16)
         n, k = (16, 8)
@@ -120,7 +120,7 @@ def _transformations_experiment(dataset_load_fn, dataset_name, single_class_ind,
     x_train_task_transformed = transformer.transform_batch(np.repeat(x_train_task, transformer.n_transforms, axis=0),
                                                            transformations_inds)
     batch_size = 128
-
+    print(x_train_task_transformed)
     mdl.fit(x=x_train_task_transformed, y=to_categorical(transformations_inds),
             batch_size=batch_size, epochs=2#int(np.ceil(200/transformer.n_transforms))
             )
@@ -667,15 +667,15 @@ def _adgan_experiment(dataset_load_fn, dataset_name, single_class_ind, gpu_q):
 #ToDo: research how to perform multi gpu training
 def run_experiments(load_dataset_fn, dataset_name, q, class_idx, n_runs):
     check_path(os.path.join(RESULTS_DIR, dataset_name))
-    # Kernel-plus-Transformations
-    for _ in range(n_runs):
-        processes = [Process(target=_kernal_plus_transformations_experiment,
-                             args=(
-                             load_dataset_fn, dataset_name, class_idx, q))]
-        for p in processes:
-            p.start()
-        for p in processes:
-            p.join()
+    # # Kernel-plus-Transformations
+    # for _ in range(n_runs):
+    #     processes = [Process(target=_kernal_plus_transformations_experiment,
+    #                          args=(
+    #                          load_dataset_fn, dataset_name, class_idx, q))]
+    #     for p in processes:
+    #         p.start()
+    #     for p in processes:
+    #         p.join()
     #
     # # MO_GAAL
     # for _ in range(n_runs):
@@ -697,33 +697,33 @@ def run_experiments(load_dataset_fn, dataset_name, q, class_idx, n_runs):
     # for _ in range(n_runs):
     #     _raw_ocsvm_experiment(load_dataset_fn, dataset_name, class_idx)
     #
-    # # Transformations
-    # for _ in range(n_runs):
-    #     processes = [Process(target=_transformations_experiment,
-    #                          args=(load_dataset_fn, dataset_name, class_idx, q))]
-    #     for p in processes:
-    #         p.start()
-    #     for p in processes:
-    #         p.join()
-    #
-    # # Trans-Transformations
-    # for _ in range(n_runs):
-    #     processes = [Process(target=_trans_transformations_experiment,
-    #                          args=(load_dataset_fn, dataset_name, class_idx, q))]
-    #     for p in processes:
-    #         p.start()
-    #     for p in processes:
-    #         p.join()
-    #
-    # # Kernel-Transformations
-    # for _ in range(n_runs):
-    #     processes = [Process(target=_kernel_transformations_experiment,
-    #                          args=(
-    #                          load_dataset_fn, dataset_name, class_idx, q))]
-    #     for p in processes:
-    #         p.start()
-    #     for p in processes:
-    #         p.join()
+    # Transformations
+    for _ in range(n_runs):
+        processes = [Process(target=_transformations_experiment,
+                             args=(load_dataset_fn, dataset_name, class_idx, q))]
+        for p in processes:
+            p.start()
+        for p in processes:
+            p.join()
+
+    # Trans-Transformations
+    for _ in range(n_runs):
+        processes = [Process(target=_trans_transformations_experiment,
+                             args=(load_dataset_fn, dataset_name, class_idx, q))]
+        for p in processes:
+            p.start()
+        for p in processes:
+            p.join()
+
+    # Kernel-Transformations
+    for _ in range(n_runs):
+        processes = [Process(target=_kernel_transformations_experiment,
+                             args=(
+                             load_dataset_fn, dataset_name, class_idx, q))]
+        for p in processes:
+            p.start()
+        for p in processes:
+            p.join()
     #
     # # DSEBM
     # for _ in range(n_runs):
@@ -797,7 +797,7 @@ if __name__ == '__main__':
 
     # data_Set, dataset_name, class_idx_to_run_experiments_on, n_runs
     experiments_list = [
-        (load_ztf_real_bog, 'ztf-real-bog-v1', 1, 10),
+        (load_ztf_real_bog, 'ztf-real-bog-v1-no-crop', 1, 10),
     ]
 
     start_time = time.time()

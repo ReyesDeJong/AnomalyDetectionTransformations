@@ -187,7 +187,7 @@ def load_hits_padded(n_samples_by_class=12500 * 2):
 
 
 def load_hits(n_samples_by_class=10000, test_size=0.20, val_size=0.10,
-    return_val=False, channels_to_get=[0, 1, 2, 3]):#[2]):  #
+    return_val=False, channels_to_get=[0, 1, 2, 3]):  # [2]):  #
   data_path = os.path.join(PROJECT_PATH, '..', 'datasets',
                            'HiTS2013_300k_samples.pkl')
   params = {
@@ -212,12 +212,13 @@ def load_hits(n_samples_by_class=10000, test_size=0.20, val_size=0.10,
 
 def load_ztf_real_bog(val_percentage_of_inliers=0.10,
     return_val=False, channels_to_get=[0, 1, 2],
-    data_file_name='ztf_v1_bogus_added.pkl', crop_size=21):
+    data_file_name='ztf_v1_bogus_added.pkl', crop_size=None):
   """Load and already separated inlier-outlier as real-bogus dataset, where label 1 is real."""
   folder_path = os.path.join(PROJECT_PATH, '..', 'datasets')
   data_path = os.path.join(folder_path, data_file_name)
   # check if preprocessed data (converted) already exists
-  converted_data_path = os.path.join(folder_path, 'converted_' + data_file_name)
+  converted_data_path = os.path.join(folder_path, 'converted%s_%s' % (
+    str(crop_size), data_file_name))
   if os.path.exists(converted_data_path):
     data_path = converted_data_path
 
@@ -252,9 +253,11 @@ def load_ztf_real_bog(val_percentage_of_inliers=0.10,
   # separate data into train-val-test
   outlier_indexes = np.where(new_labels != inlier_task)[0]
   inlier_indexes = np.where(new_labels == inlier_task)[0]
+  if crop_size is None:
+    inlier_indexes = inlier_indexes[:10000]
   # real == inliers
-  val_size_inliers = int(np.round(np.sum(
-      (new_labels == inlier_task)) * val_percentage_of_inliers))
+  val_size_inliers = int(
+    np.round(len(inlier_indexes) * val_percentage_of_inliers))
   np.random.shuffle(inlier_indexes)
   # train-val indexes inlier indexes
   train_inlier_idxs = inlier_indexes[val_size_inliers:]
