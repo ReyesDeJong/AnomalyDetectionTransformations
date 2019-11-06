@@ -120,7 +120,7 @@ def _transformations_experiment(dataset_load_fn, dataset_name, single_class_ind,
     x_train_task_transformed = transformer.transform_batch(np.repeat(x_train_task, transformer.n_transforms, axis=0),
                                                            transformations_inds)
     batch_size = 128
-    print(x_train_task_transformed)
+    print(x_train_task_transformed.shape)
     mdl.fit(x=x_train_task_transformed, y=to_categorical(transformations_inds),
             batch_size=batch_size, epochs=2#int(np.ceil(200/transformer.n_transforms))
             )
