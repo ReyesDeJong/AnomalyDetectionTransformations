@@ -259,6 +259,69 @@ class KernelTransformer(AbstractTransformer):
     self._transformation_list = transformation_list
 
 
+class PlusKernelTransformer(KernelTransformer):
+  def __init__(self, translation_x=8, translation_y=8, rotations=True,
+      flips=True, gauss=True, log=True):
+    self.iterable_tx = self.get_translation_iterable(translation_x)
+    self.iterable_ty = self.get_translation_iterable(translation_y)
+    self.iterable_rot = self.get_rotation_iterable(rotations)
+    self.iterable_flips = self.get_bool_iterable(flips)
+    self.iterable_gauss = self.get_bool_iterable(gauss)
+    self.iterable_log = self.get_bool_iterable(log)
+
+    super().__init__()
+
+  def _create_transformation_list(self):
+    transformation_list = []
+    for is_flip, tx, ty, k_rotate, is_gauss, is_log in itertools.product(
+        self.iterable_flips,
+        self.iterable_tx,
+        self.iterable_ty,
+        self.iterable_rot,
+        (0),
+        (0)):
+      transformation = KernelTransformation(is_flip, tx, ty, k_rotate, is_gauss,
+                                            is_log)
+      transformation_list.append(transformation)
+
+    for is_flip, tx, ty, k_rotate, is_gauss, is_log in itertools.product(
+        (0),
+        self.iterable_tx,
+        self.iterable_ty,
+        (0),
+        (1),
+        (0)):
+      transformation = KernelTransformation(is_flip, tx, ty, k_rotate, is_gauss,
+                                            is_log)
+      transformation_list.append(transformation)
+
+    for is_flip, tx, ty, k_rotate, is_gauss, is_log in itertools.product(
+        (0),
+        self.iterable_tx,
+        self.iterable_ty,
+        (0),
+        (0),
+        (1)):
+      transformation = KernelTransformation(is_flip, tx, ty, k_rotate,
+                                            is_gauss,
+                                            is_log)
+      transformation_list.append(transformation)
+
+    for is_flip, tx, ty, k_rotate, is_gauss, is_log in itertools.product(
+        (0),
+        self.iterable_tx,
+        self.iterable_ty,
+        (0),
+        (1),
+        (1)):
+      transformation = KernelTransformation(is_flip, tx, ty, k_rotate,
+                                            is_gauss,
+                                            is_log)
+    transformation_list.append(transformation)
+
+    self._transformation_list = transformation_list
+
+
 if __name__ == "__main__":
   import matplotlib.pyplot as plt
   from keras.backend.tensorflow_backend import set_session

@@ -22,7 +22,7 @@ from keras.layers import Dense, Dropout
 from keras.utils import to_categorical
 from modules.data_loaders.base_line_loaders import load_cifar10, load_fashion_mnist, load_hits_padded, load_hits, save_roc_pr_curve_data, get_class_name_from_index, get_channels_axis, load_ztf_real_bog
 #from utils import save_roc_pr_curve_data, get_class_name_from_index, get_channels_axis
-from transformations import Transformer, TransTransformer, KernelTransformer
+from transformations import Transformer, TransTransformer, KernelTransformer, PlusKernelTransformer
 from models.wide_residual_network import create_wide_residual_network
 from models.encoders_decoders import conv_encoder, conv_decoder
 from models import dsebm, dagmm, adgan
@@ -34,7 +34,7 @@ from scripts.ensemble_transform_vs_all_od_hits import get_entropy
 import torch
 import torch.nn as nn
 
-RESULTS_DIR = os.path.join(PROJECT_PATH, 'results/ztf')
+RESULTS_DIR = os.path.join(PROJECT_PATH, 'results/ztf_transform_see')
 LARGE_DATASET_NAMES = ['cats-vs-dogs', 'hits', 'hits_padded']
 PARALLEL_N_JOBS = 16
 
@@ -122,7 +122,7 @@ def _transformations_experiment(dataset_load_fn, dataset_name, single_class_ind,
     batch_size = 128
 
     mdl.fit(x=x_train_task_transformed, y=to_categorical(transformations_inds),
-            batch_size=batch_size, epochs=int(np.ceil(200/transformer.n_transforms))
+            batch_size=batch_size, epochs=2#int(np.ceil(200/transformer.n_transforms))
             )
 
     scores = np.zeros((len(x_test),))
@@ -195,7 +195,7 @@ def _trans_transformations_experiment(dataset_load_fn, dataset_name, single_clas
     batch_size = 128
 
     mdl.fit(x=x_train_task_transformed, y=to_categorical(transformations_inds),
-            batch_size=batch_size, epochs=int(np.ceil(200/transformer.n_transforms))
+            batch_size=batch_size, epochs=2#int(np.ceil(200/transformer.n_transforms))
             )
 
     scores = np.zeros((len(x_test),))
@@ -267,7 +267,7 @@ def _kernel_transformations_experiment(dataset_load_fn, dataset_name, single_cla
     batch_size = 128
 
     mdl.fit(x=x_train_task_transformed, y=to_categorical(transformations_inds),
-            batch_size=batch_size, epochs=int(np.ceil(200/transformer.n_transforms))
+            batch_size=batch_size, epochs=2#int(np.ceil(200/transformer.n_transforms))
             )
 
     scores = np.zeros((len(x_test),))
@@ -320,7 +320,7 @@ def _kernal_plus_transformations_experiment(dataset_load_fn, dataset_name, singl
     if dataset_name in ['cats-vs-dogs']:
         transformer = None
     else:
-        transformer = KernelTransformer(translation_x=8, translation_y=8,
+        transformer = PlusKernelTransformer(translation_x=8, translation_y=8,
                                         rotations=1,
                                         flips=1, gauss=1, log=1)
         n, k = (10, 4)
@@ -339,7 +339,7 @@ def _kernal_plus_transformations_experiment(dataset_load_fn, dataset_name, singl
     batch_size = 128
 
     mdl.fit(x=x_train_task_transformed, y=to_categorical(transformations_inds),
-            batch_size=batch_size, epochs=int(np.ceil(200/transformer.n_transforms))
+            batch_size=batch_size, epochs=2#int(np.ceil(200/transformer.n_transforms))
             )
 
     scores = np.zeros((len(x_test),))
