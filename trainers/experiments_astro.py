@@ -667,15 +667,15 @@ def _adgan_experiment(dataset_load_fn, dataset_name, single_class_ind, gpu_q):
 #ToDo: research how to perform multi gpu training
 def run_experiments(load_dataset_fn, dataset_name, q, class_idx, n_runs):
     check_path(os.path.join(RESULTS_DIR, dataset_name))
-    # # Kernel-plus-Transformations
-    # for _ in range(n_runs):
-    #     processes = [Process(target=_kernal_plus_transformations_experiment,
-    #                          args=(
-    #                          load_dataset_fn, dataset_name, class_idx, q))]
-    #     for p in processes:
-    #         p.start()
-    #     for p in processes:
-    #         p.join()
+    # Kernel-plus-Transformations
+    for _ in range(n_runs):
+        processes = [Process(target=_kernal_plus_transformations_experiment,
+                             args=(
+                             load_dataset_fn, dataset_name, class_idx, q))]
+        for p in processes:
+            p.start()
+        for p in processes:
+            p.join()
     #
     # # MO_GAAL
     # for _ in range(n_runs):
@@ -697,33 +697,33 @@ def run_experiments(load_dataset_fn, dataset_name, q, class_idx, n_runs):
     # for _ in range(n_runs):
     #     _raw_ocsvm_experiment(load_dataset_fn, dataset_name, class_idx)
     #
-    # Transformations
-    for _ in range(n_runs):
-        processes = [Process(target=_transformations_experiment,
-                             args=(load_dataset_fn, dataset_name, class_idx, q))]
-        for p in processes:
-            p.start()
-        for p in processes:
-            p.join()
-
-    # Trans-Transformations
-    for _ in range(n_runs):
-        processes = [Process(target=_trans_transformations_experiment,
-                             args=(load_dataset_fn, dataset_name, class_idx, q))]
-        for p in processes:
-            p.start()
-        for p in processes:
-            p.join()
-
-    # Kernel-Transformations
-    for _ in range(n_runs):
-        processes = [Process(target=_kernel_transformations_experiment,
-                             args=(
-                             load_dataset_fn, dataset_name, class_idx, q))]
-        for p in processes:
-            p.start()
-        for p in processes:
-            p.join()
+    ## Transformations
+    #for _ in range(n_runs):
+    #    processes = [Process(target=_transformations_experiment,
+    #                         args=(load_dataset_fn, dataset_name, class_idx, q))]
+    #    for p in processes:
+    #        p.start()
+    #    for p in processes:
+    #        p.join()
+    #
+    ## Trans-Transformations
+    #for _ in range(n_runs):
+    #    processes = [Process(target=_trans_transformations_experiment,
+    #                         args=(load_dataset_fn, dataset_name, class_idx, q))]
+    #    for p in processes:
+    #        p.start()
+    #    for p in processes:
+    #        p.join()
+    #
+    ## Kernel-Transformations
+    #for _ in range(n_runs):
+    #    processes = [Process(target=_kernel_transformations_experiment,
+    #                         args=(
+    #                         load_dataset_fn, dataset_name, class_idx, q))]
+    #    for p in processes:
+    #        p.start()
+    #    for p in processes:
+    #        p.join()
     #
     # # DSEBM
     # for _ in range(n_runs):
