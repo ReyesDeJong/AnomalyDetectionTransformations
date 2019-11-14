@@ -4,7 +4,7 @@ import itertools
 import numpy as np
 import tensorflow as tf
 import torch
-from keras.preprocessing.image import apply_affine_transform
+from tensorflow.keras.preprocessing.image import apply_affine_transform
 from torch.nn import functional as F
 
 

@@ -22,9 +22,9 @@ MAXPOOL = 'maxpool'
 AVGPOOL = 'avgpool'
 
 # Type of connections management for initializers
-FAN_IN = 'FAN_IN'
-FAN_OUT = 'FAN_OUT'
-FAN_AVG = 'FAN_AVG'
+FAN_IN = 'fan_in'
+FAN_OUT = 'fan_out'
+FAN_AVG = 'fan_avg'
 
 # Type of distributions for initializers
 TRUNCATED_NORMAL = "truncated_normal"

@@ -9,8 +9,8 @@ sys.path.append(PROJECT_PATH)
 from modules.data_loaders.hits_loader import HiTSLoader
 from parameters import param_keys
 import numpy as np
-from keras.backend import cast_to_floatx
-from keras.datasets import mnist, fashion_mnist, cifar100, cifar10
+from tensorflow.keras.backend import cast_to_floatx
+from tensorflow.keras.datasets import mnist, fashion_mnist, cifar100, cifar10
 from sklearn.metrics import roc_curve, precision_recall_curve, auc
 from modules.data_loaders.frame_to_input import FrameToInput
 
