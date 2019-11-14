@@ -377,7 +377,7 @@ def _kernal_plus_transformations_experiment(dataset_load_fn, dataset_name, singl
     save_results_file(dataset_name, single_class_ind, scores=scores_xH,
                       labels=labels, experiment_name='kernel-plus-transformations-xH')
 
-    mdl_weights_name = '{}_kernel-transformations_{}_{}_weights.h5'.format(dataset_name,
+    mdl_weights_name = '{}_kernel-plus-transformations_{}_{}_weights.h5'.format(dataset_name,
                                                            get_class_name_from_index(single_class_ind, dataset_name),
                                                            datetime.datetime.now().strftime('%Y-%m-%d-%H%M'))
     mdl_weights_path = os.path.join(RESULTS_DIR, dataset_name, mdl_weights_name)
@@ -801,8 +801,8 @@ if __name__ == '__main__':
     ]
 
     start_time = time.time()
-    for data_load_fn, dataset_name, class_idx, run_i in experiments_list:
-       run_experiments(data_load_fn, dataset_name, q, class_idx, run_i)
+    #for data_load_fn, dataset_name, class_idx, run_i in experiments_list:
+    #   run_experiments(data_load_fn, dataset_name, q, class_idx, run_i)
     create_auc_table()
     time_usage = str(datetime.timedelta(
         seconds=int(round(time.time() - start_time))))
