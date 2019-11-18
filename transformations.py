@@ -148,6 +148,7 @@ class AbstractTransformer(abc.ABC):
   def __init__(self):
     self._transformation_list = None
     self._create_transformation_list()
+    self.name = 'Abstract_transformer'
 
   @property
   def n_transforms(self):
@@ -172,6 +173,7 @@ class Transformer(AbstractTransformer):
     self.max_tx = translation_x
     self.max_ty = translation_y
     super().__init__()
+    self.name = '72_transformer'
 
   def _create_transformation_list(self):
     transformation_list = []
@@ -188,6 +190,10 @@ class Transformer(AbstractTransformer):
 
 
 class SimpleTransformer(AbstractTransformer):
+  def __init__(self):
+    super().__init__()
+    self.name = 'Rotate_transformer'
+
   def _create_transformation_list(self):
     transformation_list = []
     for is_flip, k_rotate in itertools.product((False, True),
@@ -203,6 +209,7 @@ class TransTransformer(AbstractTransformer):
     self.max_tx = translation_x
     self.max_ty = translation_y
     super().__init__()
+    self.name = 'Trans_transformer'
 
   def _create_transformation_list(self):
     transformation_list = []
@@ -225,8 +232,8 @@ class KernelTransformer(AbstractTransformer):
     self.iterable_flips = self.get_bool_iterable(flips)
     self.iterable_gauss = self.get_bool_iterable(gauss)
     self.iterable_log = self.get_bool_iterable(log)
-
     super().__init__()
+    self.name = 'Kernel_transformer'
 
   def get_translation_iterable(self, translation):
     if translation:
