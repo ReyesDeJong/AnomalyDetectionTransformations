@@ -6,6 +6,7 @@ import tensorflow as tf
 import torch
 from tensorflow.keras.preprocessing.image import apply_affine_transform
 from torch.nn import functional as F
+from tqdm import tqdm
 
 
 def convert_to_torch(image, filters):
@@ -162,8 +163,8 @@ class AbstractTransformer(abc.ABC):
     assert len(x_batch) == len(t_inds)
 
     transformed_batch = x_batch.copy()
-    for i, t_ind in enumerate(t_inds):
-      transformed_batch[i] = self._transformation_list[t_ind](
+    for i in tqdm(range(len(t_inds))):
+      transformed_batch[i] = self._transformation_list[t_inds[i]](
           transformed_batch[i])
     return transformed_batch
 
@@ -267,6 +268,7 @@ class KernelTransformer(AbstractTransformer):
 
 
 if __name__ == "__main__":
+  #tf 1
   import matplotlib.pyplot as plt
   from keras.backend.tensorflow_backend import set_session
   from modules.utils import createCircularMask

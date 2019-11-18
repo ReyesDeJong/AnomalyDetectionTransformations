@@ -31,19 +31,19 @@ class ZTFOutlierLoader(object):
     self.random_seed = params[general_keys.RANDOM_SEED]
     self.transform_inlier_class_value = params[
       loader_keys.TRANSFORMATION_INLIER_CLASS_VALUE]
-    self.converted_data_path = self._get_converted_data_path()
+    self.preprocessed_data_path = self._get_preprocessed_data_path()
 
-  def _get_converted_data_path(self) -> str:
+  def _get_preprocessed_data_path(self) -> str:
     """get name of final saved file to check if it's been already generated"""
-    text_to_add = 'converted_crop%i_nChannels%i' % (
-      self.crop_size, len(self.used_channels))
+    text_to_add = 'preprocessed_seed%i_crop%i_nChannels%i' % (
+      self.random_seed, self.crop_size, len(self.used_channels))
     return utils.add_text_to_beginning_of_file_path(self.data_path, text_to_add)
 
   def get_unsplitted_dataset(self) -> Dataset:
     """get preprocessed dataset, prior to outlier-inlier splitting"""
     # check if preprocessing has already been done
     unsplitted_data_path = utils.add_text_to_beginning_of_file_path(
-        self.converted_data_path, 'unsplitted')
+        self.preprocessed_data_path, 'unsplitted')
     if os.path.exists(unsplitted_data_path):
       return pd.read_pickle(unsplitted_data_path)
     # useful to avoid frameToInput to perform the transformation of Dataframe to a pickle dict
@@ -83,7 +83,7 @@ class ZTFOutlierLoader(object):
     """get outlier trainval test sets, by slecting class 4 as outliers (bogus in ZTF) and generating a train-val
     set of only inliers, while a test set with half-half inliers and outliers"""
     outlier_data_path = utils.add_text_to_beginning_of_file_path(
-        self.converted_data_path, 'outlier')
+        self.preprocessed_data_path, 'outlier')
     if os.path.exists(outlier_data_path):
       return pd.read_pickle(outlier_data_path)
 
@@ -139,7 +139,7 @@ class ZTFOutlierLoader(object):
     # TODO: this could be refactored to a method, init and final part could be
     #  refactored into single method
     transformed_data_path = utils.add_text_to_beginning_of_file_path(
-        self.converted_data_path, '%s_outlier' % self.transformer.name)
+        self.preprocessed_data_path, '%s_outlier' % self.transformer.name)
     if os.path.exists(transformed_data_path):
       return pd.read_pickle(transformed_data_path)
 
@@ -159,8 +159,11 @@ class ZTFOutlierLoader(object):
 
 
 if __name__ == "__main__":
-  from transformations import TransTransformer
+  from transformations import TransTransformer, Transformer
+  import datetime
+  import time
 
+  start_time = time.time()
   params = {
     loader_keys.DATA_PATH: os.path.join(
         PROJECT_PATH, '../datasets/ztf_v1_bogus_added.pkl'),
@@ -170,7 +173,7 @@ if __name__ == "__main__":
     general_keys.RANDOM_SEED: 42,
     loader_keys.TRANSFORMATION_INLIER_CLASS_VALUE: 1
   }
-  transformer = TransTransformer()
+  transformer = Transformer()
   ztf_outlier_dataset = ZTFOutlierLoader(params, transformer)
 
   dataset = ztf_outlier_dataset.get_unsplitted_dataset()
@@ -185,3 +188,6 @@ if __name__ == "__main__":
   print('train: ', np.unique(y_train_trans, return_counts=True))
   print('val: ', np.unique(y_val_trans, return_counts=True))
   print('test: ', np.unique(y_test_trans, return_counts=True))
+  time_usage = str(datetime.timedelta(
+      seconds=int(round(time.time() - start_time))))
+  print("Time usage %s: %s" % (transformer.name, str(time_usage)), flush=True)
