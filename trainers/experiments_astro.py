@@ -34,7 +34,7 @@ from scripts.ensemble_transform_vs_all_od_hits import get_entropy
 import torch
 import torch.nn as nn
 
-RESULTS_DIR = os.path.join(PROJECT_PATH, 'results/ztf_transform_see')
+RESULTS_DIR = os.path.join(PROJECT_PATH, 'results/nonsense')
 LARGE_DATASET_NAMES = ['cats-vs-dogs', 'hits', 'hits_padded']
 PARALLEL_N_JOBS = 16
 
@@ -122,7 +122,7 @@ def _transformations_experiment(dataset_load_fn, dataset_name, single_class_ind,
     batch_size = 128
     print(x_train_task_transformed.shape)
     mdl.fit(x=x_train_task_transformed, y=to_categorical(transformations_inds),
-            batch_size=batch_size, epochs=2#int(np.ceil(200/transformer.n_transforms))
+            batch_size=batch_size, epochs=int(np.ceil(200/transformer.n_transforms))
             )
 
     scores = np.zeros((len(x_test),))
@@ -667,15 +667,15 @@ def _adgan_experiment(dataset_load_fn, dataset_name, single_class_ind, gpu_q):
 #ToDo: research how to perform multi gpu training
 def run_experiments(load_dataset_fn, dataset_name, q, class_idx, n_runs):
     check_path(os.path.join(RESULTS_DIR, dataset_name))
-    # Kernel-plus-Transformations
-    for _ in range(n_runs):
-        processes = [Process(target=_kernal_plus_transformations_experiment,
-                             args=(
-                             load_dataset_fn, dataset_name, class_idx, q))]
-        for p in processes:
-            p.start()
-        for p in processes:
-            p.join()
+    # # Kernel-plus-Transformations
+    # for _ in range(n_runs):
+    #     processes = [Process(target=_kernal_plus_transformations_experiment,
+    #                          args=(
+    #                          load_dataset_fn, dataset_name, class_idx, q))]
+    #     for p in processes:
+    #         p.start()
+    #     for p in processes:
+    #         p.join()
     #
     # # MO_GAAL
     # for _ in range(n_runs):
@@ -697,14 +697,14 @@ def run_experiments(load_dataset_fn, dataset_name, q, class_idx, n_runs):
     # for _ in range(n_runs):
     #     _raw_ocsvm_experiment(load_dataset_fn, dataset_name, class_idx)
     #
-    ## Transformations
-    #for _ in range(n_runs):
-    #    processes = [Process(target=_transformations_experiment,
-    #                         args=(load_dataset_fn, dataset_name, class_idx, q))]
-    #    for p in processes:
-    #        p.start()
-    #    for p in processes:
-    #        p.join()
+    # Transformations
+    for _ in range(n_runs):
+       processes = [Process(target=_transformations_experiment,
+                            args=(load_dataset_fn, dataset_name, class_idx, q))]
+       for p in processes:
+           p.start()
+       for p in processes:
+           p.join()
     #
     ## Trans-Transformations
     #for _ in range(n_runs):
@@ -797,13 +797,13 @@ if __name__ == '__main__':
 
     # data_Set, dataset_name, class_idx_to_run_experiments_on, n_runs
     experiments_list = [
-        (load_ztf_real_bog, 'ztf-real-bog-v1-no-crop', 1, 10),
+        (load_ztf_real_bog, 'ztf-real-bog-v1', 1, 1),
     ]
 
     start_time = time.time()
-    #for data_load_fn, dataset_name, class_idx, run_i in experiments_list:
-    #   run_experiments(data_load_fn, dataset_name, q, class_idx, run_i)
-    create_auc_table()
+    for data_load_fn, dataset_name, class_idx, run_i in experiments_list:
+      run_experiments(data_load_fn, dataset_name, q, class_idx, run_i)
+    # create_auc_table()
     time_usage = str(datetime.timedelta(
         seconds=int(round(time.time() - start_time))))
     print("Time elapsed to train everything: " + time_usage)

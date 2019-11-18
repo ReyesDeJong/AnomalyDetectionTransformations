@@ -212,7 +212,7 @@ def load_hits(n_samples_by_class=10000, test_size=0.20, val_size=0.10,
 
 def load_ztf_real_bog(val_percentage_of_inliers=0.10,
     return_val=False, channels_to_get=[0, 1, 2],
-    data_file_name='ztf_v1_bogus_added.pkl', crop_size=None):
+    data_file_name='ztf_v1_bogus_added.pkl', crop_size=21):
   """Load and already separated inlier-outlier as real-bogus dataset, where label 1 is real."""
   folder_path = os.path.join(PROJECT_PATH, '..', 'datasets')
   data_path = os.path.join(folder_path, data_file_name)
