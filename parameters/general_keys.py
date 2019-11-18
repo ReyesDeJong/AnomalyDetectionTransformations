@@ -47,3 +47,6 @@ LABELS = 'labels'
 #noise vector names
 IN_NORMAL_RADIUS = 'in_normal_radius'
 OUT_NORMAL_RADIUS = 'out_normal_radius'
+
+# random things
+RANDOM_SEED = 'random_seed'

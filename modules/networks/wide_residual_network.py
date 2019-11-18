@@ -53,9 +53,9 @@ class WideResidualNetwork(tf.keras.Model):
   def call(self, input_tensor, training=False):
     x = self.input_layer(input_tensor)
     x = self.conv_1(x)
-    x = self.group_1(x)
-    x = self.group_2(x)
-    x = self.group_3(x)
+    x = self.group_1(x, training=training)
+    x = self.group_2(x, training=training)
+    x = self.group_3(x, training=training)
     x = self.bn_1(x, training=training)
     x = self.act_1(x)
     x = self.gap_1(x)
