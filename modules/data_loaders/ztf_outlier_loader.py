@@ -35,8 +35,8 @@ class ZTFOutlierLoader(object):
 
   def _get_preprocessed_data_path(self) -> str:
     """get name of final saved file to check if it's been already generated"""
-    text_to_add = 'preprocessed_seed%i_crop%i_nChannels%i' % (
-      self.random_seed, self.crop_size, len(self.used_channels))
+    text_to_add = 'preprocessed_seed%i_crop%s_nChannels%i' % (
+      self.random_seed, str(self.crop_size), len(self.used_channels))
     return utils.add_text_to_beginning_of_file_path(self.data_path, text_to_add)
 
   def get_unsplitted_dataset(self) -> Dataset:
@@ -100,6 +100,11 @@ class ZTFOutlierLoader(object):
     val_size_inliers = int(np.round(np.sum(
         (new_labels == inlier_task)) * self.val_inlier_percentage))
     np.random.RandomState(seed=self.random_seed).shuffle(inlier_indexes)
+    # large_dataset that doesn't fit memory
+    # Todo: fix this by an efficient transformation calculator
+    if self.crop_size == 63 or self.crop_size is None:
+      inlier_indexes = inlier_indexes[:8000]
+      val_size_inliers = 500
     # train-val indexes inlier indexes
     train_inlier_idxs = inlier_indexes[val_size_inliers:]
     val_inlier_idxs = inlier_indexes[:val_size_inliers]
@@ -123,6 +128,7 @@ class ZTFOutlierLoader(object):
     utils.save_pickle(sets_tuple, outlier_data_path)
     return sets_tuple
 
+  #Todo: delegate this to transformer
   def _perform_transform(self, x):
     """generate transform inds, that are the labels of each transform and
     its respective transformed data"""
@@ -169,20 +175,20 @@ if __name__ == "__main__":
         PROJECT_PATH, '../datasets/ztf_v1_bogus_added.pkl'),
     loader_keys.VAL_SET_INLIER_PERCENTAGE: 0.1,
     loader_keys.USED_CHANNELS: [0, 1, 2],
-    loader_keys.CROP_SIZE: 21,
+    loader_keys.CROP_SIZE: None,
     general_keys.RANDOM_SEED: 42,
     loader_keys.TRANSFORMATION_INLIER_CLASS_VALUE: 1
   }
   transformer = Transformer()
   ztf_outlier_dataset = ZTFOutlierLoader(params, transformer)
 
-  dataset = ztf_outlier_dataset.get_unsplitted_dataset()
-  print('dataset: ', np.unique(dataset.data_label, return_counts=True))
-  (X_train, y_train), (X_val, y_val), (
-    X_test, y_test) = ztf_outlier_dataset.get_outlier_detection_datasets()
-  print('train: ', np.unique(y_train, return_counts=True))
-  print('val: ', np.unique(y_val, return_counts=True))
-  print('test: ', np.unique(y_test, return_counts=True))
+  # dataset = ztf_outlier_dataset.get_unsplitted_dataset()
+  # print('dataset: ', np.unique(dataset.data_label, return_counts=True))
+  # (X_train, y_train), (X_val, y_val), (
+  #   X_test, y_test) = ztf_outlier_dataset.get_outlier_detection_datasets()
+  # print('train: ', np.unique(y_train, return_counts=True))
+  # print('val: ', np.unique(y_val, return_counts=True))
+  # print('test: ', np.unique(y_test, return_counts=True))
   (X_train_trans, y_train_trans), (X_val_trans, y_val_trans), (
   X_test_trans, y_test_trans) = ztf_outlier_dataset.get_transformed_datasets()
   print('train: ', np.unique(y_train_trans, return_counts=True))
