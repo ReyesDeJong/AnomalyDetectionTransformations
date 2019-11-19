@@ -140,8 +140,13 @@ def test_visualize_transforms():
       plt.title(str(transformer.tranformation_to_perform[i]))
       plt.show()
 
+def plot_img(transformed_batch, transformer, indx, batch_size=8):
+  plt.imshow(transformed_batch.numpy()[indx])
+  transform_indx = indx//batch_size
+  plt.title(str(transformer.tranformation_to_perform[transform_indx]))
+  plt.show()
 
-if __name__ == "__main__":
+def test_dataset_generation():
   import imageio
   import glob
   import os, sys
@@ -163,18 +168,20 @@ if __name__ == "__main__":
   for im_path in glob.glob(im_path):
     im = imageio.imread(im_path)
 
-  im = im[np.newaxis, :63, :63, :]
+  im = im[np.newaxis, 5:68, 5:68, :]
   im = im / np.max(im)
   print(im.shape)
   # plt.imshow(im[0])
   # plt.show()
 
-  x_test = np.repeat(im, 1000, axis=0)
-  test_ds = tf.data.Dataset.from_tensor_slices((x_test)).batch(32)
-  transformer = Transformer(16, 16)
+  dataset_size = 1000
+  batch_size = 32
+  x_test = np.repeat(im, dataset_size, axis=0)
+  test_ds = tf.data.Dataset.from_tensor_slices((x_test)).batch(batch_size)
+  transformer = Transformer(8, 8)
   transformations_inds = np.arange(transformer.n_transforms)
 
-  EPOCHS = 2
+  EPOCHS = 1
 
   start_time = time.time()
   for epoch in range(EPOCHS):
@@ -192,10 +199,70 @@ if __name__ == "__main__":
       seconds=int(round(time.time() - start_time))))
   print("Time usage %s: %s" % (transformer.name, str(time_usage)), flush=True)
 
-  # for i in range(72):
-  #   transform_indx = i
-  #   if (i % 4) == 0:
-  #     plt.imshow(transformed_batch[transform_indx])
-  #     plt.title(str(transformer.tranformation_to_perform[i]))
-  #     plt.show()
+  last_batch_size = dataset_size%batch_size
+  indx_to_plot = np.arange(transformer.n_transforms)*last_batch_size
+  for i in indx_to_plot:
+    plot_img(transformed_batch, transformer, i)
+
+if __name__ == "__main__":
+  import imageio
+  import glob
+  import os, sys
+  import matplotlib.pyplot as plt
+  import datetime
+  import time
+  import numpy as np
+
+  PROJECT_PATH = os.path.abspath(
+      os.path.join(os.path.dirname(__file__), '..', '..'))
+  sys.path.append(PROJECT_PATH)
+
+  from modules.utils import set_soft_gpu_memory_growth
+  from parameters import loader_keys, general_keys
+  from modules.data_loaders.ztf_outlier_loader import ZTFOutlierLoader
+
+  set_soft_gpu_memory_growth()
+
+  start_time = time.time()
+  params = {
+    loader_keys.DATA_PATH: os.path.join(
+        PROJECT_PATH, '../datasets/ztf_v1_bogus_added.pkl'),
+    loader_keys.VAL_SET_INLIER_PERCENTAGE: 0.1,
+    loader_keys.USED_CHANNELS: [0, 1, 2],
+    loader_keys.CROP_SIZE: 21,
+    general_keys.RANDOM_SEED: 42,
+    loader_keys.TRANSFORMATION_INLIER_CLASS_VALUE: 1
+  }
+  transformer = Transformer()
+  batch_size = 32
+  ztf_outlier_dataset = ZTFOutlierLoader(params)
+  (X_train, y_train), (X_val, y_val), (
+    X_test, y_test) = ztf_outlier_dataset.get_outlier_detection_datasets()
+
+  test_ds = tf.data.Dataset.from_tensor_slices((X_train)).batch(batch_size)
+  # transformer = Transformer(8, 8)
+  # transformations_inds = np.arange(transformer.n_transforms)
+  #
+  # EPOCHS = 1
+  #
+  # start_time = time.time()
+  # for epoch in range(EPOCHS):
+  #   transformed_dataset = []
+  #   for images in test_ds:
+  #     transformed_batch = transformer.transform_batch(images,
+  #                                                     transformations_inds)
+  #     transformed_dataset.append(transformed_batch)
+  #     # print(transformed_batch.shape)
+  #   transformed_dataset = np.concatenate(
+  #       [tensor.numpy() for tensor in transformed_dataset])
+  # print(transformed_dataset.shape)
+  #
+  # time_usage = str(datetime.timedelta(
+  #     seconds=int(round(time.time() - start_time))))
+  # print("Time usage %s: %s" % (transformer.name, str(time_usage)), flush=True)
+  #
+  # last_batch_size = dataset_size%batch_size
+  # indx_to_plot = np.arange(transformer.n_transforms)*last_batch_size
+  # for i in indx_to_plot:
+  #   plot_img(transformed_batch, transformer, i)
   #

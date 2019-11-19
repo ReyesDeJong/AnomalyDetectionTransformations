@@ -4,6 +4,7 @@ ZTF stamps outlier loader
 
 import os
 import sys
+import warnings
 
 import numpy as np
 import pandas as pd
@@ -22,8 +23,7 @@ from modules import utils
 
 class ZTFOutlierLoader(object):
 
-  def __init__(self, params: dict, transformer: AbstractTransformer = None):
-    self.transformer = transformer
+  def __init__(self, params: dict):
     self.data_path = params[loader_keys.DATA_PATH]
     self.val_inlier_percentage = params[loader_keys.VAL_SET_INLIER_PERCENTAGE]
     self.used_channels = params[loader_keys.USED_CHANNELS]
@@ -100,11 +100,11 @@ class ZTFOutlierLoader(object):
     val_size_inliers = int(np.round(np.sum(
         (new_labels == inlier_task)) * self.val_inlier_percentage))
     np.random.RandomState(seed=self.random_seed).shuffle(inlier_indexes)
-    # large_dataset that doesn't fit memory
-    # Todo: fix this by an efficient transformation calculator
-    if self.crop_size == 63 or self.crop_size is None:
-      inlier_indexes = inlier_indexes[:8000]
-      val_size_inliers = 500
+    # # large_dataset that doesn't fit memory
+    # # Todo: fix this by an efficient transformation calculator
+    # if self.crop_size == 63 or self.crop_size is None:
+    #   inlier_indexes = inlier_indexes[:5000]
+    #   val_size_inliers = 500
     # train-val indexes inlier indexes
     train_inlier_idxs = inlier_indexes[val_size_inliers:]
     val_inlier_idxs = inlier_indexes[:val_size_inliers]
@@ -128,24 +128,30 @@ class ZTFOutlierLoader(object):
     utils.save_pickle(sets_tuple, outlier_data_path)
     return sets_tuple
 
-  #Todo: delegate this to transformer
-  def _perform_transform(self, x):
+  # Todo: delegate this to transformer
+  def _perform_transform(self, transformer, x):
     """generate transform inds, that are the labels of each transform and
     its respective transformed data"""
     transform_inds = np.tile(
-        np.arange(self.transformer.n_transforms), len(x))
-    x_transformed = self.transformer.transform_batch(
-        np.repeat(x, self.transformer.n_transforms, axis=0),
+        np.arange(transformer.n_transforms), len(x))
+    x_transformed = transformer.transform_batch(
+        np.repeat(x, transformer.n_transforms, axis=0),
         transform_inds)
     return x_transformed, transform_inds
 
   # TODO: implement transformation loading
-  def get_transformed_datasets(self):
+  def get_transformed_datasets(self, transformer: AbstractTransformer):
     """transform daa and save to avoid doin it over and over again"""
+    # large_dataset that doesn't fit memory
+    # Todo: fix this by an efficient transformation calculator
+    if self.crop_size == 63 or self.crop_size is None:
+      warning_txt = "Dataset of image size %s is too large and cannot be previously transformed" % self.crop_size
+      warnings.warn(warning_txt)
+      return self.get_outlier_detection_datasets()
     # TODO: this could be refactored to a method, init and final part could be
     #  refactored into single method
     transformed_data_path = utils.add_text_to_beginning_of_file_path(
-        self.preprocessed_data_path, '%s_outlier' % self.transformer.name)
+        self.preprocessed_data_path, '%s_outlier' % transformer.name)
     if os.path.exists(transformed_data_path):
       return pd.read_pickle(transformed_data_path)
 
@@ -154,9 +160,12 @@ class ZTFOutlierLoader(object):
     # print('train: ', np.unique(y_train, return_counts=True))
     # print('val: ', np.unique(y_val, return_counts=True))
     # print('test: ', np.unique(y_test, return_counts=True))
-    x_train_transformed, train_transform_inds = self._perform_transform(x_train)
-    x_val_transformed, val_transform_inds = self._perform_transform(x_val)
-    x_test_transformed, test_transform_inds = self._perform_transform(x_test)
+    x_train_transformed, train_transform_inds = self._perform_transform(
+        transformer, x_train)
+    x_val_transformed, val_transform_inds = self._perform_transform(transformer,
+                                                                    x_val)
+    x_test_transformed, test_transform_inds = self._perform_transform(
+        transformer, x_test)
     sets_tuple = ((x_train_transformed, train_transform_inds),
                   (x_val_transformed, val_transform_inds),
                   (x_test_transformed, test_transform_inds))
@@ -165,7 +174,7 @@ class ZTFOutlierLoader(object):
 
 
 if __name__ == "__main__":
-  from transformations import TransTransformer, Transformer
+  from transformations import Transformer
   import datetime
   import time
 
@@ -180,7 +189,7 @@ if __name__ == "__main__":
     loader_keys.TRANSFORMATION_INLIER_CLASS_VALUE: 1
   }
   transformer = Transformer()
-  ztf_outlier_dataset = ZTFOutlierLoader(params, transformer)
+  ztf_outlier_dataset = ZTFOutlierLoader(params)
 
   # dataset = ztf_outlier_dataset.get_unsplitted_dataset()
   # print('dataset: ', np.unique(dataset.data_label, return_counts=True))
@@ -190,7 +199,8 @@ if __name__ == "__main__":
   # print('val: ', np.unique(y_val, return_counts=True))
   # print('test: ', np.unique(y_test, return_counts=True))
   (X_train_trans, y_train_trans), (X_val_trans, y_val_trans), (
-  X_test_trans, y_test_trans) = ztf_outlier_dataset.get_transformed_datasets()
+    X_test_trans, y_test_trans) = ztf_outlier_dataset.get_transformed_datasets(
+      transformer)
   print('train: ', np.unique(y_train_trans, return_counts=True))
   print('val: ', np.unique(y_val_trans, return_counts=True))
   print('test: ', np.unique(y_test_trans, return_counts=True))

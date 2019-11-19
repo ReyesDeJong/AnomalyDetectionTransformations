@@ -1,9 +1,9 @@
 import os
 import pickle as pkl
 import sys
-
 import matplotlib.pyplot as plt
 import numpy as np
+import tensorflow as tf
 
 PROJECT_PATH = os.path.abspath(
     os.path.join(os.path.dirname(__file__), '..'))
@@ -92,3 +92,8 @@ def add_text_to_beginning_of_file_path(file_path, added_text):
     converted_data_path = os.path.join(
         folder_path, '%s_%s' % (added_text, data_file_name))
     return converted_data_path
+
+def set_soft_gpu_memory_growth():
+    gpus = tf.config.experimental.list_physical_devices('GPU')
+    for gpu in gpus:
+        tf.config.experimental.set_memory_growth(gpu, True)
