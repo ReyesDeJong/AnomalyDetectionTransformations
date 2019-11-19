@@ -3,12 +3,16 @@ import itertools
 
 import tensorflow as tf
 
+"""There is a small discrepancy between original and his transformer, 
+due the fact that padding reflects wiithouy copying the edge pixels"""
+
 
 class AffineTransformation(object):
   def __init__(self, flip, tx, ty, k_90_rotate):
+    """tx and ty are inverted to match original transformer"""
     self.flip = flip
-    self.tx = tx
-    self.ty = ty
+    self.tx = ty
+    self.ty = tx
     self.k_90_rotate = k_90_rotate
 
   def __call__(self, x):
@@ -36,7 +40,8 @@ class AffineTransformation(object):
 
 
 class AbstractTransformer(abc.ABC):
-  def __init__(self):
+  def __init__(self, transform_batch_size=512):
+    self._transform_batch_size = transform_batch_size
     self._transformation_list = None
     self._create_transformation_list()
     self.name = 'Abstract_transformer'
@@ -58,20 +63,57 @@ class AbstractTransformer(abc.ABC):
       concatenated_transformations = tf.concat(transformed_batch, axis=0)
     return tf.identity(concatenated_transformations, 'concat_transforms')
 
-  def apply_all_transforms(self, x):
+  def apply_all_transformsv0(self, x, batch_size=None):
     """generate transform inds, that are the labels of each transform and
-    its respective transformed data"""
-    # img batch of dim: [B, H, W, C]
+    its respective transformed data. It generates labels along with images"""
+    train_ds = tf.data.Dataset.from_tensor_slices((x)).batch(batch_size)
     transformations_inds = np.arange(self.n_transforms)
-    transformed_x = self.transform_batch(x, transformations_inds)
-    return transformed_x, transformations_inds
+    x_transform = []
+    y_transform = []
+    for images in train_ds:
+      transformed_batch = transformer.transform_batch(images,
+                                                      transformations_inds)
+      y_transform_batch = np.repeat(
+          transformations_inds, transformed_batch.shape[0] // self.n_transforms)
+      x_transform.append(transformed_batch)
+      y_transform.append(y_transform_batch)
+    x_transform = np.concatenate(
+        [tensor.numpy() for tensor in x_transform])
+    y_transform = np.concatenate(y_transform)
+    return x_transform, y_transform
+
+  def apply_all_transforms(self, x, batch_size=None):
+    """generate transform inds, that are the labels of each transform and
+    its respective transformed data. It generates labels after images"""
+    if batch_size:
+      self._transform_batch_size = batch_size
+    train_ds = tf.data.Dataset.from_tensor_slices((x)).batch(
+        self._transform_batch_size)
+    transformations_inds = np.arange(self.n_transforms)
+    x_transform = []
+    for images in train_ds:
+      transformed_batch = transformer.transform_batch(images,
+                                                      transformations_inds)
+
+      x_transform.append(transformed_batch)
+    x_transform = np.concatenate(
+        [tensor.numpy() for tensor in x_transform])
+    y_transform_fixed_batch_size = np.repeat(transformations_inds, batch_size)
+    y_transform_fixed_batch_size = np.tile(y_transform_fixed_batch_size,
+                                           len(x) // batch_size)
+    y_transform_leftover_batch_size = np.repeat(transformations_inds,
+                                                len(x) % batch_size)
+    y_transform = np.concatenate(
+        [y_transform_fixed_batch_size, y_transform_leftover_batch_size])
+    return x_transform, y_transform
 
 
 class Transformer(AbstractTransformer):
-  def __init__(self, translation_x=8, translation_y=8):
+  def __init__(self, translation_x=8, translation_y=8,
+      transform_batch_size=512):
     self.max_tx = translation_x
     self.max_ty = translation_y
-    super().__init__()
+    super().__init__(transform_batch_size)
     self.name = '72_transformer'
 
   def _create_transformation_list(self):
@@ -90,8 +132,8 @@ class Transformer(AbstractTransformer):
 
 
 class SimpleTransformer(AbstractTransformer):
-  def __init__(self):
-    super().__init__()
+  def __init__(self, transform_batch_size=512):
+    super().__init__(transform_batch_size)
     self.name = 'Rotate_transformer'
 
   def _create_transformation_list(self):
@@ -140,17 +182,18 @@ def test_visualize_transforms():
       plt.title(str(transformer.tranformation_to_perform[i]))
       plt.show()
 
+
 def plot_img(transformed_batch, transformer, indx, batch_size=8):
   plt.imshow(transformed_batch.numpy()[indx])
-  transform_indx = indx//batch_size
+  transform_indx = indx // batch_size
   plt.title(str(transformer.tranformation_to_perform[transform_indx]))
   plt.show()
+
 
 def test_dataset_generation():
   import imageio
   import glob
   import os, sys
-  import matplotlib.pyplot as plt
   import datetime
   import time
   import numpy as np
@@ -199,10 +242,17 @@ def test_dataset_generation():
       seconds=int(round(time.time() - start_time))))
   print("Time usage %s: %s" % (transformer.name, str(time_usage)), flush=True)
 
-  last_batch_size = dataset_size%batch_size
-  indx_to_plot = np.arange(transformer.n_transforms)*last_batch_size
+  last_batch_size = dataset_size % batch_size
+  indx_to_plot = np.arange(transformer.n_transforms) * last_batch_size
   for i in indx_to_plot:
     plot_img(transformed_batch, transformer, i)
+
+
+def plot_astro_img(x, transform):
+  plt.imshow(x[..., 0])
+  plt.title(str(transform))
+  plt.show()
+
 
 if __name__ == "__main__":
   import imageio
@@ -223,7 +273,6 @@ if __name__ == "__main__":
 
   set_soft_gpu_memory_growth()
 
-  start_time = time.time()
   params = {
     loader_keys.DATA_PATH: os.path.join(
         PROJECT_PATH, '../datasets/ztf_v1_bogus_added.pkl'),
@@ -234,35 +283,72 @@ if __name__ == "__main__":
     loader_keys.TRANSFORMATION_INLIER_CLASS_VALUE: 1
   }
   transformer = Transformer()
-  batch_size = 32
+  batch_size = 512
   ztf_outlier_dataset = ZTFOutlierLoader(params)
   (X_train, y_train), (X_val, y_val), (
     X_test, y_test) = ztf_outlier_dataset.get_outlier_detection_datasets()
 
-  test_ds = tf.data.Dataset.from_tensor_slices((X_train)).batch(batch_size)
-  # transformer = Transformer(8, 8)
+  train_ds = tf.data.Dataset.from_tensor_slices((X_train)).batch(batch_size)
+  transformations_inds = np.arange(transformer.n_transforms)
+
+  EPOCHS = 1
+
+  # # no labels
+  # train_ds = tf.data.Dataset.from_tensor_slices((X_train)).batch(batch_size)
   # transformations_inds = np.arange(transformer.n_transforms)
-  #
-  # EPOCHS = 1
-  #
   # start_time = time.time()
   # for epoch in range(EPOCHS):
-  #   transformed_dataset = []
-  #   for images in test_ds:
+  #   transformed_dataset_v0 = []
+  #   for images in train_ds:
   #     transformed_batch = transformer.transform_batch(images,
   #                                                     transformations_inds)
-  #     transformed_dataset.append(transformed_batch)
-  #     # print(transformed_batch.shape)
-  #   transformed_dataset = np.concatenate(
-  #       [tensor.numpy() for tensor in transformed_dataset])
-  # print(transformed_dataset.shape)
-  #
+  #     transformed_dataset_v0.append(transformed_batch)
+  #   transformed_dataset_v0 = np.concatenate(
+  #       [tensor.numpy() for tensor in transformed_dataset_v0])
+  # print(transformed_dataset_v0.shape)
   # time_usage = str(datetime.timedelta(
   #     seconds=int(round(time.time() - start_time))))
-  # print("Time usage %s: %s" % (transformer.name, str(time_usage)), flush=True)
+  # print("Time usage No Labels %s: %s" % (transformer.name, str(time_usage)),
+  #       flush=True)
   #
-  # last_batch_size = dataset_size%batch_size
-  # indx_to_plot = np.arange(transformer.n_transforms)*last_batch_size
-  # for i in indx_to_plot:
-  #   plot_img(transformed_batch, transformer, i)
-  #
+  # # retrieving labels along side batch generationg
+  # start_time = time.time()
+  # for epoch in range(EPOCHS):
+  #   transformed_dataset_v0 = transformer.apply_all_transformsv0(X_train,
+  #                                                               batch_size)
+  # print(transformed_dataset_v0[0].shape)
+  # time_usage = str(datetime.timedelta(
+  #     seconds=int(round(time.time() - start_time))))
+  # print("Time usage Images along labels v0 %s: %s" % (
+  #   transformer.name, str(time_usage)), flush=True)
+
+  # retrieving labels after batch generationg
+  start_time = time.time()
+  for epoch in range(EPOCHS):
+    transformed_dataset_v1 = transformer.apply_all_transforms(X_train,
+                                                              batch_size)
+  print(transformed_dataset_v1[0].shape)
+  time_usage = str(datetime.timedelta(
+      seconds=int(round(time.time() - start_time))))
+  print("Time usage Images along labels v1 %s: %s" % (
+    transformer.name, str(time_usage)), flush=True)
+
+  from transformations import Transformer as slow_Transformer
+
+  slow_transformer = slow_Transformer()
+  (X_train, y_train), (X_val, y_val), (
+    X_test, y_test) = ztf_outlier_dataset.get_transformed_datasets(
+      slow_transformer)
+
+  # tranform + n_transforms * sample_i_in_one_batch
+  sample_i_in_one_batch = 158
+  transform_i = 60
+  plot_astro_img(X_train[transform_i + 72 * sample_i_in_one_batch],
+                 transformer.tranformation_to_perform[
+                   y_train[transform_i + 72 * sample_i_in_one_batch]])
+  # sample_i_in_one_batch + tranform * batch_size
+  plot_astro_img(transformed_dataset_v1[0][
+                   sample_i_in_one_batch + transform_i * batch_size],
+                 transformer.tranformation_to_perform[
+                   transformed_dataset_v1[1][
+                     sample_i_in_one_batch + transform_i * batch_size]])

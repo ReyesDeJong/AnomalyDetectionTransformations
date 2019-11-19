@@ -128,17 +128,6 @@ class ZTFOutlierLoader(object):
     utils.save_pickle(sets_tuple, outlier_data_path)
     return sets_tuple
 
-  # Todo: delegate this to transformer
-  def _perform_transform(self, transformer, x):
-    """generate transform inds, that are the labels of each transform and
-    its respective transformed data"""
-    transform_inds = np.tile(
-        np.arange(transformer.n_transforms), len(x))
-    x_transformed = transformer.transform_batch(
-        np.repeat(x, transformer.n_transforms, axis=0),
-        transform_inds)
-    return x_transformed, transform_inds
-
   # TODO: implement transformation loading
   def get_transformed_datasets(self, transformer: AbstractTransformer):
     """transform daa and save to avoid doin it over and over again"""
@@ -160,12 +149,12 @@ class ZTFOutlierLoader(object):
     # print('train: ', np.unique(y_train, return_counts=True))
     # print('val: ', np.unique(y_val, return_counts=True))
     # print('test: ', np.unique(y_test, return_counts=True))
-    x_train_transformed, train_transform_inds = self._perform_transform(
-        transformer, x_train)
-    x_val_transformed, val_transform_inds = self._perform_transform(transformer,
-                                                                    x_val)
-    x_test_transformed, test_transform_inds = self._perform_transform(
-        transformer, x_test)
+    x_train_transformed, train_transform_inds = \
+      transformer.apply_all_transforms(x_train)
+    x_val_transformed, val_transform_inds = \
+      transformer.apply_all_transforms(x_val)
+    x_test_transformed, test_transform_inds = \
+      transformer.apply_all_transforms(x_test)
     sets_tuple = ((x_train_transformed, train_transform_inds),
                   (x_val_transformed, val_transform_inds),
                   (x_test_transformed, test_transform_inds))
@@ -184,7 +173,7 @@ if __name__ == "__main__":
         PROJECT_PATH, '../datasets/ztf_v1_bogus_added.pkl'),
     loader_keys.VAL_SET_INLIER_PERCENTAGE: 0.1,
     loader_keys.USED_CHANNELS: [0, 1, 2],
-    loader_keys.CROP_SIZE: None,
+    loader_keys.CROP_SIZE: 21,
     general_keys.RANDOM_SEED: 42,
     loader_keys.TRANSFORMATION_INLIER_CLASS_VALUE: 1
   }

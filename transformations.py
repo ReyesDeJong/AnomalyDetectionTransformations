@@ -168,6 +168,15 @@ class AbstractTransformer(abc.ABC):
           transformed_batch[i])
     return transformed_batch
 
+  def apply_all_transforms(self, x):
+    """generate transform inds, that are the labels of each transform and
+    its respective transformed data"""
+    transform_inds = np.tile(np.arange(self.n_transforms), len(x))
+    x_transformed = self.transform_batch(
+      np.repeat(x, self.n_transforms, axis=0),
+      transform_inds)
+    return x_transformed, transform_inds
+
 
 class Transformer(AbstractTransformer):
   def __init__(self, translation_x=8, translation_y=8):
@@ -268,7 +277,7 @@ class KernelTransformer(AbstractTransformer):
 
 
 if __name__ == "__main__":
-  #tf 1
+  # tf 1
   import matplotlib.pyplot as plt
   from keras.backend.tensorflow_backend import set_session
   from modules.utils import createCircularMask
