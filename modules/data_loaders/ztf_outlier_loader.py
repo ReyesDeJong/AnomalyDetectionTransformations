@@ -142,6 +142,7 @@ class ZTFOutlierLoader(object):
     transformed_data_path = utils.add_text_to_beginning_of_file_path(
         self.preprocessed_data_path, '%s_outlier' % transformer.name)
     if os.path.exists(transformed_data_path):
+      print('loading pickle')
       return pd.read_pickle(transformed_data_path)
 
     (x_train, y_train), (x_val, y_val), (
@@ -163,7 +164,7 @@ class ZTFOutlierLoader(object):
 
 
 if __name__ == "__main__":
-  from transformations import Transformer
+  from modules.geometric_transform.transformations_tf import Transformer
   import datetime
   import time
 
@@ -190,9 +191,10 @@ if __name__ == "__main__":
   (X_train_trans, y_train_trans), (X_val_trans, y_val_trans), (
     X_test_trans, y_test_trans) = ztf_outlier_dataset.get_transformed_datasets(
       transformer)
-  print('train: ', np.unique(y_train_trans, return_counts=True))
-  print('val: ', np.unique(y_val_trans, return_counts=True))
-  print('test: ', np.unique(y_test_trans, return_counts=True))
   time_usage = str(datetime.timedelta(
       seconds=int(round(time.time() - start_time))))
   print("Time usage %s: %s" % (transformer.name, str(time_usage)), flush=True)
+  # print('train: ', np.unique(y_train_trans, return_counts=True))
+  # print('val: ', np.unique(y_val_trans, return_counts=True))
+  # print('test: ', np.unique(y_test_trans, return_counts=True))
+
