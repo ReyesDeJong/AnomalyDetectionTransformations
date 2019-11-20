@@ -20,7 +20,7 @@ from parameters import loader_keys
 from modules.data_loaders.frame_to_input import FrameToInput
 from modules import utils
 
-
+# Todo: Do some refactoring to include kwargs
 class ZTFOutlierLoader(object):
 
   def __init__(self, params: dict):
