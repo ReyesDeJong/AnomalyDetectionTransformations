@@ -6,6 +6,7 @@ LOSS = 'loss'
 DISC_LOSS = 'disc_loss'
 
 # Names of metrics
+ACC = 'acc'
 ACCURACY = 'accuracy'
 IOU_ENDO = 'iou_endo'
 IOU_EPI = 'iou_epi'
@@ -50,3 +51,9 @@ OUT_NORMAL_RADIUS = 'out_normal_radius'
 
 # random things
 RANDOM_SEED = 'random_seed'
+
+# optimizer names
+ADAM = 'adam'
+
+# losses names
+CATEGORICAL_CROSSENTROPY = 'categorical_crossentropy'

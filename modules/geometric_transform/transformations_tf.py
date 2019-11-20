@@ -89,6 +89,7 @@ class AbstractTransformer(abc.ABC):
   def apply_all_transforms(self, x, batch_size=None):
     """generate transform inds, that are the labels of each transform and
     its respective transformed data. It generates labels after images"""
+    print('Appliying transforms to set of shape %s' % str(x.shape))
     if batch_size is not None:
       self._transform_batch_size = batch_size
     train_ds = tf.data.Dataset.from_tensor_slices((x)).batch(

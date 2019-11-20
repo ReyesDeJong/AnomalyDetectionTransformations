@@ -15,7 +15,7 @@ def _get_channels_axis(data_format):
 
 # TODO: data_format to constructors of layers
 class WideResidualNetwork(tf.keras.Model):
-  def __init__(self, input_shape, num_classes, depth,
+  def __init__(self, input_shape, n_classes, depth,
       widen_factor=1, dropout_rate=0.0, final_activation='softmax',
       name='wide_resnet', data_format='channels_last',
       weight_decay=WEIGHT_DECAY):
@@ -47,7 +47,7 @@ class WideResidualNetwork(tf.keras.Model):
     self.bn_1 = self.batch_norm()
     self.act_1 = tf.keras.layers.Activation('relu')
     self.gap_1 = tf.keras.layers.GlobalAveragePooling2D()
-    self.fc_1 = self.dense(num_classes)
+    self.fc_1 = self.dense(n_classes)
     self.act_out = tf.keras.layers.Activation(final_activation)
 
   def call(self, input_tensor, training=False):
@@ -164,8 +164,7 @@ if __name__ == '__main__':
   # model.summary()
 
   from modules.data_loaders.base_line_loaders import load_ztf_real_bog
-  from transformations import Transformer
-  import numpy as np
+  from modules.geometric_transform.transformations_tf import Transformer
 
   gpus = tf.config.experimental.list_physical_devices('GPU')
   for gpu in gpus:
@@ -180,15 +179,15 @@ if __name__ == '__main__':
   mdl.compile('adam', 'categorical_crossentropy', ['acc'])
 
   x_train_task = x_train[y_train.flatten() == single_class_ind]
-  transformations_inds = np.tile(np.arange(transformer.n_transforms),
-                                 len(x_train_task))
-  x_train_task_transformed = transformer.transform_batch(
-      np.repeat(x_train_task, transformer.n_transforms, axis=0),
-      transformations_inds)
+
+  x_train_task_transformed, transformations_inds = transformer.apply_all_transforms(
+    x_train_task)
   batch_size = 128
 
   mdl.fit(x=x_train_task_transformed,
           y=tf.keras.utils.to_categorical(transformations_inds),
           batch_size=batch_size,
-          epochs=int(np.ceil(200 / transformer.n_transforms))
+          epochs=1  # int(np.ceil(200 / transformer.n_transforms))
           )
+  pred = mdl(x_test)
+  print(pred)
