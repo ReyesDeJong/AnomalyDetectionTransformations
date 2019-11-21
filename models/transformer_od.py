@@ -16,6 +16,9 @@ from parameters import general_keys
 import numpy as np
 from modules import dirichlet_utils
 from modules import scores
+from sklearn.metrics import roc_curve, precision_recall_curve, auc
+from modules.metrics import accuracies_by_threshold, accuracy_at_thr
+import pprint
 
 """In situ transformation perform"""
 
@@ -136,7 +139,49 @@ class TransformODModel(tf.keras.Model):
 
   def evaluate_od(self, x_train, x_eval,
       transform_batch_size=512, predict_batch_size=1024, **kwargs):
+
     return 0
+
+  def get_metrics_dict(self, scores, scores_val, labels, save_file_path=None,
+      percentile=95.46):
+    scores = scores.flatten()
+    labels = labels.flatten()
+    scores_pos = scores[labels == 1]
+    scores_neg = scores[labels != 1]
+    truth = np.concatenate(
+        (np.zeros_like(scores_neg), np.ones_like(scores_pos)))
+    preds = np.concatenate((scores_neg, scores_pos))
+    fpr, tpr, roc_thresholds = roc_curve(truth, preds)
+    roc_auc = auc(fpr, tpr)
+    accuracies = accuracies_by_threshold(labels, scores, roc_thresholds)
+    acc_at_percentil = accuracy_at_thr(
+        labels, scores, np.percentile(scores_val, percentile))
+    # pr curve where "normal" is the positive class
+    precision_norm, recall_norm, pr_thresholds_norm = precision_recall_curve(
+        truth, preds)
+    pr_auc_norm = auc(recall_norm, precision_norm)
+    # pr curve where "anomaly" is the positive class
+    precision_anom, recall_anom, pr_thresholds_anom = precision_recall_curve(
+        truth, -preds, pos_label=0)
+    pr_auc_anom = auc(recall_anom, precision_anom)
+    metrics_dict = {'fpr': fpr, 'tpr': tpr, 'roc_thresholds': roc_thresholds,
+                    'roc_auc': roc_auc,
+                    'precision_norm': precision_norm,
+                    'recall_norm': recall_norm,
+                    'pr_thresholds_norm': pr_thresholds_norm,
+                    'pr_auc_norm': pr_auc_norm,
+                    'precision_anom': precision_anom,
+                    'recall_anom': recall_anom,
+                    'pr_thresholds_anom': pr_thresholds_anom,
+                    'pr_auc_anom': pr_auc_anom,
+                    'accuracies': accuracies,
+                    'acc_at_percentil': acc_at_percentil}
+    if save_file_path is not None:
+      # TODO: check if **metrics_dict works
+      np.savez_compressed(save_file_path, **metrics_dict  )
+    else:
+      pprint.pprint((metrics_dict))
+    return metrics_dict
 
 
 if __name__ == '__main__':
@@ -203,3 +248,9 @@ if __name__ == '__main__':
   (4302, 72, 72)
   Time model.predict_matrix_and_dirichlet_score 00:01:14.36
   """
+  start_time = time.time()
+  dict = model.get_scores_dict(x_train, x_test)
+  print(
+      "Time model.get_scores_dict %s" % utils.timer(
+          start_time, time.time()),
+      flush=True)

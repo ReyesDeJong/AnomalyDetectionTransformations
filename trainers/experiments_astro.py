@@ -49,7 +49,7 @@ def save_results_file(dataset_name, single_class_ind, scores, labels,
                                            datetime.datetime.now().strftime(
                                              '%Y-%m-%d-%H%M'))
   res_file_path = os.path.join(RESULTS_DIR, dataset_name, res_file_name)
-  save_roc_pr_curve_data(scores, labels, res_file_path)
+  save_uroc_pr_curve_data(scores, labels, res_file_path)
 
 
 def get_xH(transformer, matrix_evals):
