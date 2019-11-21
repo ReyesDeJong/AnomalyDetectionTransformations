@@ -41,14 +41,14 @@ def accuracies_by_threshold(labels, scores, thresholds):
 
     accuracy = (TP + TN) / (FP + TP + TN + FN)
     accuracies.append(accuracy)
-  return accuracies
+  return np.array(accuracies)
 
-def accuracies_by_thresholdv2(labels, scores, thresholds):
-  accuracies = []
-  for thr in thresholds:
-    accuracy = accuracy_at_thr(labels, scores, thr)
-    accuracies.append(accuracy)
-  return accuracies
+# def accuracies_by_thresholdv2(labels, scores, thresholds):
+#   accuracies = []
+#   for thr in thresholds:
+#     accuracy = accuracy_at_thr(labels, scores, thr)
+#     accuracies.append(accuracy)
+#   return np.array(accuracies)
 
 def accuracy_at_thr(labels, scores, threshold):
   inliers_scores = scores[labels == 1]
