@@ -15,6 +15,7 @@ from modules.data_loaders.ztf_outlier_loader import ZTFOutlierLoader
 from parameters import general_keys
 import numpy as np
 from modules import dirichlet_utils
+from modules import scores
 
 """In situ transformation perform"""
 
@@ -91,6 +92,7 @@ class TransformODModel(tf.keras.Model):
     return matrix_scores
 
   # TODO: implement pre-transofrmed, in-situ-all, efficient transforming
+  # Todo: avoid code riplication from predict_diri
   def predict_matrix_and_dirichlet_score(self, x_train, x_eval,
       transform_batch_size=512, predict_batch_size=1024,
       **kwargs):
@@ -118,6 +120,23 @@ class TransformODModel(tf.keras.Model):
     diri_scores /= n_transforms
     matrix_scores /= n_transforms
     return matrix_scores, diri_scores
+
+  def get_scores_dict(self, x_train, x_eval,
+      transform_batch_size=512, predict_batch_size=1024, **kwargs):
+    matrix_scores, diri_scores = self.predict_matrix_and_dirichlet_score(
+        x_train, x_eval, transform_batch_size, predict_batch_size, **kwargs)
+    scores_dict = {
+      general_keys.DIRICHLET: diri_scores,
+      general_keys.MATRIX_TRACE: np.trace(matrix_scores, axis1=1, axis2=2),
+      general_keys.ENTROPY: -1 * scores.get_entropy(matrix_scores),
+      general_keys.CROSS_ENTROPY: -1 * scores.get_xH(self.transformer,
+                                                     matrix_scores)
+    }
+    return scores_dict
+
+  def evaluate_od(self, x_train, x_eval,
+      transform_batch_size=512, predict_batch_size=1024, **kwargs):
+    return 0
 
 
 if __name__ == '__main__':
@@ -159,14 +178,14 @@ if __name__ == '__main__':
   #                                                             time.time()),
   #       flush=True)
   # print(pred.shape)
-
-  start_time = time.time()
-  pred = model.predict_matrix_score(x_test)
-  print("Time model.predict_matrix_score %s" % utils.timer(start_time,
-                                                           time.time()),
-        flush=True)
-  print(pred.shape)
-
+  #
+  # start_time = time.time()
+  # pred = model.predict_matrix_score(x_test)
+  # print("Time model.predict_matrix_score %s" % utils.timer(start_time,
+  #                                                          time.time()),
+  #       flush=True)
+  # print(pred.shape)
+  #
   # start_time = time.time()
   # pred_mat, pred_score = model.predict_matrix_and_dirichlet_score(x_train, x_test)
   # print(

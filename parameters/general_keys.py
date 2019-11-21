@@ -8,12 +8,13 @@ DISC_LOSS = 'disc_loss'
 # Names of metrics
 ACC = 'acc'
 ACCURACY = 'accuracy'
-IOU_ENDO = 'iou_endo'
-IOU_EPI = 'iou_epi'
-IOU_MYO = 'iou_myo'
-DICE_ENDO = 'dice_endo'
-DICE_EPI = 'dice_epi'
-DICE_MYO = 'dice_myo'
+
+# Names of scores
+DIRICHLET = 'dirichlet'
+MATRIX_TRACE = 'matrix_trace'
+ENTROPY = 'entropy'
+CROSS_ENTROPY = 'cross_entropy'
+
 
 # To evaluate the metrics
 BATCHES_MEAN = 'batch_mean'
