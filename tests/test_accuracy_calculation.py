@@ -17,8 +17,8 @@ from scripts.detached_transformer_od_hits import \
 import matplotlib.pyplot as plt
 
 data_path = os.path.join(
-    PROJECT_PATH, 'results',
-    'ztf-real-bog-v1_Transformer-OD-Model-dirichlet_real_2019-11-21-1717.npz')
+    PROJECT_PATH, 'results', 'Transformer_OD_Model',
+    'ztf-real-bog-v1_Transformer-OD-Model-dirichlet_real_2019-11-22-0031.npz')
 data = np.load(data_path)
 data_dict = dict(data)
 

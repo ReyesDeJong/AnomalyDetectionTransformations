@@ -47,6 +47,7 @@ class TransformODModel(tf.keras.Model):
     # (x_train, y_train), (x_val, y_val), (
     #   x_test, y_test) = self.data_loader.get_outlier_detection_datasets()
     # (x_train, y_train), _, _ = self.data_loader.get_outlier_detection_datasets()
+    # ToDo: must be network? or just self.compile???
     self.network.compile(
         general_keys.ADAM, general_keys.CATEGORICAL_CROSSENTROPY,
         [general_keys.ACC])
@@ -107,7 +108,7 @@ class TransformODModel(tf.keras.Model):
     for t_ind in range(n_transforms):
       x_train_transformed, _ = self.transformer.apply_transforms(
           x_train, [t_ind], transform_batch_size)
-      observed_dirichlet = self.network.predict(
+      observed_dirichlet = self.predict(
           x_train_transformed, batch_size=predict_batch_size, **kwargs)
       log_p_hat_train = np.log(observed_dirichlet).mean(axis=0)
       alpha_sum_approx = dirichlet_utils.calc_approx_alpha_sum(
@@ -117,7 +118,7 @@ class TransformODModel(tf.keras.Model):
                                                               log_p_hat_train)
       x_eval_transformed, _ = self.transformer.apply_transforms(
           x_eval, [t_ind], transform_batch_size)
-      x_eval_p = self.network.predict(
+      x_eval_p = self.predict(
           x_eval_transformed, batch_size=predict_batch_size, **kwargs)
       diri_scores += dirichlet_utils.dirichlet_normality_score(mle_alpha_t,
                                                                x_eval_p)
@@ -150,6 +151,7 @@ class TransformODModel(tf.keras.Model):
   def evaluate_od(self, x_train, x_eval, y_eval, dataset_name, class_name,
       x_validaiton=None,
       transform_batch_size=512, predict_batch_size=1024, **kwargs):
+    # print('evaluating')
     if x_validaiton is None:
       x_validaiton = x_eval
     # print('start eval')
@@ -290,23 +292,26 @@ if __name__ == '__main__':
   #     "Time model.get_scores_dict %s" % utils.timer(
   #         start_time, time.time()),
   #     flush=True)
-  start_time = time.time()
-  met_dict = model.evaluate_od(
-      x_train, x_test, y_test, 'ztf-real-bog-v1', 'real', x_val)
-  print(
-      "Time model.evaluate_od %s" % utils.timer(
-          start_time, time.time()),
-      flush=True)
-
-  # pprint.pprint(met_dict)
-  for key in met_dict.keys():
-    print(key, met_dict[key]['roc_auc'])
-  for key in met_dict.keys():
-    print(key, met_dict[key]['acc_at_percentil'])
-  for key in met_dict.keys():
-    print(key, met_dict[key]['max_accuracy'])
-
-
+  # start_time = time.time()
+  # met_dict = model.evaluate_od(
+  #     x_train, x_test, y_test, 'ztf-real-bog-v1', 'real', x_val)
+  # print(
+  #     "Time model.evaluate_od %s" % utils.timer(
+  #         start_time, time.time()),
+  #     flush=True)
+  # #
+  # # # pprint.pprint(met_dict)
+  # print('\nroc_auc')
+  # for key in met_dict.keys():
+  #   print(key, met_dict[key]['roc_auc'])
+  # print('\nacc_at_percentil')
+  # for key in met_dict.keys():
+  #   print(key, met_dict[key]['acc_at_percentil'])
+  # print('\nmax_accuracy')
+  # for key in met_dict.keys():
+  #   print(key, met_dict[key]['max_accuracy'])
+  #
+  #
 
   # model.save_weights(
   #   os.path.join(PROJECT_PATH, 'results', model.name, 'my_checkpoint.h5'))
