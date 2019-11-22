@@ -20,6 +20,8 @@ from sklearn.metrics import roc_curve, precision_recall_curve, auc
 from modules.metrics import accuracies_by_threshold, accuracy_at_thr
 import pprint
 import datetime
+import time
+from modules import utils
 
 """In situ transformation perform"""
 
@@ -99,6 +101,7 @@ class TransformODModel(tf.keras.Model):
 
   # TODO: implement pre-transofrmed, in-situ-all, efficient transforming
   # Todo: avoid code riplication from predict_diri
+  # Todo use self.network(x_trans[t_i]) or self(x) to optimice
   def predict_matrix_and_dirichlet_score(self, x_train, x_eval,
       transform_batch_size=512, predict_batch_size=1024,
       **kwargs):
@@ -106,10 +109,22 @@ class TransformODModel(tf.keras.Model):
     diri_scores = np.zeros(len(x_eval))
     matrix_scores = np.zeros((len(x_eval), n_transforms, n_transforms))
     for t_ind in range(n_transforms):
+      print('start train_transform')
+      start_time = time.time()
       x_train_transformed, _ = self.transformer.apply_transforms(
           x_train, [t_ind], transform_batch_size)
+      print(
+          "Time train_transform %s" % utils.timer(
+              start_time, time.time()),
+          flush=True)
+      print('start train_transform_predict')
+      start_time = time.time()
       observed_dirichlet = self.predict(
           x_train_transformed, batch_size=predict_batch_size, **kwargs)
+      print(
+          "Time train_predict %s" % utils.timer(
+              start_time, time.time()),
+          flush=True)
       log_p_hat_train = np.log(observed_dirichlet).mean(axis=0)
       alpha_sum_approx = dirichlet_utils.calc_approx_alpha_sum(
           observed_dirichlet)
@@ -129,8 +144,14 @@ class TransformODModel(tf.keras.Model):
 
   def get_scores_dict(self, x_train, x_eval,
       transform_batch_size=512, predict_batch_size=1024, **kwargs):
+    print('start getting matrix-dir')
+    start_time = time.time()
     matrix_scores, diri_scores = self.predict_matrix_and_dirichlet_score(
         x_train, x_eval, transform_batch_size, predict_batch_size, **kwargs)
+    print(
+        "Time matrix-dir %s" % utils.timer(
+            start_time, time.time()),
+        flush=True)
     scores_dict = {
       general_keys.DIRICHLET: diri_scores,
       general_keys.MATRIX_TRACE: np.trace(matrix_scores, axis1=1, axis2=2),
@@ -149,18 +170,28 @@ class TransformODModel(tf.keras.Model):
     return results_file_path
 
   def evaluate_od(self, x_train, x_eval, y_eval, dataset_name, class_name,
-      x_validaiton=None,
-      transform_batch_size=512, predict_batch_size=1024, **kwargs):
+      x_validaiton=None, transform_batch_size=512, predict_batch_size=1024,
+      **kwargs):
     # print('evaluating')
     if x_validaiton is None:
       x_validaiton = x_eval
-    # print('start eval')
+    print('start eval')
+    start_time = time.time()
     eval_scores_dict = self.get_scores_dict(
         x_train, x_eval, transform_batch_size, predict_batch_size, **kwargs)
-    # print('start val')
+    print(
+        "Time model.evaluate_od eval %s" % utils.timer(
+            start_time, time.time()),
+        flush=True)
+    print('start val')
+    start_time = time.time()
     validation_scores_dict = self.get_scores_dict(
         x_train, x_validaiton, transform_batch_size, predict_batch_size,
         **kwargs)
+    print(
+        "Time model.evaluate_od val %s" % utils.timer(
+            start_time, time.time()),
+        flush=True)
     # print('start metric')
     metrics_of_each_score = {}
     for score_name, scores_value in eval_scores_dict.items():
@@ -183,9 +214,9 @@ class TransformODModel(tf.keras.Model):
     fpr, tpr, roc_thresholds = roc_curve(truth, preds)
     roc_auc = auc(fpr, tpr)
     accuracies = accuracies_by_threshold(labels, scores, roc_thresholds)
-    #100-percentile is necesary because normal data is at the right of anormal
+    # 100-percentile is necesary because normal data is at the right of anormal
     acc_at_percentil = accuracy_at_thr(
-        labels, scores, np.percentile(scores_val, 100-percentile))
+        labels, scores, np.percentile(scores_val, 100 - percentile))
     # pr curve where "normal" is the positive class
     precision_norm, recall_norm, pr_thresholds_norm = precision_recall_curve(
         truth, preds)
@@ -219,9 +250,8 @@ class TransformODModel(tf.keras.Model):
 
 if __name__ == '__main__':
   from parameters import loader_keys
-  from modules.geometric_transform.transformations_tf import Transformer
-  import time
   from modules import utils
+  from modules.geometric_transform.transformations_tf import Transformer
 
   gpus = tf.config.experimental.list_physical_devices('GPU')
   for gpu in gpus:
@@ -247,6 +277,7 @@ if __name__ == '__main__':
   weight_path = os.path.join(PROJECT_PATH, 'results', model.name,
                              'my_checkpoint.h5')
   model.load_weights(weight_path)
+
   # model.fit(x_train)
 
   # start_time = time.time()
@@ -292,13 +323,13 @@ if __name__ == '__main__':
   #     "Time model.get_scores_dict %s" % utils.timer(
   #         start_time, time.time()),
   #     flush=True)
-  # start_time = time.time()
-  # met_dict = model.evaluate_od(
-  #     x_train, x_test, y_test, 'ztf-real-bog-v1', 'real', x_val)
-  # print(
-  #     "Time model.evaluate_od %s" % utils.timer(
-  #         start_time, time.time()),
-  #     flush=True)
+  start_time = time.time()
+  met_dict = model.evaluate_od(
+      x_train, x_test, y_test, 'ztf-real-bog-v1', 'real', x_val)
+  print(
+      "Time model.evaluate_od %s" % utils.timer(
+          start_time, time.time()),
+      flush=True)
   # #
   # # # pprint.pprint(met_dict)
   # print('\nroc_auc')
