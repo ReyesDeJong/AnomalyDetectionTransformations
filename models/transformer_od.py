@@ -146,7 +146,7 @@ class TransformODModel(tf.keras.Model):
       transform_batch_size=512, predict_batch_size=1024, **kwargs):
     print('start getting matrix-dir')
     start_time = time.time()
-    matrix_scores, diri_scores = self.predict_matrix_and_dirichlet_score(
+    matrix_scores, diri_scores = self.predict_matrix_and_dirichlet_score_efficient(
         x_train, x_eval, transform_batch_size, predict_batch_size, **kwargs)
     print(
         "Time matrix-dir %s" % utils.timer(
@@ -299,26 +299,36 @@ if __name__ == '__main__':
   #       flush=True)
   # print(pred.shape)
   #
-  n_data = 1000000
-  start_time = time.time()
-  pred_mat_ef, pred_score_ef = model.predict_matrix_and_dirichlet_score_efficient(
-      x_train[:n_data], x_test[:n_data])
-  print(
-      "Time model.predict_matrix_and_dirichlet_score_efficient %s" % utils.timer(
-          start_time, time.time()),
-      flush=True)
-  print(pred_mat_ef.shape, pred_score_ef.shape)
-
-
-  start_time = time.time()
-  pred_mat_1, pred_score_1 = model.predict_matrix_and_dirichlet_score(x_train[:n_data], x_test[:n_data])
-  print(
-      "Time model.predict_matrix_and_dirichlet_score %s" % utils.timer(
-          start_time, time.time()),
-      flush=True)
-  print(pred_mat_ef.shape, pred_score_ef.shape)
-  print(np.mean(pred_mat_1 == pred_mat_ef))
-  print(np.mean(pred_score_1 == pred_score_ef))
+  # n_data = 1000000
+  # start_time = time.time()
+  # pred_mat_ef, pred_score_ef = model.predict_matrix_and_dirichlet_score_efficient(
+  #     x_train[:n_data], x_test[:n_data])
+  # print(
+  #     "Time model.predict_matrix_and_dirichlet_score_efficient %s" % utils.timer(
+  #         start_time, time.time()),
+  #     flush=True)
+  # print(pred_mat_ef.shape, pred_score_ef.shape)
+  #
+  #
+  # start_time = time.time()
+  # pred_mat_1, pred_score_1 = model.predict_matrix_and_dirichlet_score(x_train[:n_data], x_test[:n_data])
+  # print(
+  #     "Time model.predict_matrix_and_dirichlet_score %s" % utils.timer(
+  #         start_time, time.time()),
+  #     flush=True)
+  # print(pred_mat_ef.shape, pred_score_ef.shape)
+  # print(np.mean(pred_mat_1 == pred_mat_ef))
+  # print(np.mean(pred_score_1 == pred_score_ef))
+  #
+  # """
+  # Time
+  # model.predict_matrix_and_dirichlet_score_efficient
+  # 00: 00:56.06
+  # (4302, 72, 72)(4302, )
+  # Time
+  # model.predict_matrix_and_dirichlet_score
+  # 00: 01:08.46
+  # """
 
   # start_time = time.time()
   # pred_mat_re, pred_score_re = model.predict_matrix_and_dirichlet_score_refact(x_train[:n_data], x_test[:n_data])
@@ -348,13 +358,24 @@ if __name__ == '__main__':
   #     "Time model.get_scores_dict %s" % utils.timer(
   #         start_time, time.time()),
   #     flush=True)
-  # start_time = time.time()
-  # met_dict = model.evaluate_od(
-  #     x_train, x_test, y_test, 'ztf-real-bog-v1', 'real', x_val)
-  # print(
-  #     "Time model.evaluate_od %s" % utils.timer(
-  #         start_time, time.time()),
-  #     flush=True)
+  start_time = time.time()
+  met_dict = model.evaluate_od(
+      x_train, x_test, y_test, 'ztf-real-bog-v1', 'real', x_val)
+  print(
+      "Time model.evaluate_od %s" % utils.timer(
+          start_time, time.time()),
+      flush=True)
+
+  """
+  NORMAL
+  Time model.evaluate_od eval 00:01:10.98 NORMAL
+  Time model.evaluate_od val 00:01:07.16
+  Time model.evaluate_od 00:02:18.27
+  EFFICIENT
+  Time model.evaluate_od eval 00:00:59.36
+  Time model.evaluate_od val 00:00:58.44
+Time model.evaluate_od 00:01:57.93
+  """
   # #
   # # # pprint.pprint(met_dict)
   # print('\nroc_auc')
