@@ -109,22 +109,22 @@ class TransformODModel(tf.keras.Model):
     diri_scores = np.zeros(len(x_eval))
     matrix_scores = np.zeros((len(x_eval), n_transforms, n_transforms))
     for t_ind in range(n_transforms):
-      print('start train_transform')
-      start_time = time.time()
+      # print('start train_transform')
+      # start_time = time.time()
       x_train_transformed, _ = self.transformer.apply_transforms(
           x_train, [t_ind], transform_batch_size)
-      print(
-          "Time train_transform %s" % utils.timer(
-              start_time, time.time()),
-          flush=True)
-      print('start train_transform_predict')
-      start_time = time.time()
+      # print(
+      #     "Time train_transform %s" % utils.timer(
+      #         start_time, time.time()),
+      #     flush=True)
+      # print('start train_transform_predict')
+      # start_time = time.time()
       observed_dirichlet = self.predict(
           x_train_transformed, batch_size=predict_batch_size, **kwargs)
-      print(
-          "Time train_predict %s" % utils.timer(
-              start_time, time.time()),
-          flush=True)
+      # print(
+      #     "Time train_predict %s" % utils.timer(
+      #         start_time, time.time()),
+      #     flush=True)
       log_p_hat_train = np.log(observed_dirichlet).mean(axis=0)
       alpha_sum_approx = dirichlet_utils.calc_approx_alpha_sum(
           observed_dirichlet)
@@ -137,6 +137,30 @@ class TransformODModel(tf.keras.Model):
           x_eval_transformed, batch_size=predict_batch_size, **kwargs)
       diri_scores += dirichlet_utils.dirichlet_normality_score(mle_alpha_t,
                                                                x_eval_p)
+      matrix_scores[:, :, t_ind] += x_eval_p
+    diri_scores /= n_transforms
+    matrix_scores /= n_transforms
+    return matrix_scores, diri_scores
+
+  def predict_matrix_and_dirichlet_score_efficient(self, x_train, x_eval,
+      transform_batch_size=512, predict_batch_size=1024,
+      **kwargs):
+    """
+    Apply transforms to all train+val, then predict all, then separate them
+    """
+    n_transforms = self.transformer.n_transforms
+    x = np.concatenate([x_train, x_eval])
+    x_transform, y_transform = self.transformer.apply_all_transforms(
+        x, transform_batch_size)
+    predicted_transform = self.predict(
+          x_transform, batch_size=predict_batch_size, **kwargs)
+    diri_scores = np.zeros(len(x_eval))
+    matrix_scores = np.zeros((len(x_eval), n_transforms, n_transforms))
+    for t_ind in range(n_transforms):
+      transform_indexes = np.where(y_transform==t_ind)[0]
+      observed_dirichlet = predicted_transform[transform_indexes][:len(x_train)]
+      x_eval_p = predicted_transform[transform_indexes][len(x_train):]
+      diri_scores += dirichlet_utils.dirichlet_score(observed_dirichlet, x_eval_p)
       matrix_scores[:, :, t_ind] += x_eval_p
     diri_scores /= n_transforms
     matrix_scores /= n_transforms
@@ -299,13 +323,27 @@ if __name__ == '__main__':
   #       flush=True)
   # print(pred.shape)
   #
-  # start_time = time.time()
-  # pred_mat, pred_score = model.predict_matrix_and_dirichlet_score(x_train, x_test)
-  # print(
-  #     "Time model.predict_matrix_and_dirichlet_score %s" % utils.timer(
-  #         start_time, time.time()),
-  #     flush=True)
-  # print(pred_mat.shape, pred_score.shape)
+
+  start_time = time.time()
+  pred_mat, pred_score = model.predict_matrix_and_dirichlet_score_efficient(
+      x_train, x_test)
+  print(
+      "Time model.predict_matrix_and_dirichlet_score_efficient %s" % utils.timer(
+          start_time, time.time()),
+      flush=True)
+  print(pred_mat.shape, pred_score.shape)
+
+
+  start_time = time.time()
+  pred_mat_1, pred_score_1 = model.predict_matrix_and_dirichlet_score(x_train, x_test)
+  print(
+      "Time model.predict_matrix_and_dirichlet_score %s" % utils.timer(
+          start_time, time.time()),
+      flush=True)
+  print(pred_mat.shape, pred_score.shape)
+  print(np.mean(pred_mat_1 == pred_mat))
+  print(np.mean(pred_score_1 == pred_score))
+
   """
   Time model.pred 00:00:04.92
   (4302, 72)
@@ -323,13 +361,13 @@ if __name__ == '__main__':
   #     "Time model.get_scores_dict %s" % utils.timer(
   #         start_time, time.time()),
   #     flush=True)
-  start_time = time.time()
-  met_dict = model.evaluate_od(
-      x_train, x_test, y_test, 'ztf-real-bog-v1', 'real', x_val)
-  print(
-      "Time model.evaluate_od %s" % utils.timer(
-          start_time, time.time()),
-      flush=True)
+  # start_time = time.time()
+  # met_dict = model.evaluate_od(
+  #     x_train, x_test, y_test, 'ztf-real-bog-v1', 'real', x_val)
+  # print(
+  #     "Time model.evaluate_od %s" % utils.timer(
+  #         start_time, time.time()),
+  #     flush=True)
   # #
   # # # pprint.pprint(met_dict)
   # print('\nroc_auc')
