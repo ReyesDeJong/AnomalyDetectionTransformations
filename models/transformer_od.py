@@ -290,19 +290,21 @@ if __name__ == '__main__':
   #     "Time model.get_scores_dict %s" % utils.timer(
   #         start_time, time.time()),
   #     flush=True)
-  # start_time = time.time()
-  # met_dict = model.evaluate_od(
-  #     x_train, x_test, y_test, 'ztf-real-bog-v1', 'real', x_val)
-  # print(
-  #     "Time model.evaluate_od %s" % utils.timer(
-  #         start_time, time.time()),
-  #     flush=True)
-  #
-  # # pprint.pprint(met_dict)
-  # for key in met_dict.keys():
-  #   print(key, met_dict[key]['roc_auc'])
-  # for key in met_dict.keys():
-  #   print(key, met_dict[key]['acc_at_percentil'])
+  start_time = time.time()
+  met_dict = model.evaluate_od(
+      x_train, x_test, y_test, 'ztf-real-bog-v1', 'real', x_val)
+  print(
+      "Time model.evaluate_od %s" % utils.timer(
+          start_time, time.time()),
+      flush=True)
+
+  # pprint.pprint(met_dict)
+  for key in met_dict.keys():
+    print(key, met_dict[key]['roc_auc'])
+  for key in met_dict.keys():
+    print(key, met_dict[key]['acc_at_percentil'])
+  for key in met_dict.keys():
+    print(key, met_dict[key]['max_accuracy'])
 
 
 
