@@ -49,7 +49,7 @@ def dirichlet_score(predict_x_train, predict_x_eval):
   observed_dirichlet = predict_x_train
   x_eval_p = predict_x_eval
 
-  log_p_hat_train = np.sum(np.log(observed_dirichlet), axis=0)
+  log_p_hat_train = np.mean(np.log(observed_dirichlet), axis=0)
   alpha_sum_approx = calc_approx_alpha_sum(
       observed_dirichlet)
   alpha_0 = np.mean(observed_dirichlet, axis=0) * alpha_sum_approx
@@ -103,7 +103,7 @@ def dirichlet_score_tf(predict_x_train, predict_x_eval):
   observed_dirichlet = tf.dtypes.cast(predict_x_train, tf.float32)
   x_eval_p = tf.dtypes.cast(predict_x_eval, tf.float32)
 
-  log_p_hat_train = tf.reduce_sum(tf.math.log(observed_dirichlet), axis=0)
+  log_p_hat_train = tf.reduce_mean(tf.math.log(observed_dirichlet), axis=0)
   alpha_sum_approx = calc_approx_alpha_sum_tf(
       observed_dirichlet)
   # print(alpha_sum_approx)

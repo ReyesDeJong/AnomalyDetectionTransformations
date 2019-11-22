@@ -71,17 +71,11 @@ class TransformODModel(tf.keras.Model):
           x_train, [t_ind], transform_batch_size)
       observed_dirichlet = self.network.predict(
           x_train_transformed, batch_size=predict_batch_size, **kwargs)
-      log_p_hat_train = np.log(observed_dirichlet).mean(axis=0)
-      alpha_sum_approx = dirichlet_utils.calc_approx_alpha_sum(
-          observed_dirichlet)
-      alpha_0 = observed_dirichlet.mean(axis=0) * alpha_sum_approx
-      mle_alpha_t = dirichlet_utils.fixed_point_dirichlet_mle(alpha_0,
-                                                              log_p_hat_train)
       x_eval_transformed, _ = self.transformer.apply_transforms(
           x_eval, [t_ind], transform_batch_size)
       x_eval_p = self.network.predict(
           x_eval_transformed, batch_size=predict_batch_size, **kwargs)
-      scores += dirichlet_utils.dirichlet_normality_score(mle_alpha_t, x_eval_p)
+      scores += dirichlet_utils.dirichlet_score(observed_dirichlet, x_eval_p)
     scores /= self.transformer.n_transforms
     return scores
 
@@ -109,33 +103,15 @@ class TransformODModel(tf.keras.Model):
     diri_scores = np.zeros(len(x_eval))
     matrix_scores = np.zeros((len(x_eval), n_transforms, n_transforms))
     for t_ind in range(n_transforms):
-      # print('start train_transform')
-      # start_time = time.time()
       x_train_transformed, _ = self.transformer.apply_transforms(
           x_train, [t_ind], transform_batch_size)
-      # print(
-      #     "Time train_transform %s" % utils.timer(
-      #         start_time, time.time()),
-      #     flush=True)
-      # print('start train_transform_predict')
-      # start_time = time.time()
       observed_dirichlet = self.predict(
           x_train_transformed, batch_size=predict_batch_size, **kwargs)
-      # print(
-      #     "Time train_predict %s" % utils.timer(
-      #         start_time, time.time()),
-      #     flush=True)
-      log_p_hat_train = np.log(observed_dirichlet).mean(axis=0)
-      alpha_sum_approx = dirichlet_utils.calc_approx_alpha_sum(
-          observed_dirichlet)
-      alpha_0 = observed_dirichlet.mean(axis=0) * alpha_sum_approx
-      mle_alpha_t = dirichlet_utils.fixed_point_dirichlet_mle(alpha_0,
-                                                              log_p_hat_train)
       x_eval_transformed, _ = self.transformer.apply_transforms(
           x_eval, [t_ind], transform_batch_size)
       x_eval_p = self.predict(
           x_eval_transformed, batch_size=predict_batch_size, **kwargs)
-      diri_scores += dirichlet_utils.dirichlet_normality_score(mle_alpha_t,
+      diri_scores += dirichlet_utils.dirichlet_score(observed_dirichlet,
                                                                x_eval_p)
       matrix_scores[:, :, t_ind] += x_eval_p
     diri_scores /= n_transforms
@@ -323,26 +299,37 @@ if __name__ == '__main__':
   #       flush=True)
   # print(pred.shape)
   #
-
+  n_data = 1000000
   start_time = time.time()
-  pred_mat, pred_score = model.predict_matrix_and_dirichlet_score_efficient(
-      x_train, x_test)
+  pred_mat_ef, pred_score_ef = model.predict_matrix_and_dirichlet_score_efficient(
+      x_train[:n_data], x_test[:n_data])
   print(
       "Time model.predict_matrix_and_dirichlet_score_efficient %s" % utils.timer(
           start_time, time.time()),
       flush=True)
-  print(pred_mat.shape, pred_score.shape)
+  print(pred_mat_ef.shape, pred_score_ef.shape)
 
 
   start_time = time.time()
-  pred_mat_1, pred_score_1 = model.predict_matrix_and_dirichlet_score(x_train, x_test)
+  pred_mat_1, pred_score_1 = model.predict_matrix_and_dirichlet_score(x_train[:n_data], x_test[:n_data])
   print(
       "Time model.predict_matrix_and_dirichlet_score %s" % utils.timer(
           start_time, time.time()),
       flush=True)
-  print(pred_mat.shape, pred_score.shape)
-  print(np.mean(pred_mat_1 == pred_mat))
-  print(np.mean(pred_score_1 == pred_score))
+  print(pred_mat_ef.shape, pred_score_ef.shape)
+  print(np.mean(pred_mat_1 == pred_mat_ef))
+  print(np.mean(pred_score_1 == pred_score_ef))
+
+  # start_time = time.time()
+  # pred_mat_re, pred_score_re = model.predict_matrix_and_dirichlet_score_refact(x_train[:n_data], x_test[:n_data])
+  # print(
+  #     "Time model.predict_matrix_and_dirichlet_score_refact %s" % utils.timer(
+  #         start_time, time.time()),
+  #     flush=True)
+  # print(pred_mat_ef.shape, pred_score_ef.shape)
+  # print(np.mean(pred_mat_1 == pred_mat_re))
+  # print(np.mean(pred_score_1 == pred_score_re))
+  # print(np.mean(pred_score_ef == pred_score_re))
 
   """
   Time model.pred 00:00:04.92
