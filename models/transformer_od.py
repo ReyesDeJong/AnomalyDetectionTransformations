@@ -154,8 +154,9 @@ class TransformODModel(tf.keras.Model):
     fpr, tpr, roc_thresholds = roc_curve(truth, preds)
     roc_auc = auc(fpr, tpr)
     accuracies = accuracies_by_threshold(labels, scores, roc_thresholds)
+    #100-percentile is necesary because normal data is at the right of anormal
     acc_at_percentil = accuracy_at_thr(
-        labels, scores, np.percentile(scores_val, percentile))
+        labels, scores, np.percentile(scores_val, 100-percentile))
     # pr curve where "normal" is the positive class
     precision_norm, recall_norm, pr_thresholds_norm = precision_recall_curve(
         truth, preds)
@@ -175,6 +176,7 @@ class TransformODModel(tf.keras.Model):
                     'pr_thresholds_anom': pr_thresholds_anom,
                     'pr_auc_anom': pr_auc_anom,
                     'accuracies': accuracies,
+                    'max_accuracy': np.max(accuracies),
                     'acc_at_percentil': acc_at_percentil}
     if save_file_path is not None:
       # TODO: check if **metrics_dict works

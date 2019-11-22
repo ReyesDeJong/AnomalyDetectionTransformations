@@ -8,14 +8,14 @@ sys.path.append(PROJECT_PATH)
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.special import psi, polygamma
-from keras.utils import to_categorical
+from tensorflow.keras.utils import to_categorical
 from modules.data_loaders.base_line_loaders import load_hits
 
 from transformations import Transformer
 from models.wide_residual_network import create_wide_residual_network
 import time
 import datetime
-from keras.backend.tensorflow_backend import set_session
+# from tensorflow.keras.backend.tensorflow_backend import set_session
 import tensorflow as tf
 from tqdm import tqdm
 from sklearn.metrics import auc
