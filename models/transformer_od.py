@@ -19,6 +19,7 @@ from modules import scores
 from sklearn.metrics import roc_curve, precision_recall_curve, auc
 from modules.metrics import accuracies_by_threshold, accuracy_at_thr
 import pprint
+import datetime
 
 """In situ transformation perform"""
 
@@ -29,6 +30,7 @@ class TransformODModel(tf.keras.Model):
       transformer: AbstractTransformer, input_shape, depth=10,
       widen_factor=4, name='Transformer_OD_Model', **kwargs):
     super().__init__(name=name)
+    self.model_path = os.path.join(PROJECT_PATH, 'results', self.name)
     self.data_loader = data_loader
     self.transformer = transformer
     self.network = WideResidualNetwork(
@@ -137,10 +139,35 @@ class TransformODModel(tf.keras.Model):
     }
     return scores_dict
 
-  def evaluate_od(self, x_train, x_eval,
-      transform_batch_size=512, predict_batch_size=1024, **kwargs):
+  def get_metrics_save_path(self, score_name, dataset_name, class_name):
+    model_score_name = ('%s_%s' % (self.name, score_name)).replace("_", "-")
+    results_file_name = '{}_{}_{}_{}.npz'.format(
+        dataset_name, model_score_name, class_name,
+        datetime.datetime.now().strftime('%Y-%m-%d-%H%M'))
+    results_file_path = os.path.join(self.model_path, results_file_name)
+    return results_file_path
 
-    return 0
+  def evaluate_od(self, x_train, x_eval, y_eval, dataset_name, class_name,
+      x_validaiton=None,
+      transform_batch_size=512, predict_batch_size=1024, **kwargs):
+    if x_validaiton is None:
+      x_validaiton = x_eval
+    # print('start eval')
+    eval_scores_dict = self.get_scores_dict(
+        x_train, x_eval, transform_batch_size, predict_batch_size, **kwargs)
+    # print('start val')
+    validation_scores_dict = self.get_scores_dict(
+        x_train, x_validaiton, transform_batch_size, predict_batch_size,
+        **kwargs)
+    # print('start metric')
+    metrics_of_each_score = {}
+    for score_name, scores_value in eval_scores_dict.items():
+      metrics_save_path = self.get_metrics_save_path(score_name, dataset_name,
+                                                     class_name)
+      metrics_of_each_score[score_name] = self.get_metrics_dict(
+          scores_value, validation_scores_dict[score_name], y_eval,
+          metrics_save_path)
+    return metrics_of_each_score
 
   def get_metrics_dict(self, scores, scores_val, labels, save_file_path=None,
       percentile=95.46):
@@ -165,7 +192,9 @@ class TransformODModel(tf.keras.Model):
     precision_anom, recall_anom, pr_thresholds_anom = precision_recall_curve(
         truth, -preds, pos_label=0)
     pr_auc_anom = auc(recall_anom, precision_anom)
-    metrics_dict = {'fpr': fpr, 'tpr': tpr, 'roc_thresholds': roc_thresholds,
+    metrics_dict = {'scores': scores, 'labels': labels,
+                    'scores_val': scores_val, 'fpr': fpr,
+                    'tpr': tpr, 'roc_thresholds': roc_thresholds,
                     'roc_auc': roc_auc,
                     'precision_norm': precision_norm,
                     'recall_norm': recall_norm,
@@ -180,7 +209,7 @@ class TransformODModel(tf.keras.Model):
                     'acc_at_percentil': acc_at_percentil}
     if save_file_path is not None:
       # TODO: check if **metrics_dict works
-      np.savez_compressed(save_file_path, **metrics_dict  )
+      np.savez_compressed(save_file_path, **metrics_dict)
     else:
       pprint.pprint((metrics_dict))
     return metrics_dict
@@ -212,6 +241,10 @@ if __name__ == '__main__':
   model = TransformODModel(
       data_loader=ztf_od_loader, transformer=transformer,
       input_shape=x_train.shape[1:])
+  model.build(tuple([None]+list(x_train.shape[1:])))
+  weight_path = os.path.join(PROJECT_PATH, 'results', model.name,
+                             'my_checkpoint.h5')
+  model.load_weights(weight_path)
   # model.fit(x_train)
 
   # start_time = time.time()
@@ -250,9 +283,28 @@ if __name__ == '__main__':
   (4302, 72, 72)
   Time model.predict_matrix_and_dirichlet_score 00:01:14.36
   """
-  start_time = time.time()
-  dict = model.get_scores_dict(x_train, x_test)
-  print(
-      "Time model.get_scores_dict %s" % utils.timer(
-          start_time, time.time()),
-      flush=True)
+
+  # start_time = time.time()
+  # dict = model.get_scores_dict(x_train, x_test)
+  # print(
+  #     "Time model.get_scores_dict %s" % utils.timer(
+  #         start_time, time.time()),
+  #     flush=True)
+  # start_time = time.time()
+  # met_dict = model.evaluate_od(
+  #     x_train, x_test, y_test, 'ztf-real-bog-v1', 'real', x_val)
+  # print(
+  #     "Time model.evaluate_od %s" % utils.timer(
+  #         start_time, time.time()),
+  #     flush=True)
+  #
+  # # pprint.pprint(met_dict)
+  # for key in met_dict.keys():
+  #   print(key, met_dict[key]['roc_auc'])
+  # for key in met_dict.keys():
+  #   print(key, met_dict[key]['acc_at_percentil'])
+
+
+
+  # model.save_weights(
+  #   os.path.join(PROJECT_PATH, 'results', model.name, 'my_checkpoint.h5'))
