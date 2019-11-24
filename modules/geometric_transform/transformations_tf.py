@@ -7,7 +7,110 @@ import tensorflow as tf
 """There is a small discrepancy between original and his transformer, 
 due the fact that padding reflects wiithouy copying the edge pixels"""
 
+def cnn2d_depthwise_tf(image_batch, filters):
+  features_tf = tf.nn.depthwise_conv2d(image_batch, filters, strides=[1, 1, 1, 1],
+                             padding='SAME')
 
+  return features_tf
+
+
+def makeGaussian(size, sigma=3, center=None):
+  """ Make a square gaussian kernel.
+
+  size is the length of a side of the square
+  fwhm is full-width-half-maximum, which
+  can be thought of as an effective radius.
+  """
+
+  x = np.arange(0, size, 1, float)
+  y = x[:, np.newaxis]
+
+  if center is None:
+    x0 = y0 = size // 2
+  else:
+    x0 = center[0]
+    y0 = center[1]
+
+  return np.exp(-((x - x0) ** 2 + (y - y0) ** 2) / (2.0 * sigma ** 2))
+
+
+def makeLoG(size, sigma=3, center=None):
+  """ Make a square LoG kernel.
+
+  size is the length of a side of the square
+  fwhm is full-width-half-maximum, which
+  can be thought of as an effective radius.
+  """
+
+  x = np.arange(0, size, 1, float)
+  y = x[:, np.newaxis]
+
+  if center is None:
+    x0 = y0 = size // 2
+  else:
+    x0 = center[0]
+    y0 = center[1]
+
+  return (-1 / (np.pi * sigma ** 4)) * (
+      1 - (((x - x0) ** 2 + (y - y0) ** 2) / (2 * sigma ** 2))) * np.exp(
+      -((x - x0) ** 2 + (y - y0) ** 2) / (2.0 * sigma ** 2))
+
+def apply_affine_transform(res_x, t_x, t_y):
+  #this are inverted, because to perform as keras, we need to invert them
+  tx = t_y
+  ty = t_x
+  res_x_padded = tf.pad(res_x,
+                        [[0, 0], [tf.abs(ty), tf.abs(ty)],
+                         [tf.abs(tx), tf.abs(tx)],
+                         [0, 0]], "REFLECT")
+  res_x_translated = res_x_padded
+  res_x = res_x_translated[:,
+          tf.abs(ty) + ty:tf.abs(ty) + ty +
+                                    res_x.shape[1],
+          tf.abs(tx) + tx:tf.abs(tx) + tx +
+                                    res_x.shape[2], :]
+  return res_x
+
+# TODO: check if avoid doing this and include channel as
+#  a transformator parameter speed ups things
+def check_shape_kernel(kernel, x):
+  if len(kernel.shape) == 2:
+    kernel = tf.stack([kernel] * x.shape[-1], axis=-1)
+    return tf.expand_dims(kernel, axis=-1)
+  elif len(kernel.shape) == 3:
+    return tf.expand_dims(kernel, axis=-1)
+  return kernel
+
+class KernelTransformation(object):
+  def __init__(self, flip, tx, ty, k_90_rotate, gauss, log):
+    self.flip = flip
+    self.tx = tx
+    self.ty = ty
+    self.k_90_rotate = k_90_rotate
+    self.gauss = gauss
+    self.log = log
+    self.gauss_kernel = makeGaussian(5, 1)
+    self.log_kernel = makeLoG(5, 0.5)
+
+  @tf.function
+  def __call__(self, x):
+    res_x = x
+    if self.gauss:
+      res_x = cnn2d_depthwise_tf(
+          res_x, check_shape_kernel(self.gauss_kernel, res_x))
+    if self.log:
+      res_x = cnn2d_depthwise_tf(
+          res_x, check_shape_kernel(self.log_kernel, res_x))
+    if self.flip:
+      res_x = np.fliplr(res_x)
+    if self.tx != 0 or self.ty != 0:
+      res_x = apply_affine_transform(res_x, tx=self.tx, ty=self.ty)
+    if self.k_90_rotate != 0:
+      res_x = np.rot90(res_x, self.k_90_rotate)
+
+    return res_x
+
+#TODO: refactor translation, but test if its correctly done and speed up things or not, test tf.function
 class AffineTransformation(object):
   def __init__(self, flip, tx, ty, k_90_rotate):
     """tx and ty are inverted to match original transformer"""
@@ -27,8 +130,7 @@ class AffineTransformation(object):
                               [[0, 0], [np.abs(self.ty), np.abs(self.ty)],
                                [np.abs(self.tx), np.abs(self.tx)],
                                [0, 0]], "REFLECT")
-        res_x_translated = res_x_padded  # tf.contrib.image.translate(
-        # res_x_padded, [self.tx, self.ty])
+        res_x_translated = res_x_padded
         res_x = res_x_translated[:,
                 np.abs(self.ty) + self.ty:np.abs(self.ty) + self.ty +
                                           res_x.shape[1],
@@ -152,6 +254,124 @@ class SimpleTransformer(AbstractTransformer):
                                                range(4)):
       transformation = AffineTransformation(is_flip, 0, 0, k_rotate)
       transformation_list.append(transformation)
+
+    self._transformation_list = transformation_list
+
+class TransTransformer(AbstractTransformer):
+  def __init__(self, translation_x=8, translation_y=8, transform_batch_size=512):
+    self.max_tx = translation_x
+    self.max_ty = translation_y
+    super().__init__(transform_batch_size)
+    self.name = 'Trans_transformer'
+
+  def _create_transformation_list(self):
+    transformation_list = []
+    for tx, ty in itertools.product(
+        (0, -self.max_tx, self.max_tx),
+        (0, -self.max_ty, self.max_ty),
+    ):
+      transformation = AffineTransformation(False, tx, ty, 0)
+      transformation_list.append(transformation)
+
+    self._transformation_list = transformation_list
+
+class KernelTransformer(AbstractTransformer):
+  def __init__(self, translation_x=8, translation_y=8, rotations=True,
+      flips=True, gauss=True, log=True, transform_batch_size = 512):
+    self.iterable_tx = self.get_translation_iterable(translation_x)
+    self.iterable_ty = self.get_translation_iterable(translation_y)
+    self.iterable_rot = self.get_rotation_iterable(rotations)
+    self.iterable_flips = self.get_bool_iterable(flips)
+    self.iterable_gauss = self.get_bool_iterable(gauss)
+    self.iterable_log = self.get_bool_iterable(log)
+    super().__init__(transform_batch_size)
+    self.name = 'Kernel_transformer'
+
+  def get_translation_iterable(self, translation):
+    if translation:
+      return (0, -translation, translation)
+    return range(1)
+
+  def get_rotation_iterable(self, rotations):
+    if rotations:
+      return range(4)
+    return range(1)
+
+  def get_bool_iterable(self, bool_variable):
+    if bool_variable:
+      return range(2)
+    return range(1)
+
+  def _create_transformation_list(self):
+    transformation_list = []
+    for is_flip, tx, ty, k_rotate, is_gauss, is_log in itertools.product(
+        self.iterable_flips,
+        self.iterable_tx,
+        self.iterable_ty,
+        self.iterable_rot,
+        self.iterable_gauss,
+        self.iterable_log):
+      transformation = KernelTransformation(is_flip, tx, ty, k_rotate, is_gauss,
+                                            is_log)
+      transformation_list.append(transformation)
+
+    self._transformation_list = transformation_list
+
+# TODO: see if can do some refactoring here
+class PlusKernelTransformer(KernelTransformer):
+  def __init__(self, translation_x=8, translation_y=8, rotations=True,
+      flips=True, gauss=True, log=True, transform_batch_size=512):
+    super().__init__(translation_x, translation_y, rotations,
+      flips, gauss, log, transform_batch_size)
+    self.name = 'PlusKernel_transformer'
+
+  def _create_transformation_list(self):
+    transformation_list = []
+    for is_flip, tx, ty, k_rotate, is_gauss, is_log in itertools.product(
+        self.iterable_flips,
+        self.iterable_tx,
+        self.iterable_ty,
+        self.iterable_rot,
+        [0],
+        [0]):
+      transformation = KernelTransformation(is_flip, tx, ty, k_rotate, is_gauss,
+                                            is_log)
+      transformation_list.append(transformation)
+
+    for is_flip, tx, ty, k_rotate, is_gauss, is_log in itertools.product(
+        [0],
+        self.iterable_tx,
+        self.iterable_ty,
+        [0],
+        [1],
+        [0]):
+      transformation = KernelTransformation(is_flip, tx, ty, k_rotate, is_gauss,
+                                            is_log)
+      transformation_list.append(transformation)
+
+    for is_flip, tx, ty, k_rotate, is_gauss, is_log in itertools.product(
+        [0],
+        self.iterable_tx,
+        self.iterable_ty,
+        [0],
+        [0],
+        [1]):
+      transformation = KernelTransformation(is_flip, tx, ty, k_rotate,
+                                            is_gauss,
+                                            is_log)
+      transformation_list.append(transformation)
+
+    for is_flip, tx, ty, k_rotate, is_gauss, is_log in itertools.product(
+        [0],
+        self.iterable_tx,
+        self.iterable_ty,
+        [0],
+        [1],
+        [1]):
+      transformation = KernelTransformation(is_flip, tx, ty, k_rotate,
+                                            is_gauss,
+                                            is_log)
+    transformation_list.append(transformation)
 
     self._transformation_list = transformation_list
 
