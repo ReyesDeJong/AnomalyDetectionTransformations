@@ -61,6 +61,7 @@ class HiTSLoader(object):
     data_dict[general_keys.LABELS] = labels[label_idxs_to_get]
     return data_dict
 
+  #TODO: dont do this normalization, it is by sample
   def normalize_images(self, images):
     # normilize 0-1
     for image_index in range(images.shape[0]):
@@ -80,7 +81,7 @@ class HiTSLoader(object):
     if len(selected_image_channels.shape) == 3:
       selected_image_channels = selected_image_channels[..., np.newaxis]
     data_dict[general_keys.IMAGES] = selected_image_channels
-    # normalice images 0-1
+    # normalice images 0-1 by sample
     data_dict[general_keys.IMAGES] = self.normalize_images(
         data_dict[general_keys.IMAGES])
     return data_dict
@@ -141,6 +142,25 @@ class HiTSLoader(object):
     return (train_dataset.data_array, train_dataset.data_label), \
            (val_dataset.data_array, val_dataset.data_label), \
            (test_dataset.data_array, test_dataset.data_label)
+
+  #Todo: refactor this and previous_method
+  def get_single_dataset(self) -> Dataset:
+    """get first n_samples_by_class data from each hits class"""
+    data_dict = self._load_file(self.path)
+    # get dataset by label
+    unique_label_values = np.unique(data_dict[general_keys.LABELS])
+    list_of_data_dicts_by_label = []
+    for label_value in unique_label_values:
+      specific_label_data_dict = self._preprocess_data(
+          data_dict.copy(), self.first_n_samples_by_class, label_value)
+      list_of_data_dicts_by_label.append(specific_label_data_dict)
+    merged_data_dict = self._concatenate_data_dicts(
+        list_of_data_dicts_by_label)
+    # split data into train-test
+    dataset = Dataset(data_array=merged_data_dict[general_keys.IMAGES],
+                      data_label=merged_data_dict[general_keys.LABELS],
+                      batch_size=self.batch_size)
+    return dataset
 
 
 if __name__ == "__main__":
