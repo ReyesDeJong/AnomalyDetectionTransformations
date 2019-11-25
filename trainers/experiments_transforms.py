@@ -10,7 +10,7 @@ from collections import defaultdict
 from glob import glob
 import numpy as np
 import scipy.stats
-from modules.utils import check_path
+from modules.utils import check_paths
 import time
 from modules.data_loaders.ztf_outlier_loader import ZTFOutlierLoader
 from modules.geometric_transform.transformations_tf import AbstractTransformer
@@ -51,63 +51,17 @@ def _transformations_experiment(data_loader: ZTFOutlierLoader,
   #                                                                     '%Y-%m-%d-%H%M'))
   # mdl_weights_path = os.path.join(RESULTS_DIR, dataset_name, mdl_weights_name)
   # mdl.save_weights(mdl_weights_path)
+  del mdl
 
 
 # ToDo: research how to perform multi gpu training
 def run_experiments(data_loader, transformer, dataset_name, class_name, n_runs):
-  check_path(os.path.join(RESULTS_DIR, dataset_name))
+  check_paths(os.path.join(RESULTS_DIR, dataset_name))
 
   # Transformations
   for _ in range(n_runs):
     _transformations_experiment(data_loader, transformer, dataset_name,
                                 class_name)
-  #
-  # # Trans-Transformations
-  # for _ in range(n_runs):
-  #   processes = [Process(target=_trans_transformations_experiment,
-  #                        args=(load_dataset_fn, dataset_name, class_idx, q))]
-  #   for p in processes:
-  #     p.start()
-  #   for p in processes:
-  #     p.join()
-  #
-  # # Kernel-Transformations
-  # for _ in range(n_runs):
-  #   processes = [Process(target=_kernel_transformations_experiment,
-  #                        args=(
-  #                          load_dataset_fn, dataset_name, class_idx, q))]
-  #   for p in processes:
-  #     p.start()
-  #   for p in processes:
-  #     p.join()
-  #
-  # # DSEBM
-  # for _ in range(n_runs):
-  #   processes = [Process(target=_dsebm_experiment,
-  #                        args=(load_dataset_fn, dataset_name, class_idx, q))]
-  #   for p in processes:
-  #     p.start()
-  #   for p in processes:
-  #     p.join()
-  # #
-  # # # DAGMM
-  # # for _ in range(n_runs):
-  # #     processes = [Process(target=_dagmm_experiment,
-  # #                              args=(load_dataset_fn, dataset_name, class_idx, q))]
-  # #     for p in processes:
-  # #         p.start()
-  # #     for p in processes:
-  # #         p.join()
-  # #
-  # # ADGAN
-  # for _ in range(n_runs):
-  #   processes = [Process(target=_adgan_experiment,
-  #                        args=(load_dataset_fn, dataset_name, class_idx, q))]
-  #   for p in processes:
-  #     p.start()
-  #   for p in processes:
-  #     p.join()
-
 
 def create_auc_table(metric='roc_auc'):
   file_path = glob(os.path.join(RESULTS_DIR, '*', '*.npz'))
@@ -174,5 +128,5 @@ if __name__ == '__main__':
       "Time elapsed to train everything: " + utils.timer(start_time,
                                                          time.time()))
 
-  metrics_to_create_table = {}
-  create_auc_table()
+  # metrics_to_create_table = {}
+  # create_auc_table()

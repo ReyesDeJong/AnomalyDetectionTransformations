@@ -64,9 +64,12 @@ def generated_images_to_dataset(gen_imgs, label=1):
     return datasets_dict
 
 
-def check_path(path):
-    if not os.path.exists(path):
-        os.makedirs(path)
+def check_paths(paths):
+    if not isinstance(paths, list):
+        paths = [paths]
+    for path in paths:
+        if not os.path.exists(path):
+            os.makedirs(path)
 
 
 def merge_datasets_dict(datasets_dict1, datasets_dict2):

@@ -26,13 +26,13 @@ from scripts.detached_transformer_od_hits import \
 from scripts.ensemble_transform_vs_all_od_hits import get_entropy
 import torch
 import torch.nn as nn
-from modules.utils import check_path
+from modules.utils import check_paths
 
 EXPERIMENT_NAME = 'ZTF_v1_KernelTransformations'
 
 if __name__ == "__main__":
   results_folder = os.path.join(PROJECT_PATH, 'results', EXPERIMENT_NAME)
-  check_path(results_folder)
+  check_paths(results_folder)
   config = tf.ConfigProto()
   config.gpu_options.allow_growth = True  # dynamically grow the memory used on the GPU
   sess = tf.Session(config=config)

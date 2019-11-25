@@ -28,9 +28,14 @@ import datetime
 class TransformODModel(tf.keras.Model):
   def __init__(self, data_loader: ZTFOutlierLoader,
       transformer: AbstractTransformer, input_shape, depth=10,
-      widen_factor=4, name='Transformer_OD_Model', **kwargs):
+      widen_factor=4, results_folder_name='', name='Transformer_OD_Model',
+      **kwargs):
     super().__init__(name=name)
-    self.model_path = os.path.join(PROJECT_PATH, 'results', self.name)
+    self.date = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
+    self.results_folder_name = results_folder_name
+    self.main_model_path = os.path.join(PROJECT_PATH, 'results',
+                                        self.results_folder_name, self.name)
+    utils.check_paths(self.main_model_path)
     self.data_loader = data_loader
     self.transformer = transformer
     self.network = WideResidualNetwork(
@@ -40,13 +45,22 @@ class TransformODModel(tf.keras.Model):
   def call(self, input_tensor, training=False):
     return self.network(input_tensor, training)
 
+  def create_specific_model_paths(self):
+    specific_model_folder = os.path.join(
+        PROJECT_PATH, 'results', self.results_folder_name,
+        '%s_%s' % (self.name, self.date))
+    checkpoint_folder = os.path.join(specific_model_folder, 'checkpoints')
+    # self.tb_path = os.path.join(self.model_path, 'tb_summaries')
+    utils.check_paths(
+        [specific_model_folder, checkpoint_folder])
+    return [specific_model_folder, checkpoint_folder]
+
   # TODO: maybe its better to keep keras convention and reduce this to
   #  transformations and leave out data loading
   def fit(self, x, transform_batch_size=512, train_batch_size=128, epochs=2,
       **kwargs):
-    # (x_train, y_train), (x_val, y_val), (
-    #   x_test, y_test) = self.data_loader.get_outlier_detection_datasets()
-    # (x_train, y_train), _, _ = self.data_loader.get_outlier_detection_datasets()
+    self.specific_model_folder, self.checkpoint_folder = \
+      self.create_specific_model_paths()
     # ToDo: must be network? or just self.compile???
     self.network.compile(
         general_keys.ADAM, general_keys.CATEGORICAL_CROSSENTROPY,
@@ -140,26 +154,31 @@ class TransformODModel(tf.keras.Model):
     }
     return scores_dict
 
+  #TODO: refactor, too long and include keys
   def get_metrics_save_path(self, score_name, dataset_name, class_name):
     model_score_name = ('%s_%s' % (self.name, score_name)).replace("_", "-")
+    dataset_plus_transformer_name = (
+          '%s_%s' % (dataset_name, self.transformer.name)).replace("_", "-")
     results_file_name = '{}_{}_{}_{}.npz'.format(
-        dataset_name, model_score_name, class_name,
-        datetime.datetime.now().strftime('%Y-%m-%d-%H%M'))
-    results_file_path = os.path.join(self.model_path, results_file_name)
+        dataset_name, model_score_name, class_name, self.date)
+    all_results_folder = os.path.join(self.main_model_path, 'all_metric_files')
+    utils.check_paths(all_results_folder)
+    results_file_path = os.path.join(all_results_folder, results_file_name)
     return results_file_path
 
+  # TODO: refactor, too long
   def evaluate_od(self, x_train, x_eval, y_eval, dataset_name, class_name,
-      x_validaiton=None,
-      transform_batch_size=512, predict_batch_size=1024, **kwargs):
-    # print('evaluating')
-    if x_validaiton is None:
-      x_validaiton = x_eval
+      x_validation=None, transform_batch_size=512, predict_batch_size=1024,
+      additional_save_path_list=None, **kwargs):
+    print('evaluating')
+    if x_validation is None:
+      x_validation = x_eval
     # print('start eval')
     eval_scores_dict = self.get_scores_dict(
         x_train, x_eval, transform_batch_size, predict_batch_size, **kwargs)
     # print('start val')
     validation_scores_dict = self.get_scores_dict(
-        x_train, x_validaiton, transform_batch_size, predict_batch_size,
+        x_train, x_validation, transform_batch_size, predict_batch_size,
         **kwargs)
     # print('start metric')
     metrics_of_each_score = {}
@@ -169,7 +188,21 @@ class TransformODModel(tf.keras.Model):
       metrics_of_each_score[score_name] = self.get_metrics_dict(
           scores_value, validation_scores_dict[score_name], y_eval,
           metrics_save_path)
+      self._save_on_additional_paths(
+          additional_save_path_list, metrics_save_path,
+          metrics_of_each_score[score_name])
     return metrics_of_each_score
+
+  def _save_on_additional_paths(self, additional_paths_list: list,
+      metrics_save_path: str, metrics_dict: dict):
+    if additional_paths_list is None:
+      return
+    if not isinstance(additional_paths_list, list):
+      additional_paths_list = [additional_paths_list]
+    for path in additional_paths_list:
+      metric_file_name = os.path.basename(metrics_save_path)
+      additional_save_path = os.path.join(path, metric_file_name)
+      np.savez_compressed(additional_save_path, **metrics_dict)
 
   def get_metrics_dict(self, scores, scores_val, labels, save_file_path=None,
       percentile=95.46):
@@ -183,9 +216,9 @@ class TransformODModel(tf.keras.Model):
     fpr, tpr, roc_thresholds = roc_curve(truth, preds)
     roc_auc = auc(fpr, tpr)
     accuracies = accuracies_by_threshold(labels, scores, roc_thresholds)
-    #100-percentile is necesary because normal data is at the right of anormal
+    # 100-percentile is necesary because normal data is at the right of anormal
     acc_at_percentil = accuracy_at_thr(
-        labels, scores, np.percentile(scores_val, 100-percentile))
+        labels, scores, np.percentile(scores_val, 100 - percentile))
     # pr curve where "normal" is the positive class
     precision_norm, recall_norm, pr_thresholds_norm = precision_recall_curve(
         truth, preds)
@@ -220,7 +253,6 @@ class TransformODModel(tf.keras.Model):
 if __name__ == '__main__':
   from parameters import loader_keys
   from modules.geometric_transform.transformations_tf import Transformer
-  import time
   from modules import utils
 
   gpus = tf.config.experimental.list_physical_devices('GPU')
@@ -243,7 +275,7 @@ if __name__ == '__main__':
   model = TransformODModel(
       data_loader=ztf_od_loader, transformer=transformer,
       input_shape=x_train.shape[1:])
-  model.build(tuple([None]+list(x_train.shape[1:])))
+  model.build(tuple([None] + list(x_train.shape[1:])))
   weight_path = os.path.join(PROJECT_PATH, 'results', model.name,
                              'my_checkpoint.h5')
   model.load_weights(weight_path)

@@ -19,7 +19,7 @@ import datetime
 import tensorflow as tf
 from tqdm import tqdm
 from sklearn.metrics import auc
-from modules.utils import check_path
+from modules.utils import check_paths
 
 def calc_approx_alpha_sum(observations):
   N = len(observations)
@@ -158,7 +158,7 @@ if __name__ == "__main__":
   sess = tf.Session(config=config)
   set_session(sess)
   save_path = '../results/Transforms_hits'
-  check_path(save_path)
+  check_paths(save_path)
 
 
   single_class_ind = 1

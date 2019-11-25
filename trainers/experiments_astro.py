@@ -28,7 +28,7 @@ from transformations import Transformer, TransTransformer, KernelTransformer
 from models.wide_residual_network import create_wide_residual_network
 from models.encoders_decoders import conv_encoder, conv_decoder
 from models import dsebm, dagmm, adgan
-from modules.utils import check_path
+from modules.utils import check_paths
 import time
 import datetime
 from pyod.models.mo_gaal import MO_GAAL
@@ -675,7 +675,7 @@ def _adgan_experiment(dataset_load_fn, dataset_name, single_class_ind, gpu_q):
 # TODO: check real parallelism of tasks
 # ToDo: research how to perform multi gpu training
 def run_experiments(load_dataset_fn, dataset_name, q, class_idx, n_runs):
-  check_path(os.path.join(RESULTS_DIR, dataset_name))
+  check_paths(os.path.join(RESULTS_DIR, dataset_name))
   # MO_GAAL
   for _ in range(n_runs):
     _mo_gaal_experiment(load_dataset_fn, dataset_name, class_idx)
