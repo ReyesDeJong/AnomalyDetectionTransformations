@@ -98,9 +98,13 @@ def create_auc_table(metric='roc_auc'):
 if __name__ == '__main__':
   from parameters import loader_keys, general_keys
   import time
-
+  import tensorflow as tf
   from modules.geometric_transform.transformations_tf import Transformer, \
     TransTransformer
+
+  gpus = tf.config.experimental.list_physical_devices('GPU')
+  for gpu in gpus:
+    tf.config.experimental.set_memory_growth(gpu, True)
 
   N_RUNS = 2
   params = {
@@ -124,9 +128,9 @@ if __name__ == '__main__':
       ztf_outlier_dataset, transformer, 'ztf-real-bog-v1-refact', 'real',
       N_RUNS),
     (
-      ztf_outlier_dataset, transformer, 'ztf-real-bog-v1-refact', 'real',
+      ztf_outlier_dataset, trans_transformer, 'ztf-real-bog-v1-refact', 'real',
       N_RUNS),
-    (ztf_outlier_dataset_63, trans_transformer, 'ztf-real-bog-v1-63-refact',
+    (ztf_outlier_dataset_63, transformer, 'ztf-real-bog-v1-63-refact',
      'real', N_RUNS),
     (ztf_outlier_dataset_63, trans_transformer, 'ztf-real-bog-v1-63-refact',
      'real', N_RUNS),

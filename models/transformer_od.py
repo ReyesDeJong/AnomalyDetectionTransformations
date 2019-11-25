@@ -32,9 +32,8 @@ class TransformODModel(tf.keras.Model):
       **kwargs):
     super().__init__(name=name)
     self.date = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
-    self.results_folder_path = self.results_folder_name_to_path(
-        results_folder_name)
-    self.main_model_path = os.path.join(self.results_folder_path, self.name)
+    self.main_model_path = self.create_main_model_paths(results_folder_name,
+                                                        self.name)
     utils.check_paths(self.main_model_path)
     self.data_loader = data_loader
     self.transformer = transformer
@@ -45,14 +44,20 @@ class TransformODModel(tf.keras.Model):
   def call(self, input_tensor, training=False):
     return self.network(input_tensor, training)
 
-  def results_folder_name_to_path(self, result_folder_name):
+  def create_main_model_paths(self, results_folder_name, model_name):
+    results_folder_path = self._results_folder_name_to_path(
+        results_folder_name)
+    main_model_path = os.path.join(results_folder_path, model_name)
+    return main_model_path
+
+  def _results_folder_name_to_path(self, result_folder_name):
     if 'results' in result_folder_name:
       return result_folder_name
     else:
       return os.path.join(PROJECT_PATH, 'results', result_folder_name)
 
   def create_specific_model_paths(self):
-    specific_model_folder = os.path.join(self.results_folder_path,
+    specific_model_folder = os.path.join(self.main_model_path,
                                          self.transformer.name,
                                          '%s_%s' % (self.name, self.date))
     checkpoint_folder = os.path.join(specific_model_folder, 'checkpoints')
@@ -170,10 +175,10 @@ class TransformODModel(tf.keras.Model):
         '%s_%s' % (dataset_name, self.transformer.name)).replace("_", "-")
     results_file_name = '{}_{}_{}_{}.npz'.format(
         dataset_plus_transformer_name, model_score_name, class_name, self.date)
-    all_results_folder = os.path.join(self.main_model_path, 'all_metric_files')
+    all_results_folder = os.path.join(self.main_model_path, 'all_metric_files',
+                                      dataset_name)
     utils.check_paths(all_results_folder)
-    results_file_path = os.path.join(all_results_folder, dataset_name,
-                                     results_file_name)
+    results_file_path = os.path.join(all_results_folder, results_file_name)
     return results_file_path
 
   # TODO: refactor, too long
