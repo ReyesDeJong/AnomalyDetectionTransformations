@@ -14,7 +14,7 @@ from modules.geometric_transform.transformations_tf import AbstractTransformer
 from modules.data_loaders.ztf_outlier_loader import ZTFOutlierLoader
 from parameters import general_keys
 import numpy as np
-from modules import dirichlet_utils
+from modules import dirichlet_utils, utils
 from modules import scores
 from sklearn.metrics import roc_curve, precision_recall_curve, auc
 from modules.metrics import accuracies_by_threshold, accuracy_at_thr
@@ -32,9 +32,9 @@ class TransformODModel(tf.keras.Model):
       **kwargs):
     super().__init__(name=name)
     self.date = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
-    self.results_folder_name = results_folder_name
-    self.main_model_path = os.path.join(PROJECT_PATH, 'results',
-                                        self.results_folder_name, self.name)
+    self.results_folder_path = self.results_folder_name_to_path(
+        results_folder_name)
+    self.main_model_path = os.path.join(self.results_folder_path, self.name)
     utils.check_paths(self.main_model_path)
     self.data_loader = data_loader
     self.transformer = transformer
@@ -45,10 +45,16 @@ class TransformODModel(tf.keras.Model):
   def call(self, input_tensor, training=False):
     return self.network(input_tensor, training)
 
+  def results_folder_name_to_path(self, result_folder_name):
+    if 'results' in result_folder_name:
+      return result_folder_name
+    else:
+      return os.path.join(PROJECT_PATH, 'results', result_folder_name)
+
   def create_specific_model_paths(self):
-    specific_model_folder = os.path.join(
-        PROJECT_PATH, 'results', self.results_folder_name,
-        '%s_%s' % (self.name, self.date))
+    specific_model_folder = os.path.join(self.results_folder_path,
+                                         self.transformer.name,
+                                         '%s_%s' % (self.name, self.date))
     checkpoint_folder = os.path.join(specific_model_folder, 'checkpoints')
     # self.tb_path = os.path.join(self.model_path, 'tb_summaries')
     utils.check_paths(
@@ -72,6 +78,9 @@ class TransformODModel(tf.keras.Model):
         x=x_train_transform, y=tf.keras.utils.to_categorical(y_train_transform),
         batch_size=train_batch_size,
         epochs=epochs, **kwargs)
+    weight_path = os.path.join(self.checkpoint_folder,
+                               'final_weights.h5')
+    self.save_weights(weight_path)
 
   # TODO: implement pre-transofrmed, in-situ-all, efficient transforming
   def predict_dirichlet_score(self, x_train, x_eval,
@@ -154,16 +163,17 @@ class TransformODModel(tf.keras.Model):
     }
     return scores_dict
 
-  #TODO: refactor, too long and include keys
+  # TODO: refactor, too long and include keys
   def get_metrics_save_path(self, score_name, dataset_name, class_name):
     model_score_name = ('%s_%s' % (self.name, score_name)).replace("_", "-")
     dataset_plus_transformer_name = (
-          '%s_%s' % (dataset_name, self.transformer.name)).replace("_", "-")
+        '%s_%s' % (dataset_name, self.transformer.name)).replace("_", "-")
     results_file_name = '{}_{}_{}_{}.npz'.format(
-        dataset_name, model_score_name, class_name, self.date)
+        dataset_plus_transformer_name, model_score_name, class_name, self.date)
     all_results_folder = os.path.join(self.main_model_path, 'all_metric_files')
     utils.check_paths(all_results_folder)
-    results_file_path = os.path.join(all_results_folder, results_file_name)
+    results_file_path = os.path.join(all_results_folder, dataset_name,
+                                     results_file_name)
     return results_file_path
 
   # TODO: refactor, too long
@@ -253,7 +263,6 @@ class TransformODModel(tf.keras.Model):
 if __name__ == '__main__':
   from parameters import loader_keys
   from modules.geometric_transform.transformations_tf import Transformer
-  from modules import utils
 
   gpus = tf.config.experimental.list_physical_devices('GPU')
   for gpu in gpus:

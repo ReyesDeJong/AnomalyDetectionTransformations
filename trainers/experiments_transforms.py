@@ -10,19 +10,19 @@ from collections import defaultdict
 from glob import glob
 import numpy as np
 import scipy.stats
-from modules.utils import check_paths
-import time
+from modules import utils
 from modules.data_loaders.ztf_outlier_loader import ZTFOutlierLoader
 from modules.geometric_transform.transformations_tf import AbstractTransformer
 from models.transformer_od import TransformODModel
 
-RESULTS_DIR = os.path.join(PROJECT_PATH, 'results/ztf')
+RESULTS_DIR = os.path.join(PROJECT_PATH, 'results/ztf-refact')
 
 
 # TODO: construct evaluator to only perfor new metrics calculation
 # TODO: make abstract data loader
 def _transformations_experiment(data_loader: ZTFOutlierLoader,
-    transformer: AbstractTransformer, dataset_name: str, class_name: str):
+    transformer: AbstractTransformer, dataset_name: str, class_name: str,
+    save_path: str):
   # Todo: pass as param_dict
   batch_size = 128
   transform_batch_size = 1024
@@ -32,7 +32,7 @@ def _transformations_experiment(data_loader: ZTFOutlierLoader,
 
   mdl = TransformODModel(
       data_loader=data_loader, transformer=transformer,
-      input_shape=x_train.shape[1:])
+      input_shape=x_train.shape[1:], results_folder_name=save_path)
 
   mdl.fit(x=x_train, transform_batch_size=transform_batch_size,
           train_batch_size=batch_size,
@@ -41,27 +41,21 @@ def _transformations_experiment(data_loader: ZTFOutlierLoader,
 
   metrics_dict = mdl.evaluate_od(
       x_train, x_test, y_test, dataset_name, class_name, x_val,
-      transform_batch_size=transform_batch_size)
-  #
-  # mdl_weights_name = '{}_transformations_{}_{}_weights.h5'.format(dataset_name,
-  #                                                                 get_class_name_from_index(
-  #                                                                     single_class_ind,
-  #                                                                     dataset_name),
-  #                                                                 datetime.datetime.now().strftime(
-  #                                                                     '%Y-%m-%d-%H%M'))
-  # mdl_weights_path = os.path.join(RESULTS_DIR, dataset_name, mdl_weights_name)
-  # mdl.save_weights(mdl_weights_path)
+      transform_batch_size=transform_batch_size,
+      additional_save_path_list=save_path)
   del mdl
 
 
 # ToDo: research how to perform multi gpu training
 def run_experiments(data_loader, transformer, dataset_name, class_name, n_runs):
-  check_paths(os.path.join(RESULTS_DIR, dataset_name))
+  save_path = os.path.join(RESULTS_DIR, dataset_name)
+  utils.check_paths(save_path)
 
   # Transformations
   for _ in range(n_runs):
     _transformations_experiment(data_loader, transformer, dataset_name,
-                                class_name)
+                                class_name, save_path)
+
 
 def create_auc_table(metric='roc_auc'):
   file_path = glob(os.path.join(RESULTS_DIR, '*', '*.npz'))
@@ -103,9 +97,12 @@ def create_auc_table(metric='roc_auc'):
 
 if __name__ == '__main__':
   from parameters import loader_keys, general_keys
-  from modules import utils
-  from modules.geometric_transform.transformations_tf import Transformer
+  import time
 
+  from modules.geometric_transform.transformations_tf import Transformer, \
+    TransTransformer
+
+  N_RUNS = 2
   params = {
     loader_keys.DATA_PATH: os.path.join(
         PROJECT_PATH, '../datasets/ztf_v1_bogus_added.pkl'),
@@ -116,10 +113,23 @@ if __name__ == '__main__':
     loader_keys.TRANSFORMATION_INLIER_CLASS_VALUE: 1
   }
   ztf_outlier_dataset = ZTFOutlierLoader(params)
+  params[loader_keys.CROP_SIZE] = None
+  ztf_outlier_dataset_63 = ZTFOutlierLoader(params)
   transformer = Transformer()
+  trans_transformer = TransTransformer()
   # data_loader, transformer, dataset_name, class_idx_to_run_experiments_on, n_runs
+  #TODO: delgate names to data_laoders
   experiments_list = [
-    (ztf_outlier_dataset, transformer, 'ztf-real-bog-v1-refact', 'real', 10),
+    (
+      ztf_outlier_dataset, transformer, 'ztf-real-bog-v1-refact', 'real',
+      N_RUNS),
+    (
+      ztf_outlier_dataset, transformer, 'ztf-real-bog-v1-refact', 'real',
+      N_RUNS),
+    (ztf_outlier_dataset_63, trans_transformer, 'ztf-real-bog-v1-63-refact',
+     'real', N_RUNS),
+    (ztf_outlier_dataset_63, trans_transformer, 'ztf-real-bog-v1-63-refact',
+     'real', N_RUNS),
   ]
   start_time = time.time()
   for data_loader, transformer, dataset_name, class_name, run_i in experiments_list:
@@ -129,4 +139,4 @@ if __name__ == '__main__':
                                                          time.time()))
 
   # metrics_to_create_table = {}
-  # create_auc_table()
+  create_auc_table()
