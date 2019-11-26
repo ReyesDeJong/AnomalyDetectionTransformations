@@ -7,9 +7,11 @@ import tensorflow as tf
 """There is a small discrepancy between original and his transformer, 
 due the fact that padding reflects wiithouy copying the edge pixels"""
 
+
 def cnn2d_depthwise_tf(image_batch, filters):
-  features_tf = tf.nn.depthwise_conv2d(image_batch, filters, strides=[1, 1, 1, 1],
-                             padding='SAME')
+  features_tf = tf.nn.depthwise_conv2d(image_batch, filters,
+                                       strides=[1, 1, 1, 1],
+                                       padding='SAME')
 
   return features_tf
 
@@ -55,8 +57,9 @@ def makeLoG(size, sigma=3, center=None):
       1 - (((x - x0) ** 2 + (y - y0) ** 2) / (2 * sigma ** 2))) * np.exp(
       -((x - x0) ** 2 + (y - y0) ** 2) / (2.0 * sigma ** 2))
 
+
 def apply_affine_transform(res_x, t_x, t_y):
-  #this are inverted, because to perform as keras, we need to invert them
+  # this are inverted, because to perform as keras, we need to invert them
   tx = t_y
   ty = t_x
   res_x_padded = tf.pad(res_x,
@@ -66,10 +69,11 @@ def apply_affine_transform(res_x, t_x, t_y):
   res_x_translated = res_x_padded
   res_x = res_x_translated[:,
           tf.abs(ty) + ty:tf.abs(ty) + ty +
-                                    res_x.shape[1],
+                          res_x.shape[1],
           tf.abs(tx) + tx:tf.abs(tx) + tx +
-                                    res_x.shape[2], :]
+                          res_x.shape[2], :]
   return res_x
+
 
 # TODO: check if avoid doing this and include channel as
 #  a transformator parameter speed ups things
@@ -80,6 +84,7 @@ def check_shape_kernel(kernel, x):
   elif len(kernel.shape) == 3:
     return tf.expand_dims(kernel, axis=-1)
   return kernel
+
 
 class KernelTransformation(object):
   def __init__(self, flip, tx, ty, k_90_rotate, gauss, log):
@@ -110,7 +115,8 @@ class KernelTransformation(object):
 
     return res_x
 
-#TODO: refactor translation, but test if its correctly done and speed up things or not, test tf.function
+
+# TODO: refactor translation, but test if its correctly done and speed up things or not, test tf.function
 class AffineTransformation(object):
   def __init__(self, flip, tx, ty, k_90_rotate):
     """tx and ty are inverted to match original transformer"""
@@ -172,7 +178,7 @@ class AbstractTransformer(abc.ABC):
     if batch_size is not None:
       self._transform_batch_size = batch_size
     train_ds = tf.data.Dataset.from_tensor_slices((x)).batch(
-      self._transform_batch_size)
+        self._transform_batch_size)
     transformations_inds = np.arange(self.n_transforms)
     x_transform = []
     y_transform = []
@@ -202,13 +208,26 @@ class AbstractTransformer(abc.ABC):
       self._transform_batch_size = batch_size
     train_ds = tf.data.Dataset.from_tensor_slices((x)).batch(
         self._transform_batch_size)
-    x_transform = []
-    for images in train_ds:
-      transformed_batch = self.transform_batch(images, transformations_inds)
+    # Todo: check which case is faste, if same, keep second way, it uses less memory
+    if x.shape[1] != 63:
+      x_transform = []
+      for images in train_ds:
+        transformed_batch = self.transform_batch(images, transformations_inds)
 
-      x_transform.append(transformed_batch)
-    x_transform = np.concatenate(
-        [tensor.numpy() for tensor in x_transform])
+        x_transform.append(transformed_batch)
+      x_transform = np.concatenate(
+          [tensor.numpy() for tensor in x_transform])
+    else:
+      x_transform = np.zeros(
+          (x.shape[0] * self.n_transforms, x.shape[1], x.shape[2], x.shape[3]),
+          dtype=np.float32)
+      i = 0
+      for images in train_ds:
+        transformed_batch = self.transform_batch(images, transformations_inds)
+        x_transform[
+        i:i + self._transform_batch_size * self.n_transforms] = \
+          transformed_batch.numpy()
+        i += self._transform_batch_size * self.n_transforms
     y_transform_fixed_batch_size = np.repeat(transformations_inds,
                                              self._transform_batch_size)
     y_transform_fixed_batch_size = np.tile(y_transform_fixed_batch_size,
@@ -218,6 +237,7 @@ class AbstractTransformer(abc.ABC):
     y_transform = np.concatenate(
         [y_transform_fixed_batch_size, y_transform_leftover_batch_size])
     return x_transform, y_transform
+
 
 # ToDO: be more consistent on the usage of transform_batch_size
 class Transformer(AbstractTransformer):
@@ -257,8 +277,10 @@ class SimpleTransformer(AbstractTransformer):
 
     self._transformation_list = transformation_list
 
+
 class TransTransformer(AbstractTransformer):
-  def __init__(self, translation_x=8, translation_y=8, transform_batch_size=512):
+  def __init__(self, translation_x=8, translation_y=8,
+      transform_batch_size=512):
     self.max_tx = translation_x
     self.max_ty = translation_y
     super().__init__(transform_batch_size)
@@ -275,9 +297,10 @@ class TransTransformer(AbstractTransformer):
 
     self._transformation_list = transformation_list
 
+
 class KernelTransformer(AbstractTransformer):
-  def __init__(self, translation_x=8, translation_y=8, rotations=True,
-      flips=True, gauss=True, log=True, transform_batch_size = 512):
+  def __init__(self, translation_x=8, translation_y=8, rotations=False,
+      flips=False, gauss=True, log=True, transform_batch_size=512):
     self.iterable_tx = self.get_translation_iterable(translation_x)
     self.iterable_ty = self.get_translation_iterable(translation_y)
     self.iterable_rot = self.get_rotation_iterable(rotations)
@@ -317,12 +340,13 @@ class KernelTransformer(AbstractTransformer):
 
     self._transformation_list = transformation_list
 
+
 # TODO: see if can do some refactoring here
 class PlusKernelTransformer(KernelTransformer):
   def __init__(self, translation_x=8, translation_y=8, rotations=True,
       flips=True, gauss=True, log=True, transform_batch_size=512):
     super().__init__(translation_x, translation_y, rotations,
-      flips, gauss, log, transform_batch_size)
+                     flips, gauss, log, transform_batch_size)
     self.name = 'PlusKernel_transformer'
 
   def _create_transformation_list(self):
