@@ -153,9 +153,6 @@ if __name__ == '__main__':
       ztf_outlier_dataset, trans_transformer, 'ztf-real-bog-v1', 'real',
       N_RUNS),
     (
-      ztf_outlier_dataset, kernel_transformer, 'ztf-real-bog-v1', 'real',
-      N_RUNS),
-    (
       hits_outlier_dataset, transformer, 'hits', 'real',
       N_RUNS),
     (

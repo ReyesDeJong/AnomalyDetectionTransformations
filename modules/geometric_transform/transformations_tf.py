@@ -211,7 +211,7 @@ class AbstractTransformer(abc.ABC):
     train_ds = tf.data.Dataset.from_tensor_slices((x)).batch(
         self._transform_batch_size)
     # Todo: check which case is faste, if same, keep second way, it uses less memory
-    if x.shape[1] != 63 or self.n_transforms>90:
+    if x.shape[1] != 63: # or self.n_transforms>90:
       x_transform = []
       for images in train_ds:
         transformed_batch = self.transform_batch(images, transformations_inds)
@@ -397,7 +397,7 @@ class PlusKernelTransformer(KernelTransformer):
       transformation = KernelTransformation(is_flip, tx, ty, k_rotate,
                                             is_gauss,
                                             is_log)
-    transformation_list.append(transformation)
+      transformation_list.append(transformation)
 
     self._transformation_list = transformation_list
 
