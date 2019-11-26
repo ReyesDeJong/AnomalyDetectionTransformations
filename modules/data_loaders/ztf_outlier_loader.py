@@ -1,5 +1,10 @@
 """
 ZTF stamps outlier loader
+
+safe max data loading float64 (~50GB): (by using float 32 it is reduced to half)
+(4500000, 21, 21, 3) == (180*25000, 21, 21, 3)
+(500000, 63, 63, 3) == (20*25000, 63, 63, 3)
+
 """
 
 import os
@@ -21,6 +26,7 @@ from modules.data_loaders.frame_to_input import FrameToInput
 from modules import utils
 
 # Todo: Do some refactoring to include kwargs
+# TODO see if data can be stored as 32 float
 class ZTFOutlierLoader(object):
 
   def __init__(self, params: dict):
@@ -102,9 +108,9 @@ class ZTFOutlierLoader(object):
     np.random.RandomState(seed=self.random_seed).shuffle(inlier_indexes)
     # # large_dataset that doesn't fit memory
     # # Todo: fix this by an efficient transformation calculator
-    # if self.crop_size == 63 or self.crop_size is None:
-    #   inlier_indexes = inlier_indexes[:5000]
-    #   val_size_inliers = 500
+    if self.crop_size == 63 or self.crop_size is None:
+      inlier_indexes = inlier_indexes[:9000]
+      val_size_inliers = 1000
     # train-val indexes inlier indexes
     train_inlier_idxs = inlier_indexes[val_size_inliers:]
     val_inlier_idxs = inlier_indexes[:val_size_inliers]
@@ -121,9 +127,9 @@ class ZTFOutlierLoader(object):
         [dataset.data_array[test_inlier_idxs],
          dataset.data_array[outlier_indexes]]), np.concatenate(
         [new_labels[test_inlier_idxs], new_labels[outlier_indexes]])
-    # print('train: ', np.unique(y_train, return_counts=True))
-    # print('val: ', np.unique(y_val, return_counts=True))
-    # print('test: ', np.unique(y_test, return_counts=True))
+    print('train: ', np.unique(y_train, return_counts=True))
+    print('val: ', np.unique(y_val, return_counts=True))
+    print('test: ', np.unique(y_test, return_counts=True))
     sets_tuple = ((X_train, y_train), (X_val, y_val), (X_test, y_test))
     utils.save_pickle(sets_tuple, outlier_data_path)
     return sets_tuple

@@ -1,5 +1,8 @@
 """
-ZTF stamps outlier loader
+HiTS stamps outlier loader
+
+safe max data loading float64 (~50GB): (by using float 32 it is reduced to half)
+(3500000, 21, 21, 4) == (140*25000, 21, 21, 4)
 """
 
 import os

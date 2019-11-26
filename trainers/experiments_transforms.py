@@ -25,10 +25,9 @@ def _transformations_experiment(data_loader: ZTFOutlierLoader,
     save_path: str):
   # Todo: pass as param_dict
   batch_size = 128
-  transform_batch_size = 1024
+  transform_batch_size = 512
 
-  (x_train, y_train), (x_val, y_val), (
-    x_test, y_test) = data_loader.get_outlier_detection_datasets()
+  (x_train, y_train), _, _ = data_loader.get_outlier_detection_datasets()
 
   mdl = TransformODModel(
       data_loader=data_loader, transformer=transformer,
@@ -39,10 +38,12 @@ def _transformations_experiment(data_loader: ZTFOutlierLoader,
           epochs=2  # int(np.ceil(200 / transformer.n_transforms))
           )
 
+  _, (x_val, y_val), (
+    x_test, y_test) = data_loader.get_outlier_detection_datasets()
   metrics_dict = mdl.evaluate_od(
       x_train, x_test, y_test, dataset_name, class_name, x_val,
       transform_batch_size=transform_batch_size,
-      additional_save_path_list=save_path)
+      additional_save_path_list=[save_path, mdl.specific_model_folder])
   del mdl
 
 
@@ -124,12 +125,12 @@ if __name__ == '__main__':
   # data_loader, transformer, dataset_name, class_idx_to_run_experiments_on, n_runs
   #TODO: delgate names to data_laoders
   experiments_list = [
-    (
-      ztf_outlier_dataset, transformer, 'ztf-real-bog-v1-refact', 'real',
-      N_RUNS),
-    (
-      ztf_outlier_dataset, trans_transformer, 'ztf-real-bog-v1-refact', 'real',
-      N_RUNS),
+    # (
+    #   ztf_outlier_dataset, transformer, 'ztf-real-bog-v1-refact', 'real',
+    #   N_RUNS),
+    # (
+    #   ztf_outlier_dataset, trans_transformer, 'ztf-real-bog-v1-refact', 'real',
+    #   N_RUNS),
     (ztf_outlier_dataset_63, transformer, 'ztf-real-bog-v1-63-refact',
      'real', N_RUNS),
     (ztf_outlier_dataset_63, trans_transformer, 'ztf-real-bog-v1-63-refact',
