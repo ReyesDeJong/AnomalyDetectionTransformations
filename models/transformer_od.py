@@ -87,29 +87,12 @@ class TransformODModel(tf.keras.Model):
                                'final_weights.h5')
     self.save_weights(weight_path)
 
-  # TODO: implement pre-transofrmed, in-situ-all, efficient transforming
   def predict_dirichlet_score(self, x_train, x_eval,
       transform_batch_size=512, predict_batch_size=1024,
       **kwargs):
-    scores = np.zeros(len(x_eval))
-    for t_ind in range(self.transformer.n_transforms):
-      x_train_transformed, _ = self.transformer.apply_transforms(
-          x_train, [t_ind], transform_batch_size)
-      observed_dirichlet = self.network.predict(
-          x_train_transformed, batch_size=predict_batch_size, **kwargs)
-      log_p_hat_train = np.log(observed_dirichlet).mean(axis=0)
-      alpha_sum_approx = dirichlet_utils.calc_approx_alpha_sum(
-          observed_dirichlet)
-      alpha_0 = observed_dirichlet.mean(axis=0) * alpha_sum_approx
-      mle_alpha_t = dirichlet_utils.fixed_point_dirichlet_mle(alpha_0,
-                                                              log_p_hat_train)
-      x_eval_transformed, _ = self.transformer.apply_transforms(
-          x_eval, [t_ind], transform_batch_size)
-      x_eval_p = self.network.predict(
-          x_eval_transformed, batch_size=predict_batch_size, **kwargs)
-      scores += dirichlet_utils.dirichlet_normality_score(mle_alpha_t, x_eval_p)
-    scores /= self.transformer.n_transforms
-    return scores
+    _, diri_scores = self.predict_matrix_and_dirichlet_score(
+        x_train, x_eval, transform_batch_size, predict_batch_size, **kwargs)
+    return diri_scores
 
   # TODO: implement pre-transofrmed, in-situ-all, efficient transforming
   def predict_matrix_score(self, x, transform_batch_size=512,
@@ -126,7 +109,6 @@ class TransformODModel(tf.keras.Model):
     return matrix_scores
 
   # TODO: implement pre-transofrmed, in-situ-all, efficient transforming
-  # Todo: avoid code riplication from predict_diri
   def predict_matrix_and_dirichlet_score(self, x_train, x_eval,
       transform_batch_size=512, predict_batch_size=1024,
       **kwargs):
@@ -138,18 +120,12 @@ class TransformODModel(tf.keras.Model):
           x_train, [t_ind], transform_batch_size)
       observed_dirichlet = self.predict(
           x_train_transformed, batch_size=predict_batch_size, **kwargs)
-      log_p_hat_train = np.log(observed_dirichlet).mean(axis=0)
-      alpha_sum_approx = dirichlet_utils.calc_approx_alpha_sum(
-          observed_dirichlet)
-      alpha_0 = observed_dirichlet.mean(axis=0) * alpha_sum_approx
-      mle_alpha_t = dirichlet_utils.fixed_point_dirichlet_mle(alpha_0,
-                                                              log_p_hat_train)
       x_eval_transformed, _ = self.transformer.apply_transforms(
           x_eval, [t_ind], transform_batch_size)
       x_eval_p = self.predict(
           x_eval_transformed, batch_size=predict_batch_size, **kwargs)
-      diri_scores += dirichlet_utils.dirichlet_normality_score(mle_alpha_t,
-                                                               x_eval_p)
+      diri_scores += dirichlet_utils.dirichlet_score(
+          observed_dirichlet, x_eval_p)
       matrix_scores[:, :, t_ind] += x_eval_p
     diri_scores /= n_transforms
     matrix_scores /= n_transforms

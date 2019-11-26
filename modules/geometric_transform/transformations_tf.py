@@ -199,7 +199,8 @@ class AbstractTransformer(abc.ABC):
   def apply_all_transforms(self, x, batch_size=None):
     """generate transform inds, that are the labels of each transform and
     its respective transformed data. It generates labels after images"""
-    print('Appliying all transforms to set of shape %s' % str(x.shape))
+    print('Appliying all %i transforms to set of shape %s' % (
+    self.n_transforms, str(x.shape)))
     transformations_inds = np.arange(self.n_transforms)
     return self.apply_transforms(x, transformations_inds, batch_size)
 
@@ -211,7 +212,7 @@ class AbstractTransformer(abc.ABC):
     train_ds = tf.data.Dataset.from_tensor_slices((x)).batch(
         self._transform_batch_size)
     # Todo: check which case is faste, if same, keep second way, it uses less memory
-    if x.shape[1] != 63: # or self.n_transforms>90:
+    if x.shape[1] != 63:  # or self.n_transforms>90:
       x_transform = []
       for images in train_ds:
         transformed_batch = self.transform_batch(images, transformations_inds)

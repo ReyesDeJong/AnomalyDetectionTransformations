@@ -42,3 +42,15 @@ def fixed_point_dirichlet_mle(alpha_init, log_p_hat, max_iter=1000):
 
 def dirichlet_normality_score(alpha, p):
   return np.sum((alpha - 1) * np.log(p), axis=-1)
+
+def dirichlet_score(predict_x_train, predict_x_eval):
+  observed_dirichlet = predict_x_train
+  x_eval_p = predict_x_eval
+
+  log_p_hat_train = np.log(observed_dirichlet).mean(axis=0)
+  alpha_sum_approx = calc_approx_alpha_sum(
+      observed_dirichlet)
+  alpha_0 = observed_dirichlet.mean(axis=0) * alpha_sum_approx
+  mle_alpha_t = fixed_point_dirichlet_mle(alpha_0, log_p_hat_train)
+  diri_score = dirichlet_normality_score(mle_alpha_t, x_eval_p)
+  return diri_score
