@@ -94,8 +94,8 @@ class KernelTransformation(object):
     self.k_90_rotate = k_90_rotate
     self.gauss = gauss
     self.log = log
-    self.gauss_kernel = makeGaussian(5, 1)
-    self.log_kernel = makeLoG(5, 0.5)
+    self.gauss_kernel = makeGaussian(5, 1).astype(np.float32)
+    self.log_kernel = makeLoG(5, 0.5).astype(np.float32)
 
   @tf.function
   def __call__(self, x):
@@ -107,11 +107,13 @@ class KernelTransformation(object):
       res_x = cnn2d_depthwise_tf(
           res_x, check_shape_kernel(self.log_kernel, res_x))
     if self.flip:
-      res_x = np.fliplr(res_x)
+      with tf.name_scope("flip"):
+        res_x = tf.image.flip_left_right(res_x)
     if self.tx != 0 or self.ty != 0:
-      res_x = apply_affine_transform(res_x, tx=self.tx, ty=self.ty)
+      res_x = apply_affine_transform(res_x, self.tx, self.ty)
     if self.k_90_rotate != 0:
-      res_x = np.rot90(res_x, self.k_90_rotate)
+      with tf.name_scope("rotation"):
+        res_x = tf.image.rot90(res_x, k=self.k_90_rotate)
 
     return res_x
 
@@ -209,7 +211,7 @@ class AbstractTransformer(abc.ABC):
     train_ds = tf.data.Dataset.from_tensor_slices((x)).batch(
         self._transform_batch_size)
     # Todo: check which case is faste, if same, keep second way, it uses less memory
-    if x.shape[1] != 63:
+    if x.shape[1] != 63 or self.n_transforms>90:
       x_transform = []
       for images in train_ds:
         transformed_batch = self.transform_batch(images, transformations_inds)

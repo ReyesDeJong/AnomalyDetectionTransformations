@@ -99,6 +99,7 @@ def create_auc_table(metric='roc_auc'):
 if __name__ == '__main__':
   from parameters import loader_keys, general_keys
   import tensorflow as tf
+  import time
   from modules.data_loaders.hits_outlier_loader import HiTSOutlierLoader
   from modules.geometric_transform.transformations_tf import Transformer, \
     TransTransformer, KernelTransformer, PlusKernelTransformer
@@ -141,6 +142,9 @@ if __name__ == '__main__':
   experiments_list = [
     (
       ztf_outlier_dataset, kernel_plus_transformer, 'ztf-real-bog-v1', 'real',
+      N_RUNS),
+    (
+      ztf_outlier_dataset, kernel_transformer, 'ztf-real-bog-v1', 'real',
       N_RUNS),
     (
       ztf_outlier_dataset, transformer, 'ztf-real-bog-v1', 'real',
