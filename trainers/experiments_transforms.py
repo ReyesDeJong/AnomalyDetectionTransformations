@@ -16,7 +16,7 @@ from modules.geometric_transform.transformations_tf import AbstractTransformer
 from models.transformer_od import TransformODModel
 
 #TODO: figure out some way to give this as parameter to funciton
-RESULTS_DIR = os.path.join(PROJECT_PATH, 'results/diri-refact')
+RESULTS_DIR = os.path.join(PROJECT_PATH, 'results/diri-val-refact')
 EPOCHS = 10
 
 # TODO: construct evaluator to only perfor new metrics calculation
@@ -168,20 +168,20 @@ if __name__ == '__main__':
     (
       hits_outlier_dataset, kernel_plus_transformer, 'hits', 'real',
       N_RUNS),
-    (
-      ztf_outlier_dataset_63, trans_transformer, 'ztf-real-bog-v1-63', 'real',
-      N_RUNS),
-    (
-      ztf_outlier_dataset_63, kernel_transformer, 'ztf-real-bog-v1-63',
-      'real',
-      N_RUNS),
-    (
-      ztf_outlier_dataset_63, transformer, 'ztf-real-bog-v1-63', 'real',
-      N_RUNS),
-    (
-      ztf_outlier_dataset_63, kernel_plus_transformer, 'ztf-real-bog-v1-63',
-      'real',
-      N_RUNS),
+    # (
+    #   ztf_outlier_dataset_63, trans_transformer, 'ztf-real-bog-v1-63', 'real',
+    #   N_RUNS),
+    # (
+    #   ztf_outlier_dataset_63, kernel_transformer, 'ztf-real-bog-v1-63',
+    #   'real',
+    #   N_RUNS),
+    # (
+    #   ztf_outlier_dataset_63, transformer, 'ztf-real-bog-v1-63', 'real',
+    #   N_RUNS),
+    # (
+    #   ztf_outlier_dataset_63, kernel_plus_transformer, 'ztf-real-bog-v1-63',
+    #   'real',
+    #   N_RUNS),
   ]
   start_time = time.time()
   for data_loader, transformer, dataset_name, class_name, run_i in experiments_list:
