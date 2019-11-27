@@ -15,11 +15,13 @@ from modules.data_loaders.ztf_outlier_loader import ZTFOutlierLoader
 from modules.geometric_transform.transformations_tf import AbstractTransformer
 from models.transformer_od import TransformODModel
 
+#TODO: figure out some way to give this as parameter to funciton
 RESULTS_DIR = os.path.join(PROJECT_PATH, 'results/diri-refact')
-
+EPOCHS = 10
 
 # TODO: construct evaluator to only perfor new metrics calculation
 # TODO: make abstract data loader
+# TODO: Should y put callbacks in here?
 def _transformations_experiment(data_loader: ZTFOutlierLoader,
     transformer: AbstractTransformer, dataset_name: str, class_name: str,
     save_path: str):
@@ -36,7 +38,7 @@ def _transformations_experiment(data_loader: ZTFOutlierLoader,
 
   mdl.fit(x_train=x_train, x_val=x_val, transform_batch_size=transform_batch_size,
           train_batch_size=batch_size,
-          epochs=2  # int(np.ceil(200 / transformer.n_transforms))
+          epochs=EPOCHS  # int(np.ceil(200 / transformer.n_transforms))
           )
 
   _, _, (

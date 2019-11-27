@@ -1,5 +1,5 @@
 """
-First attempt (keras like) to build geometric trasnformer for outlier detection in tf2
+Transformer Ensemble OVA
 """
 
 import os
@@ -22,16 +22,18 @@ import pprint
 import datetime
 from tqdm import tqdm
 import matplotlib.pyplot as plt
+from models.transformer_od import TransformODModel
 
 """In situ transformation perform"""
 
 
-# TODO: think if its better to create a trainer instead of an encapsulated model
-class TransformODModel(tf.keras.Model):
+# TODO: create ensemble of models as direct keras model? or no.
+#  If so, object from list are by ref, meaning, can they be trained separately?
+class EnsembleOVATransformODModel(TransformODModel):
   def __init__(self, data_loader: ZTFOutlierLoader,
       transformer: AbstractTransformer, input_shape, depth=10,
-      widen_factor=4, results_folder_name='', name='Transformer_OD_Model',
-      **kwargs):
+      widen_factor=4, results_folder_name='',
+      name='Ensemble_OVA_Transformer_OD_Model', **kwargs):
     super().__init__(name=name)
     self.date = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
     self.main_model_path = self.create_main_model_paths(results_folder_name,
@@ -39,34 +41,32 @@ class TransformODModel(tf.keras.Model):
     utils.check_paths(self.main_model_path)
     self.data_loader = data_loader
     self.transformer = transformer
-    self.network = WideResidualNetwork(
-        input_shape=input_shape, n_classes=self.transformer.n_transforms,
-        depth=depth, widen_factor=widen_factor, **kwargs)
+    self.models_list = self._get_model_list(input_shape, depth, widen_factor,
+                                            **kwargs)
 
   def call(self, input_tensor, training=False):
-    return self.network(input_tensor, training)
+    output = []
+    for model in self.models_list:
+      output.append(model(input_tensor, training))
+    return tf.stack(output, axis=-1)
 
-  def create_main_model_paths(self, results_folder_name, model_name):
-    results_folder_path = self._results_folder_name_to_path(
-        results_folder_name)
-    main_model_path = os.path.join(results_folder_path, model_name)
-    return main_model_path
+  def _get_model_list(self, input_shape, depth, widen_factor, **kwargs):
+    models_list = []
+    for transform_idx in range(self.transformer.n_transforms):
+      network = WideResidualNetwork(
+          input_shape=input_shape, n_classes=self.transformer.n_transforms,
+          depth=depth, widen_factor=widen_factor, **kwargs)
+      models_list.append(network)
+    return models_list
 
-  def _results_folder_name_to_path(self, result_folder_name):
-    if 'results' in result_folder_name:
-      return result_folder_name
+  # TODO: make this an external utils function
+  def replicate_to_size(self, data_array, size):
+    if len(data_array) < size:
+      return self.replicate_to_size(np.concatenate([data_array, data_array]),
+                                    size)
     else:
-      return os.path.join(PROJECT_PATH, 'results', result_folder_name)
-
-  def create_specific_model_paths(self):
-    specific_model_folder = os.path.join(self.main_model_path,
-                                         self.transformer.name,
-                                         '%s_%s' % (self.name, self.date))
-    checkpoint_folder = os.path.join(specific_model_folder, 'checkpoints')
-    # self.tb_path = os.path.join(self.model_path, 'tb_summaries')
-    utils.check_paths(
-        [specific_model_folder, checkpoint_folder])
-    return [specific_model_folder, checkpoint_folder]
+      size_left = size - len(data_array)
+      return np.concatenate([data_array, data_array[:size_left]])
 
   # TODO: maybe its better to keep keras convention and reduce this to
   #  transformations and leave out data loading
@@ -74,37 +74,62 @@ class TransformODModel(tf.keras.Model):
       epochs=2, **kwargs):
     self.specific_model_folder, self.checkpoint_folder = \
       self.create_specific_model_paths()
-    # ToDo: must be network? or just self.compile???
-    self.network.compile(
-        general_keys.ADAM, general_keys.CATEGORICAL_CROSSENTROPY,
-        [general_keys.ACC])
     x_train_transform, y_train_transform = \
       self.transformer.apply_all_transforms(
           x=x_train, batch_size=transform_batch_size)
     x_val_transform, y_val_transform = \
       self.transformer.apply_all_transforms(
           x=x_val, batch_size=transform_batch_size)
-    es = tf.keras.callbacks.EarlyStopping(
-        monitor='val_loss', mode='min', verbose=1, patience=0,
-        restore_best_weights=True)
-    self.network.fit(
-        x=x_train_transform, y=tf.keras.utils.to_categorical(y_train_transform),
-        validation_data=(
-        x_val_transform, tf.keras.utils.to_categorical(y_val_transform)),
-        batch_size=train_batch_size,
-        epochs=epochs, callbacks=[es], **kwargs)
-    weight_path = os.path.join(self.checkpoint_folder,
-                               'final_weights.h5')
-    self.save_weights(weight_path)
+    for t_ind, model in enumerate(self.models_list):
+      model.compile(general_keys.ADAM, general_keys.CATEGORICAL_CROSSENTROPY,
+                    [general_keys.ACC])
+      # TODO: make this step a function
 
-  def predict_dirichlet_score(self, x_train, x_eval,
-      transform_batch_size=512, predict_batch_size=1024,
-      **kwargs):
-    _, diri_scores = self.predict_matrix_and_dirichlet_score(
-        x_train, x_eval, transform_batch_size, predict_batch_size, **kwargs)
-    return diri_scores
+      # separate inliers as an specific transform an the rest as outlier for an specific classifier, balance by replication
+      selected_transformation_to_train = t_ind
+      selected_transform_indxs_train = \
+        np.where(y_train_transform == selected_transformation_to_train)[0]
+      non_transform_indxs_train = \
+        np.where(y_train_transform != selected_transformation_to_train)[0]
+      selected_transform_indxs_val = \
+        np.where(y_val_transform == selected_transformation_to_train)[0]
+      non_transform_indxs_val = \
+        np.where(y_val_transform != selected_transformation_to_train)[0]
+      oversampled_selected_trans_idxs_train = self.replicate_to_size(
+          selected_transform_indxs_train, len(non_transform_indxs_train))
+      subsamples_val_idxs = np.random.choice(
+          non_transform_indxs_val, len(selected_transform_indxs_val),
+          replace=False)
+      train_x_binary = np.concatenate(
+          [x_train_transform[oversampled_selected_trans_idxs_train],
+           x_train_transform[non_transform_indxs_train]])
+      train_y_binary = np.concatenate(
+          [np.ones_like(oversampled_selected_trans_idxs_train),
+           np.zeros_like(non_transform_indxs_train)])
+      val_x_binary = np.concatenate(
+          [x_val_transform[selected_transform_indxs_val],
+           x_val_transform[subsamples_val_idxs]])
+      val_y_binary = np.concatenate([np.ones_like(selected_transform_indxs_val),
+                                     np.zeros_like(subsamples_val_idxs)])
+      print('Training Model %i' % t_ind)
+      print('Train_size: ', np.unique(train_y_binary, return_counts=True))
+      print('Val_size: ', np.unique(val_y_binary, return_counts=True))
 
-  # TODO: implement pre-transofrmed, in-situ-all, efficient transforming
+      es = tf.keras.callbacks.EarlyStopping(
+          monitor='val_loss', mode='min', verbose=1, patience=0,
+          restore_best_weights=True)
+      model.fit(
+          x=train_x_binary,
+          y=tf.keras.utils.to_categorical(train_y_binary),
+          validation_data=(
+            val_x_binary, tf.keras.utils.to_categorical(val_y_binary)),
+          batch_size=train_batch_size,
+          epochs=epochs, callbacks=[es], **kwargs)
+      weight_path = os.path.join(self.checkpoint_folder,
+                                 'final_weights_model%i.h5' % t_ind)
+      # TODO: what happens if y do self.save_weights??
+      model.save_weights(weight_path)
+
   def predict_matrix_score(self, x, transform_batch_size=512,
       predict_batch_size=1024, **kwargs):
     n_transforms = self.transformer.n_transforms
@@ -118,7 +143,8 @@ class TransformODModel(tf.keras.Model):
       matrix_scores[:, :, t_ind] += x_pred[ind_x_pred_queal_to_t_ind]
     return matrix_scores
 
-  # TODO: implement pre-transofrmed, in-situ-all, efficient transforming
+  # TODO: Dunno how to proceed with dirichlet in this case,
+  #  can flatten vector, or just us diagonal
   def predict_matrix_and_dirichlet_score(self, x_train, x_eval,
       transform_batch_size=512, predict_batch_size=1024,
       **kwargs):
