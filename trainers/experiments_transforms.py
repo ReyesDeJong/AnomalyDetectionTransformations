@@ -15,7 +15,7 @@ from modules.data_loaders.ztf_outlier_loader import ZTFOutlierLoader
 from modules.geometric_transform.transformations_tf import AbstractTransformer
 from models.transformer_od import TransformODModel
 
-RESULTS_DIR = os.path.join(PROJECT_PATH, 'results/ztf-refact')
+RESULTS_DIR = os.path.join(PROJECT_PATH, 'results/ztf-refact2')
 
 
 # TODO: construct evaluator to only perfor new metrics calculation
@@ -97,17 +97,18 @@ def create_auc_table(metric='roc_auc'):
 
 if __name__ == '__main__':
   from parameters import loader_keys, general_keys
-  import time
   import tensorflow as tf
+  import time
+  from modules.data_loaders.hits_outlier_loader import HiTSOutlierLoader
   from modules.geometric_transform.transformations_tf import Transformer, \
-    TransTransformer
+    TransTransformer, KernelTransformer, PlusKernelTransformer
 
   gpus = tf.config.experimental.list_physical_devices('GPU')
   for gpu in gpus:
     tf.config.experimental.set_memory_growth(gpu, True)
 
-  N_RUNS = 2
-  params = {
+  N_RUNS = 6
+  ztf_params = {
     loader_keys.DATA_PATH: os.path.join(
         PROJECT_PATH, '../datasets/ztf_v1_bogus_added.pkl'),
     loader_keys.VAL_SET_INLIER_PERCENTAGE: 0.1,
@@ -116,24 +117,66 @@ if __name__ == '__main__':
     general_keys.RANDOM_SEED: 42,
     loader_keys.TRANSFORMATION_INLIER_CLASS_VALUE: 1
   }
-  ztf_outlier_dataset = ZTFOutlierLoader(params)
-  params[loader_keys.CROP_SIZE] = None
-  ztf_outlier_dataset_63 = ZTFOutlierLoader(params)
+  ztf_outlier_dataset = ZTFOutlierLoader(ztf_params)
+  ztf_params[loader_keys.CROP_SIZE] = None
+  ztf_outlier_dataset_63 = ZTFOutlierLoader(ztf_params)
+  hits_params = {
+    loader_keys.DATA_PATH: os.path.join(
+        PROJECT_PATH, '../datasets/HiTS2013_300k_samples.pkl'),
+    loader_keys.N_SAMPLES_BY_CLASS: 10000,
+    loader_keys.TEST_PERCENTAGE: 0.2,
+    loader_keys.VAL_SET_INLIER_PERCENTAGE: 0.1,
+    loader_keys.USED_CHANNELS: [0, 1, 2, 3],
+    loader_keys.CROP_SIZE: 21,
+    general_keys.RANDOM_SEED: 42,
+    loader_keys.TRANSFORMATION_INLIER_CLASS_VALUE: 1
+  }
+  hits_outlier_dataset = HiTSOutlierLoader(hits_params)
   transformer = Transformer()
   trans_transformer = TransTransformer()
+  kernel_transformer = KernelTransformer()
+  kernel_plus_transformer = PlusKernelTransformer()
   # data_loader, transformer, dataset_name, class_idx_to_run_experiments_on, n_runs
-  #TODO: delgate names to data_laoders
+  # TODO: delgate names to data_laoders
   experiments_list = [
     (
-      ztf_outlier_dataset, transformer, 'ztf-real-bog-v1-refact', 'real',
+      ztf_outlier_dataset, kernel_plus_transformer, 'ztf-real-bog-v1', 'real',
       N_RUNS),
     (
-      ztf_outlier_dataset, trans_transformer, 'ztf-real-bog-v1-refact', 'real',
+      ztf_outlier_dataset, transformer, 'ztf-real-bog-v1', 'real',
       N_RUNS),
-    (ztf_outlier_dataset_63, transformer, 'ztf-real-bog-v1-63-refact',
-     'real', N_RUNS),
-    (ztf_outlier_dataset_63, trans_transformer, 'ztf-real-bog-v1-63-refact',
-     'real', N_RUNS),
+    (
+      ztf_outlier_dataset, kernel_transformer, 'ztf-real-bog-v1', 'real',
+      N_RUNS),
+    (
+      ztf_outlier_dataset, trans_transformer, 'ztf-real-bog-v1', 'real',
+      N_RUNS),
+    (
+      hits_outlier_dataset, transformer, 'hits', 'real',
+      N_RUNS),
+    (
+      hits_outlier_dataset, trans_transformer, 'hits', 'real',
+      N_RUNS),
+    (
+      hits_outlier_dataset, kernel_transformer, 'hits', 'real',
+      N_RUNS),
+    (
+      hits_outlier_dataset, kernel_plus_transformer, 'hits', 'real',
+      N_RUNS),
+    # (
+    #   ztf_outlier_dataset_63, trans_transformer, 'ztf-real-bog-v1-63', 'real',
+    #   N_RUNS),
+    # (
+    #   ztf_outlier_dataset_63, kernel_transformer, 'ztf-real-bog-v1-63',
+    #   'real',
+    #   N_RUNS),
+    # (
+    #   ztf_outlier_dataset_63, transformer, 'ztf-real-bog-v1-63', 'real',
+    #   N_RUNS),
+    # (
+    #   ztf_outlier_dataset_63, kernel_plus_transformer, 'ztf-real-bog-v1-63',
+    #   'real',
+    #   N_RUNS),
   ]
   start_time = time.time()
   for data_loader, transformer, dataset_name, class_name, run_i in experiments_list:
@@ -142,5 +185,5 @@ if __name__ == '__main__':
       "Time elapsed to train everything: " + utils.timer(start_time,
                                                          time.time()))
 
-  # metrics_to_create_table = {}
+  metrics_to_create_table = {}
   create_auc_table()
