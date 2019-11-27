@@ -109,7 +109,7 @@ class ZTFOutlierLoader(object):
     # # large_dataset that doesn't fit memory
     # # Todo: fix this by an efficient transformation calculator
     if self.crop_size == 63 or self.crop_size is None:
-      inlier_indexes = inlier_indexes[:9000]
+      inlier_indexes = inlier_indexes[:8000]
       val_size_inliers = 1000
     # train-val indexes inlier indexes
     train_inlier_idxs = inlier_indexes[val_size_inliers:]

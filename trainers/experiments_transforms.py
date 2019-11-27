@@ -15,7 +15,7 @@ from modules.data_loaders.ztf_outlier_loader import ZTFOutlierLoader
 from modules.geometric_transform.transformations_tf import AbstractTransformer
 from models.transformer_od import TransformODModel
 
-RESULTS_DIR = os.path.join(PROJECT_PATH, 'results/refact')
+RESULTS_DIR = os.path.join(PROJECT_PATH, 'results/diri-refact')
 
 
 # TODO: construct evaluator to only perfor new metrics calculation
@@ -168,11 +168,15 @@ if __name__ == '__main__':
       ztf_outlier_dataset_63, trans_transformer, 'ztf-real-bog-v1-63', 'real',
       N_RUNS),
     (
-      ztf_outlier_dataset_63, kernel_plus_transformer, 'ztf-real-bog-v1-63',
+      ztf_outlier_dataset_63, kernel_transformer, 'ztf-real-bog-v1-63',
       'real',
       N_RUNS),
     (
       ztf_outlier_dataset_63, transformer, 'ztf-real-bog-v1-63', 'real',
+      N_RUNS),
+    (
+      ztf_outlier_dataset_63, kernel_plus_transformer, 'ztf-real-bog-v1-63',
+      'real',
       N_RUNS),
   ]
   start_time = time.time()
