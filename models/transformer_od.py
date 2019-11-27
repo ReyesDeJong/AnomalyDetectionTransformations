@@ -70,8 +70,8 @@ class TransformODModel(tf.keras.Model):
 
   # TODO: maybe its better to keep keras convention and reduce this to
   #  transformations and leave out data loading
-  def fit(self, x, transform_batch_size=512, train_batch_size=128, epochs=2,
-      **kwargs):
+  def fit(self, x_train, x_val, transform_batch_size=512, train_batch_size=128,
+      epochs=2, **kwargs):
     self.specific_model_folder, self.checkpoint_folder = \
       self.create_specific_model_paths()
     # ToDo: must be network? or just self.compile???
@@ -80,11 +80,18 @@ class TransformODModel(tf.keras.Model):
         [general_keys.ACC])
     x_train_transform, y_train_transform = \
       self.transformer.apply_all_transforms(
-          x=x, batch_size=transform_batch_size)
+          x=x_train, batch_size=transform_batch_size)
+    x_val_transform, y_val_transform = \
+      self.transformer.apply_all_transforms(
+          x=x_val, batch_size=transform_batch_size)
+    es = tf.keras.callbacks.EarlyStopping(
+        monitor='val_loss', mode='min', verbose=1, patience=0,
+        restore_best_weights=True)
     self.network.fit(
         x=x_train_transform, y=tf.keras.utils.to_categorical(y_train_transform),
+        validation_data=(x_val_transform, y_val_transform),
         batch_size=train_batch_size,
-        epochs=epochs, **kwargs)
+        epochs=epochs, callbacks=[es], **kwargs)
     weight_path = os.path.join(self.checkpoint_folder,
                                'final_weights.h5')
     self.save_weights(weight_path)
@@ -339,7 +346,7 @@ if __name__ == '__main__':
   weight_path = os.path.join(PROJECT_PATH, 'results', model.name,
                              'my_checkpoint.h5')
   model.load_weights(weight_path)
-  # model.fit(x_train)
+  # model.fit(x_train, x_val)
 
   # start_time = time.time()
   # pred = model.network.predict(x_test, batch_size=1024)

@@ -27,18 +27,19 @@ def _transformations_experiment(data_loader: ZTFOutlierLoader,
   batch_size = 128
   transform_batch_size = 1024
 
-  (x_train, y_train), _, _ = data_loader.get_outlier_detection_datasets()
+  (x_train, y_train), (
+  x_val, y_val), _ = data_loader.get_outlier_detection_datasets()
 
   mdl = TransformODModel(
       data_loader=data_loader, transformer=transformer,
       input_shape=x_train.shape[1:], results_folder_name=save_path)
 
-  mdl.fit(x=x_train, transform_batch_size=transform_batch_size,
+  mdl.fit(x_train=x_train, x_val=x_val, transform_batch_size=transform_batch_size,
           train_batch_size=batch_size,
           epochs=2  # int(np.ceil(200 / transformer.n_transforms))
           )
 
-  _, (x_val, y_val), (
+  _, _, (
     x_test, y_test) = data_loader.get_outlier_detection_datasets()
   metrics_dict = mdl.evaluate_od(
       x_train, x_test, y_test, dataset_name, class_name, x_val,
