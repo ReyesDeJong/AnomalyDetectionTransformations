@@ -25,7 +25,7 @@ def _transformations_experiment(data_loader: ZTFOutlierLoader,
     save_path: str):
   # Todo: pass as param_dict
   batch_size = 128
-  transform_batch_size = 1024
+  transform_batch_size = 512
 
   (x_train, y_train), _, _ = data_loader.get_outlier_detection_datasets()
 
@@ -140,35 +140,35 @@ if __name__ == '__main__':
   # data_loader, transformer, dataset_name, class_idx_to_run_experiments_on, n_runs
   # TODO: delgate names to data_laoders
   experiments_list = [
+    #(
+    #  ztf_outlier_dataset, kernel_plus_transformer, 'ztf-real-bog-v1', 'real',
+    #  N_RUNS),
+    #(
+    #  ztf_outlier_dataset, kernel_transformer, 'ztf-real-bog-v1', 'real',
+    #  N_RUNS),
+    #(
+    #  ztf_outlier_dataset, transformer, 'ztf-real-bog-v1', 'real',
+    #  N_RUNS),
+    #(
+    #  ztf_outlier_dataset, trans_transformer, 'ztf-real-bog-v1', 'real',
+    #  N_RUNS),
+    #(
+    #  hits_outlier_dataset, transformer, 'hits', 'real',
+    #  N_RUNS),
+    #(
+    #  hits_outlier_dataset, trans_transformer, 'hits', 'real',
+    #  N_RUNS),
+    #(
+    #  hits_outlier_dataset, kernel_transformer, 'hits', 'real',
+    #  N_RUNS),
+    #(
+    #  hits_outlier_dataset, kernel_plus_transformer, 'hits', 'real',
+    #  N_RUNS),
+    #(
+    #  ztf_outlier_dataset_63, trans_transformer, 'ztf-real-bog-v1-63', 'real',
+    #  N_RUNS),
     (
-      ztf_outlier_dataset, kernel_plus_transformer, 'ztf-real-bog-v1', 'real',
-      N_RUNS),
-    (
-      ztf_outlier_dataset, kernel_transformer, 'ztf-real-bog-v1', 'real',
-      N_RUNS),
-    (
-      ztf_outlier_dataset, transformer, 'ztf-real-bog-v1', 'real',
-      N_RUNS),
-    (
-      ztf_outlier_dataset, trans_transformer, 'ztf-real-bog-v1', 'real',
-      N_RUNS),
-    (
-      hits_outlier_dataset, transformer, 'hits', 'real',
-      N_RUNS),
-    (
-      hits_outlier_dataset, trans_transformer, 'hits', 'real',
-      N_RUNS),
-    (
-      hits_outlier_dataset, kernel_transformer, 'hits', 'real',
-      N_RUNS),
-    (
-      hits_outlier_dataset, kernel_plus_transformer, 'hits', 'real',
-      N_RUNS),
-    (
-      ztf_outlier_dataset_63, trans_transformer, 'ztf-real-bog-v1-63', 'real',
-      N_RUNS),
-    (
-      ztf_outlier_dataset_63, kernel_plus_transformer, 'ztf-real-bog-v1-63',
+      ztf_outlier_dataset_63, kernel_transformer, 'ztf-real-bog-v1-63',
       'real',
       N_RUNS),
     (

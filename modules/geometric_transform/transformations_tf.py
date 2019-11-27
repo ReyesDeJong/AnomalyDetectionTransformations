@@ -220,16 +220,20 @@ class AbstractTransformer(abc.ABC):
       x_transform = np.concatenate(
           [tensor.numpy() for tensor in x_transform])
     else:
-      x_transform = np.zeros(
-          (x.shape[0] * self.n_transforms, x.shape[1], x.shape[2], x.shape[3]),
+      x_transform = np.empty(
+          (x.shape[0] * len(transformations_inds), x.shape[1], x.shape[2], x.shape[3]),
           dtype=np.float32)
+      #print(x_transform.shape)
       i = 0
       for images in train_ds:
         transformed_batch = self.transform_batch(images, transformations_inds)
+        #print(transformed_batch)
         x_transform[
-        i:i + self._transform_batch_size * self.n_transforms] = \
+        i:i + self._transform_batch_size * len(transformations_inds)] = \
           transformed_batch.numpy()
-        i += self._transform_batch_size * self.n_transforms
+        #print(type(x_transform[
+        #i:i + self._transform_batch_size * len(transformations_inds)][0,0,0,0]))
+        i += self._transform_batch_size * len(transformations_inds)
     y_transform_fixed_batch_size = np.repeat(transformations_inds,
                                              self._transform_batch_size)
     y_transform_fixed_batch_size = np.tile(y_transform_fixed_batch_size,
@@ -397,7 +401,7 @@ class PlusKernelTransformer(KernelTransformer):
       transformation = KernelTransformation(is_flip, tx, ty, k_rotate,
                                             is_gauss,
                                             is_log)
-      transformation_list.append(transformation)
+    transformation_list.append(transformation)
 
     self._transformation_list = transformation_list
 
