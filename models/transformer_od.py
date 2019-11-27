@@ -250,7 +250,7 @@ class TransformODModel(tf.keras.Model):
                  max_ * 0.6,
                  'Acc: {:.2f}%'.format(accuracy_at_percentile * 100))
     ax_acc.grid(ls='--')
-    fig.legend(loc="upper right", bbox_to_anchor=(1, 1),
+    fig.legend(loc="upper left", bbox_to_anchor=(1, 1),
                bbox_transform=ax_hist.transAxes)
     results_name = self._get_score_result_name(score_name, dataset_name,
                                                class_name)
