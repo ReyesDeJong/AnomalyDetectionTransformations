@@ -20,7 +20,7 @@ from sklearn.metrics import roc_curve, precision_recall_curve, auc
 from modules.metrics import accuracies_by_threshold, accuracy_at_thr
 import pprint
 import datetime
-from tqdm import tqdm
+# from tqdm import tqdm
 import matplotlib.pyplot as plt
 
 """In situ transformation perform"""
@@ -125,7 +125,7 @@ class TransformODModel(tf.keras.Model):
     n_transforms = self.transformer.n_transforms
     diri_scores = np.zeros(len(x_eval))
     matrix_scores = np.zeros((len(x_eval), n_transforms, n_transforms))
-    for t_ind in tqdm(range(n_transforms)):
+    for t_ind in range(n_transforms):
       x_train_transformed, _ = self.transformer.apply_transforms(
           x_train, [t_ind], transform_batch_size)
       observed_dirichlet = self.predict(

@@ -16,7 +16,7 @@ from modules.geometric_transform.transformations_tf import AbstractTransformer
 from models.transformer_od import TransformODModel
 
 #TODO: figure out some way to give this as parameter to funciton
-RESULTS_DIR = os.path.join(PROJECT_PATH, 'results/diri-val-refact')
+RESULTS_DIR = os.path.join(PROJECT_PATH, 'results/ztf-diri-val-refact')
 EPOCHS = 10
 
 # TODO: construct evaluator to only perfor new metrics calculation
