@@ -107,7 +107,7 @@ if __name__ == '__main__':
   for gpu in gpus:
     tf.config.experimental.set_memory_growth(gpu, True)
 
-  N_RUNS = 6
+  N_RUNS = 10
   ztf_params = {
     loader_keys.DATA_PATH: os.path.join(
         PROJECT_PATH, '../datasets/ztf_v1_bogus_added.pkl'),
