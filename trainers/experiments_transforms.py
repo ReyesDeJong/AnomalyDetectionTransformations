@@ -4,7 +4,7 @@ import sys
 PROJECT_PATH = os.path.abspath(
     os.path.join(os.path.dirname(__file__), '..'))
 sys.path.append(PROJECT_PATH)
-
+import matplotlib; matplotlib.use('agg')
 import csv
 from collections import defaultdict
 from glob import glob
