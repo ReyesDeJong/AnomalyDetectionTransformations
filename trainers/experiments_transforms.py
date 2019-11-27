@@ -43,7 +43,8 @@ def _transformations_experiment(data_loader: ZTFOutlierLoader,
   metrics_dict = mdl.evaluate_od(
       x_train, x_test, y_test, dataset_name, class_name, x_val,
       transform_batch_size=transform_batch_size,
-      additional_save_path_list=[save_path, mdl.specific_model_folder])
+      additional_score_save_path_list=[save_path, mdl.specific_model_folder],
+      save_hist_folder_path=mdl.specific_model_folder)
   del mdl
 
 

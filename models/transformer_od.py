@@ -21,6 +21,7 @@ from modules.metrics import accuracies_by_threshold, accuracy_at_thr
 import pprint
 import datetime
 from tqdm import tqdm
+import matplotlib.pyplot as plt
 
 """In situ transformation perform"""
 
@@ -147,11 +148,9 @@ class TransformODModel(tf.keras.Model):
 
   # TODO: refactor, too long and include keys
   def get_metrics_save_path(self, score_name, dataset_name, class_name):
-    model_score_name = ('%s_%s' % (self.name, score_name)).replace("_", "-")
-    dataset_plus_transformer_name = (
-        '%s_%s' % (dataset_name, self.transformer.name)).replace("_", "-")
-    results_file_name = '{}_{}_{}_{}.npz'.format(
-        dataset_plus_transformer_name, model_score_name, class_name, self.date)
+    results_name = self._get_score_result_name(score_name, dataset_name,
+                                               class_name)
+    results_file_name = '{}.npz'.format(results_name)
     all_results_folder = os.path.join(self.main_model_path, 'all_metric_files',
                                       dataset_name)
     utils.check_paths(all_results_folder)
@@ -161,7 +160,8 @@ class TransformODModel(tf.keras.Model):
   # TODO: refactor, too long
   def evaluate_od(self, x_train, x_eval, y_eval, dataset_name, class_name,
       x_validation=None, transform_batch_size=512, predict_batch_size=1024,
-      additional_save_path_list=None, **kwargs):
+      additional_score_save_path_list=None, save_hist_folder_path=None,
+      **kwargs):
     print('evaluating')
     if x_validation is None:
       x_validation = x_eval
@@ -181,10 +181,79 @@ class TransformODModel(tf.keras.Model):
           scores_value, validation_scores_dict[score_name], y_eval,
           metrics_save_path)
       self._save_on_additional_paths(
-          additional_save_path_list, metrics_save_path,
+          additional_score_save_path_list, metrics_save_path,
           metrics_of_each_score[score_name])
+      self._save_histogram(metrics_of_each_score[score_name], score_name,
+                           dataset_name, class_name, save_hist_folder_path)
     return metrics_of_each_score
 
+  def _get_score_result_name(self, score_name, dataset_name,
+      class_name):
+    model_score_name = ('%s_%s' % (self.name, score_name)).replace("_", "-")
+    dataset_plus_transformer_name = (
+        '%s_%s' % (dataset_name, self.transformer.name)).replace("_", "-")
+    results_name = '{}_{}_{}_{}'.format(
+        dataset_plus_transformer_name, model_score_name, class_name, self.date)
+    return results_name
+
+  def _save_histogram(self, score_metric_dict, score_name, dataset_name,
+      class_name, save_folder_path=None):
+    if save_folder_path is None:
+      return
+    # TODO: refactor usage of percentile, include it in metrics and
+    #  get it from key
+    percentile = 95.46
+    scores_val = score_metric_dict['scores_val']
+    auc_roc = score_metric_dict['roc_auc']
+    accuracies = score_metric_dict['accuracies']
+    scores = score_metric_dict['scores']
+    labels = score_metric_dict['labels']
+    thresholds = score_metric_dict['roc_thresholds']
+    accuracy_at_percentile = score_metric_dict['acc_at_percentil']
+    inliers_scores = scores[labels == 1]
+    outliers_scores = scores[labels != 1]
+    min_score = np.min(scores)
+    max_score = np.max(scores)
+    thr_percentile = np.percentile(scores_val, 100 - percentile)
+    fig = plt.figure(figsize=(8, 6))
+    ax_hist = fig.add_subplot(111)
+    ax_hist.set_title(
+        'AUC_ROC: %.2f%%, BEST ACC: %.2f%%' % (
+          auc_roc * 100, np.max(accuracies) * 100))
+    ax_acc = ax_hist.twinx()
+    hist1 = ax_hist.hist(inliers_scores, 100, alpha=0.5,
+                         label='inlier', range=[min_score, max_score])
+    hist2 = ax_hist.hist(outliers_scores, 100, alpha=0.5,
+                         label='outlier', range=[min_score, max_score])
+    _, max_ = ax_hist.set_ylim()
+    ax_hist.set_ylabel('Counts', fontsize=12)
+    ax_hist.set_xlabel(score_name, fontsize=12)
+    # acc plot
+    ax_acc.set_ylim([0.5, 1.0])
+    ax_acc.yaxis.set_ticks(np.arange(0.5, 1.05, 0.05))
+    ax_acc.set_ylabel('Accuracy', fontsize=12)
+    acc_plot = ax_acc.plot(thresholds, accuracies, lw=2,
+                           label='Accuracy by\nthresholds',
+                           color='black')
+    percentil_plot = ax_hist.plot([thr_percentile, thr_percentile], [0, max_],
+                                  'k--',
+                                  label='thr percentil %i on %s' % (
+                                    percentile, dataset_name))
+    ax_hist.text(thr_percentile,
+                 max_ * 0.6,
+                 'Acc: {:.2f}%'.format(accuracy_at_percentile * 100))
+    ax_acc.grid(ls='--')
+    fig.legend(loc="upper right", bbox_to_anchor=(1, 1),
+               bbox_transform=ax_hist.transAxes)
+    results_name = self._get_score_result_name(score_name, dataset_name,
+                                               class_name)
+    fig.savefig(
+        os.path.join(save_folder_path, '%s_hist_thr_acc.png' % results_name),
+        bbox_inches='tight')
+    plt.close()
+
+  # TODO: refactor to avoid usage of metrics_save_path,
+  # this should be additional_paths_list and data
   def _save_on_additional_paths(self, additional_paths_list: list,
       metrics_save_path: str, metrics_dict: dict):
     if additional_paths_list is None:

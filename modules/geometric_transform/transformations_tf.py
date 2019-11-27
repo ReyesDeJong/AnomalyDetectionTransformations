@@ -166,6 +166,7 @@ class AbstractTransformer(abc.ABC):
     return
 
   # This must be included within preprocessing mapping(?)
+  # TODO: refactor transform batch to avoid appending
   def transform_batch(self, x, t_inds):
     transformed_batch = []
     with tf.name_scope("transformations"):
@@ -221,7 +222,7 @@ class AbstractTransformer(abc.ABC):
       x_transform = np.concatenate(
           [tensor.numpy() for tensor in x_transform])
     else:
-      x_transform = np.zeros(
+      x_transform = np.empty(
           (x.shape[0] * len(transformations_inds), x.shape[1], x.shape[2],
            x.shape[3]),
           dtype=np.float32)
