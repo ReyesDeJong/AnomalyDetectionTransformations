@@ -4,7 +4,9 @@ import sys
 PROJECT_PATH = os.path.abspath(
     os.path.join(os.path.dirname(__file__), '..'))
 sys.path.append(PROJECT_PATH)
-import matplotlib; matplotlib.use('agg')
+import matplotlib;
+
+matplotlib.use('agg')
 import csv
 from collections import defaultdict
 from glob import glob
@@ -15,9 +17,10 @@ from modules.data_loaders.ztf_outlier_loader import ZTFOutlierLoader
 from modules.geometric_transform.transformations_tf import AbstractTransformer
 from models.transformer_od import TransformODModel
 
-#TODO: figure out some way to give this as parameter to funciton
-RESULTS_DIR = os.path.join(PROJECT_PATH, 'results/ztf-diri-val-refact')
+# TODO: figure out some way to give this as parameter to funciton
+RESULTS_DIR = os.path.join(PROJECT_PATH, 'results/debug')
 EPOCHS = 10
+
 
 # TODO: construct evaluator to only perfor new metrics calculation
 # TODO: make abstract data loader
@@ -30,19 +33,27 @@ def _transformations_experiment(data_loader: ZTFOutlierLoader,
   transform_batch_size = 1024
 
   (x_train, y_train), (
-  x_val, y_val), _ = data_loader.get_outlier_detection_datasets()
+    x_val, y_val), (
+    x_test, y_test) = data_loader.get_outlier_detection_datasets()
 
   mdl = TransformODModel(
       data_loader=data_loader, transformer=transformer,
       input_shape=x_train.shape[1:], results_folder_name=save_path)
 
-  mdl.fit(x_train=x_train, x_val=x_val, transform_batch_size=transform_batch_size,
-          train_batch_size=batch_size,
-          epochs=EPOCHS  # int(np.ceil(200 / transformer.n_transforms))
-          )
+  # mdl.fit(x_train=x_train, x_val=x_val, transform_batch_size=transform_batch_size,
+  #         train_batch_size=batch_size,
+  #         epochs=EPOCHS  # int(np.ceil(200 / transformer.n_transforms))
+  #         )
+  mdl.create_specific_model_paths()
+  mdl.build(tuple([None] + list(x_train.shape[1:])))
+  weights_path = os.path.join(
+      PROJECT_PATH,
+      'results/ztf-diri-val-refact/hits/Transformer_OD_Model/PlusKernel_transformer/Transformer_OD_Model_20191127-124219/checkpoints',
+      'final_weights.h5'
+  )
+  print(os.path.abspath(weights_path))
+  mdl.load_weights(weights_path)
 
-  _, _, (
-    x_test, y_test) = data_loader.get_outlier_detection_datasets()
   metrics_dict = mdl.evaluate_od(
       x_train, x_test, y_test, dataset_name, class_name, x_val,
       transform_batch_size=transform_batch_size,
@@ -112,7 +123,7 @@ if __name__ == '__main__':
   for gpu in gpus:
     tf.config.experimental.set_memory_growth(gpu, True)
 
-  N_RUNS = 10
+  N_RUNS = 1
   ztf_params = {
     loader_keys.DATA_PATH: os.path.join(
         PROJECT_PATH, '../datasets/ztf_v1_bogus_added.pkl'),
@@ -144,27 +155,27 @@ if __name__ == '__main__':
   # data_loader, transformer, dataset_name, class_idx_to_run_experiments_on, n_runs
   # TODO: delgate names to data_laoders
   experiments_list = [
-    (
-      ztf_outlier_dataset, trans_transformer, 'ztf-real-bog-v1', 'real',
-      N_RUNS),
-    (
-      ztf_outlier_dataset, kernel_transformer, 'ztf-real-bog-v1', 'real',
-      N_RUNS),
-    (
-      ztf_outlier_dataset, transformer, 'ztf-real-bog-v1', 'real',
-      N_RUNS),
-    (
-      ztf_outlier_dataset, kernel_plus_transformer, 'ztf-real-bog-v1', 'real',
-      N_RUNS),
-    (
-      hits_outlier_dataset, transformer, 'hits', 'real',
-      N_RUNS),
-    (
-      hits_outlier_dataset, trans_transformer, 'hits', 'real',
-      N_RUNS),
-    (
-      hits_outlier_dataset, kernel_transformer, 'hits', 'real',
-      N_RUNS),
+    # (
+    #   ztf_outlier_dataset, trans_transformer, 'ztf-real-bog-v1', 'real',
+    #   N_RUNS),
+    # (
+    #   ztf_outlier_dataset, kernel_transformer, 'ztf-real-bog-v1', 'real',
+    #   N_RUNS),
+    # (
+    #   ztf_outlier_dataset, transformer, 'ztf-real-bog-v1', 'real',
+    #   N_RUNS),
+    # (
+    #   ztf_outlier_dataset, kernel_plus_transformer, 'ztf-real-bog-v1', 'real',
+    #   N_RUNS),
+    # (
+    #   hits_outlier_dataset, transformer, 'hits', 'real',
+    #   N_RUNS),
+    # (
+    #   hits_outlier_dataset, trans_transformer, 'hits', 'real',
+    #   N_RUNS),
+    # (
+    #   hits_outlier_dataset, kernel_transformer, 'hits', 'real',
+    #   N_RUNS),
     (
       hits_outlier_dataset, kernel_plus_transformer, 'hits', 'real',
       N_RUNS),
@@ -190,5 +201,5 @@ if __name__ == '__main__':
       "Time elapsed to train everything: " + utils.timer(start_time,
                                                          time.time()))
 
-  metrics_to_create_table = {}
-  create_auc_table()
+  # metrics_to_create_table = {}
+  # create_auc_table()

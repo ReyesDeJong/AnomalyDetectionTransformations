@@ -59,21 +59,20 @@ class TransformODModel(tf.keras.Model):
       return os.path.join(PROJECT_PATH, 'results', result_folder_name)
 
   def create_specific_model_paths(self):
-    specific_model_folder = os.path.join(self.main_model_path,
+    self.specific_model_folder = os.path.join(self.main_model_path,
                                          self.transformer.name,
                                          '%s_%s' % (self.name, self.date))
-    checkpoint_folder = os.path.join(specific_model_folder, 'checkpoints')
+    self.checkpoint_folder = os.path.join(self.specific_model_folder, 'checkpoints')
     # self.tb_path = os.path.join(self.model_path, 'tb_summaries')
     utils.check_paths(
-        [specific_model_folder, checkpoint_folder])
-    return [specific_model_folder, checkpoint_folder]
+        [self.specific_model_folder, self.checkpoint_folder])
+
 
   # TODO: maybe its better to keep keras convention and reduce this to
   #  transformations and leave out data loading
   def fit(self, x_train, x_val, transform_batch_size=512, train_batch_size=128,
       epochs=2, **kwargs):
-    self.specific_model_folder, self.checkpoint_folder = \
-      self.create_specific_model_paths()
+    self.create_specific_model_paths()
     # ToDo: must be network? or just self.compile???
     self.network.compile(
         general_keys.ADAM, general_keys.CATEGORICAL_CROSSENTROPY,

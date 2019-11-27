@@ -9,7 +9,8 @@ sys.path.append(PROJECT_PATH)
 
 from scipy.special import psi, polygamma
 
-#ToDo: see if this can be done by tf
+
+# ToDo: see if this can be done by tf
 
 def calc_approx_alpha_sum(observations):
   N = len(observations)
@@ -23,7 +24,15 @@ def calc_approx_alpha_sum(observations):
 def inv_psi(y, iters=5):
   # initial estimate
   cond = y >= -2.22
-  x = cond * (np.exp(y) + 0.5) + (1 - cond) * -1 / (y - psi(1))
+  # if not np.isfinite(y).all():
+  #   print('problem y')
+  # if not np.isfinite(np.exp(y)).all():
+  #   print('problem exp')
+  # psi(1)= -0.5772156649015329
+  # y-psi(1) can give 0 and turns divition to NAN, but this divition is only
+  # performed when y < -2.22, so in practice y-psi(1) where y=psi(1) never
+  # haṕpens
+  x = cond * (np.exp(y) + 0.5) + (1 - cond) * -1 / ((y + 1e-6) - psi(1))
 
   for _ in range(iters):
     x = x - (psi(x) - y) / polygamma(1, x)
@@ -32,16 +41,21 @@ def inv_psi(y, iters=5):
 
 def fixed_point_dirichlet_mle(alpha_init, log_p_hat, max_iter=1000):
   alpha_new = alpha_old = alpha_init
-  for _ in range(max_iter):
+  for i in range(max_iter):
+    # if not np.isfinite(alpha_old).all():
+    #   print('problem alpha_old')
     alpha_new = inv_psi(psi(np.sum(alpha_old)) + log_p_hat)
     if np.sqrt(np.sum((alpha_old - alpha_new) ** 2)) < 1e-9:
       break
+    # if not np.isfinite(alpha_new).all():
+    #   print('problem alpha_new')
     alpha_old = alpha_new
   return alpha_new
 
 
 def dirichlet_normality_score(alpha, p):
   return np.sum((alpha - 1) * np.log(p), axis=-1)
+
 
 def dirichlet_score(predict_x_train, predict_x_eval):
   observed_dirichlet = predict_x_train
