@@ -94,6 +94,7 @@ class TransformODModel(tf.keras.Model):
         epochs=epochs, callbacks=[es], **kwargs)
     weight_path = os.path.join(self.checkpoint_folder,
                                'final_weights.h5')
+    del x_train, x_val, x_train_transform, x_val_transform, y_train_transform, y_val_transform
     self.save_weights(weight_path)
 
   def predict_dirichlet_score(self, x_train, x_eval,
@@ -136,6 +137,7 @@ class TransformODModel(tf.keras.Model):
       diri_scores += dirichlet_utils.dirichlet_score(
           observed_dirichlet, x_eval_p)
       matrix_scores[:, :, t_ind] += x_eval_p
+      del x_train_transformed, x_eval_transformed
     diri_scores /= n_transforms
     matrix_scores /= n_transforms
     return matrix_scores, diri_scores

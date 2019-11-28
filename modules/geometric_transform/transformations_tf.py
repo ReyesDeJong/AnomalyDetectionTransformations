@@ -213,26 +213,25 @@ class AbstractTransformer(abc.ABC):
     train_ds = tf.data.Dataset.from_tensor_slices((x)).batch(
         self._transform_batch_size)
     # Todo: check which case is faste, if same, keep second way, it uses less memory
-    if x.shape[1] != 63:  # or self.n_transforms>90:
-      x_transform = []
-      for images in train_ds:
-        transformed_batch = self.transform_batch(images, transformations_inds)
-
-        x_transform.append(transformed_batch)
-      x_transform = np.concatenate(
-          [tensor.numpy() for tensor in x_transform])
-    else:
-      x_transform = np.empty(
-          (x.shape[0] * len(transformations_inds), x.shape[1], x.shape[2],
-           x.shape[3]),
-          dtype=np.float32)
-      i = 0
-      for images in train_ds:
-        transformed_batch = self.transform_batch(images, transformations_inds)
-        x_transform[
-        i:i + self._transform_batch_size * len(transformations_inds)] = \
-          transformed_batch.numpy()
-        i += self._transform_batch_size * len(transformations_inds)
+    #if x.shape[1] != 63:  # or self.n_transforms>90:
+    #  x_transform = []
+    #  for images in train_ds:
+    #    transformed_batch = self.transform_batch(images, transformations_inds)
+    #    x_transform.append(transformed_batch)
+    #  x_transform = np.concatenate(
+    #      [tensor.numpy() for tensor in x_transform])
+    #else:
+    x_transform = np.empty(
+        (x.shape[0] * len(transformations_inds), x.shape[1], x.shape[2],
+         x.shape[3]),
+        dtype=np.float32)
+    i = 0
+    for images in train_ds:
+      transformed_batch = self.transform_batch(images, transformations_inds)
+      x_transform[
+      i:i + self._transform_batch_size * len(transformations_inds)] = \
+        transformed_batch.numpy()
+      i += self._transform_batch_size * len(transformations_inds)
     y_transform_fixed_batch_size = np.repeat(transformations_inds,
                                              self._transform_batch_size)
     y_transform_fixed_batch_size = np.tile(y_transform_fixed_batch_size,
