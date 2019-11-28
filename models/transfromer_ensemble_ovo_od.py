@@ -24,11 +24,11 @@ from models.transformer_od import TransformODModel
 
 # TODO: create ensemble of models as direct keras model? or no.
 #  If so, object from list are by ref, meaning, can they be trained separately?
-class EnsembleOVATransformODModel(TransformODModel):
+class EnsembleOVOTransformODModel(TransformODModel):
   def __init__(self, data_loader: ZTFOutlierLoader,
       transformer: AbstractTransformer, input_shape, depth=10,
       widen_factor=4, results_folder_name='',
-      name='Ensemble_OVA_Transformer_OD_Model', **kwargs):
+      name='Ensemble_OVO_Transformer_OD_Model', **kwargs):
     super(TransformODModel, self).__init__(name=name)
     self.date = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
     self.main_model_path = self.create_main_model_paths(results_folder_name,
@@ -41,27 +41,28 @@ class EnsembleOVATransformODModel(TransformODModel):
 
   def call(self, input_tensor, training=False):
     output = []
-    for model in self.models_list:
-      output.append(model(input_tensor, training)[:, 1])
+    for model_list_x in self.models_list:
+      output_x = []
+      for model in model_list_x:
+        output_x.append(model(input_tensor, training)[:, 1])
+      output_x = tf.stack(output_x, axis=-1)
+      output.append(output_x)
     return tf.stack(output, axis=-1)
 
   def _get_model_list(self, input_shape, depth, widen_factor, **kwargs):
     models_list = []
-    for transform_idx in range(self.transformer.n_transforms):
-      network = WideResidualNetwork(
-          input_shape=input_shape, n_classes=2,
-          depth=depth, widen_factor=widen_factor, **kwargs)
-      models_list.append(network)
+    for transform_idx_x in range(self.transformer.n_transforms):
+      models_list_x = []
+      for transform_idx_y in range(self.transformer.n_transforms):
+        if transform_idx_x == transform_idx_y:
+          models_list_x.append(None)
+          continue
+        network = WideResidualNetwork(
+            input_shape=input_shape, n_classes=2,
+            depth=depth, widen_factor=widen_factor, **kwargs)
+        models_list_x.append(network)
+      models_list.append(models_list_x)
     return models_list
-
-  # TODO: make this an external utils function
-  def replicate_to_size(self, data_array, size):
-    if len(data_array) < size:
-      return self.replicate_to_size(np.concatenate([data_array, data_array]),
-                                    size)
-    else:
-      size_left = size - len(data_array)
-      return np.concatenate([data_array, data_array[:size_left]])
 
   def fit(self, x_train, x_val, transform_batch_size=512, train_batch_size=128,
       epochs=2, **kwargs):
@@ -72,55 +73,56 @@ class EnsembleOVATransformODModel(TransformODModel):
     x_val_transform, y_val_transform = \
       self.transformer.apply_all_transforms(
           x=x_val, batch_size=transform_batch_size)
-    for t_ind, model in enumerate(self.models_list):
-      model.compile(general_keys.ADAM, general_keys.CATEGORICAL_CROSSENTROPY,
-                    [general_keys.ACC])
-      # TODO: make this step a function
+    for model_ind_x in range(self.transformer.n_transforms):
+      for t_ind, model_y in enumerate(self.models_list[model_ind_x]):
+        if model_ind_x == t_ind:
+          continue
+        model_y.compile(
+            general_keys.ADAM, general_keys.CATEGORICAL_CROSSENTROPY,
+            [general_keys.ACC])
+        # TODO: make this step a function
 
-      # separate inliers as an specific transform an the rest as outlier for an specific classifier, balance by replication
-      selected_transformation_to_train = t_ind
-      selected_transform_indxs_train = \
-        np.where(y_train_transform == selected_transformation_to_train)[0]
-      non_transform_indxs_train = \
-        np.where(y_train_transform != selected_transformation_to_train)[0]
-      selected_transform_indxs_val = \
-        np.where(y_val_transform == selected_transformation_to_train)[0]
-      non_transform_indxs_val = \
-        np.where(y_val_transform != selected_transformation_to_train)[0]
-      oversampled_selected_trans_idxs_train = self.replicate_to_size(
-          selected_transform_indxs_train, len(non_transform_indxs_train))
-      subsamples_val_idxs = np.random.choice(
-          non_transform_indxs_val, len(selected_transform_indxs_val),
-          replace=False)
-      train_x_binary = np.concatenate(
-          [x_train_transform[oversampled_selected_trans_idxs_train],
-           x_train_transform[non_transform_indxs_train]])
-      train_y_binary = np.concatenate(
-          [np.ones_like(oversampled_selected_trans_idxs_train),
-           np.zeros_like(non_transform_indxs_train)])
-      val_x_binary = np.concatenate(
-          [x_val_transform[selected_transform_indxs_val],
-           x_val_transform[subsamples_val_idxs]])
-      val_y_binary = np.concatenate([np.ones_like(selected_transform_indxs_val),
-                                     np.zeros_like(subsamples_val_idxs)])
-      print('Training Model %i' % t_ind)
-      print('Train_size: ', np.unique(train_y_binary, return_counts=True))
-      print('Val_size: ', np.unique(val_y_binary, return_counts=True))
+        # separate inliers as an specific transform an the rest as outlier for an specific classifier, balance by replication
+        transformation_x_to_train = t_ind
+        transformation_y_to_train = model_ind_x
+        transform_x_indxs_train = \
+          np.where(y_train_transform == transformation_x_to_train)[0]
+        transform_y_indxs_train = \
+          np.where(y_train_transform == transformation_y_to_train)[0]
+        transform_x_indxs_val = \
+          np.where(y_val_transform == transformation_x_to_train)[0]
+        transform_y_indxs_val = \
+          np.where(y_val_transform == transformation_y_to_train)[0]
+        train_x_binary = np.concatenate(
+            [x_train_transform[transform_x_indxs_train],
+             x_train_transform[transform_y_indxs_train]])
+        train_y_binary = np.concatenate(
+            [np.ones_like(transform_x_indxs_train),
+             np.zeros_like(transform_y_indxs_train)])
+        val_x_binary = np.concatenate(
+            [x_val_transform[transform_x_indxs_val],
+             x_val_transform[transform_y_indxs_val]])
+        val_y_binary = np.concatenate([np.ones_like(transform_x_indxs_val),
+                                       np.zeros_like(transform_y_indxs_val)])
+        print('Training Model x%i y%i' % (model_ind_x, t_ind))
+        print('Train_size: ', np.unique(train_y_binary, return_counts=True))
+        print('Val_size: ', np.unique(val_y_binary, return_counts=True))
 
-      es = tf.keras.callbacks.EarlyStopping(
-          monitor='val_loss', mode='min', verbose=1, patience=0,
-          restore_best_weights=True)
-      model.fit(
-          x=train_x_binary,
-          y=tf.keras.utils.to_categorical(train_y_binary),
-          validation_data=(
-            val_x_binary, tf.keras.utils.to_categorical(val_y_binary)),
-          batch_size=train_batch_size,
-          epochs=epochs, callbacks=[es], **kwargs)
-      weight_path = os.path.join(self.checkpoint_folder,
-                                 'final_weights_model%i.h5' % t_ind)
-      # TODO: what happens if y do self.save_weights??
-      model.save_weights(weight_path)
+        es = tf.keras.callbacks.EarlyStopping(
+            monitor='val_loss', mode='min', verbose=1, patience=0,
+            restore_best_weights=True)
+        model_y.fit(
+            x=train_x_binary,
+            y=tf.keras.utils.to_categorical(train_y_binary),
+            validation_data=(
+              val_x_binary, tf.keras.utils.to_categorical(val_y_binary)),
+            batch_size=train_batch_size,
+            epochs=epochs, callbacks=[es], **kwargs)
+        weight_path = os.path.join(self.checkpoint_folder,
+                                   'final_weights_modelx%iy%i.h5' % (
+                                     model_ind_x, t_ind))
+        # TODO: what happens if y do self.save_weights??
+        model_y.save_weights(weight_path)
 
   def predict_matrix_score(self, x, transform_batch_size=512,
       predict_batch_size=1024, **kwargs):
@@ -129,15 +131,11 @@ class EnsembleOVATransformODModel(TransformODModel):
         x, transform_batch_size)
     matrix_scores = np.zeros((len(x), n_transforms, n_transforms))
     # TODO: paralelice this
-    for model_t_ind in tqdm(range(n_transforms)):
-      x_pred_model_t_ind = self.models_list[model_t_ind].predict(x_transformed,
-                                                                 batch_size=predict_batch_size)
+    for model_t_x in tqdm(range(n_transforms)):
       for t_ind in range(n_transforms):
-        ind_x_pred_model_t_ind_queal_to_t_ind = \
-          np.where(y_transformed == t_ind)[0]
-        matrix_scores[:, model_t_ind, t_ind] += x_pred_model_t_ind[
-                                                  ind_x_pred_model_t_ind_queal_to_t_ind][
-                                                :, 1]
+        x_pred_model_x_t_ind = self.models_list[model_t_x][t_ind].predict(
+            x_transformed, batch_size=predict_batch_size)
+        matrix_scores[:, model_t_x, t_ind] += x_pred_model_x_t_ind[:, 1]
     del x_transformed, y_transformed
     return matrix_scores
 
@@ -183,7 +181,7 @@ if __name__ == '__main__':
   (x_train, y_train), (x_val, y_val), (
     x_test, y_test) = ztf_od_loader.get_outlier_detection_datasets()
   transformer = TransTransformer()
-  model = EnsembleOVATransformODModel(
+  model = EnsembleOVOTransformODModel(
       data_loader=ztf_od_loader, transformer=transformer,
       input_shape=x_train.shape[1:])
   # weight_path = os.path.join(PROJECT_PATH, 'results', model.name,

@@ -68,8 +68,6 @@ class TransformODModel(tf.keras.Model):
         [self.specific_model_folder, self.checkpoint_folder])
 
 
-  # TODO: maybe its better to keep keras convention and reduce this to
-  #  transformations and leave out data loading
   def fit(self, x_train, x_val, transform_batch_size=512, train_batch_size=128,
       epochs=2, **kwargs):
     self.create_specific_model_paths()
