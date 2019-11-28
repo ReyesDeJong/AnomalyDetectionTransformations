@@ -97,7 +97,6 @@ class KernelTransformation(object):
     self.gauss_kernel = makeGaussian(5, 1).astype(np.float32)
     self.log_kernel = makeLoG(5, 0.5).astype(np.float32)
 
-  @tf.function
   def __call__(self, x):
     res_x = x
     if self.gauss:
@@ -240,6 +239,7 @@ class AbstractTransformer(abc.ABC):
         transformations_inds, len(x) % self._transform_batch_size)
     y_transform = np.concatenate(
         [y_transform_fixed_batch_size, y_transform_leftover_batch_size])
+    del train_ds
     return x_transform, y_transform
 
 

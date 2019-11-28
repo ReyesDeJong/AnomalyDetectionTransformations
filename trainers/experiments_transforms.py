@@ -47,7 +47,7 @@ def _transformations_experiment(data_loader: ZTFOutlierLoader,
       transform_batch_size=transform_batch_size,
       additional_score_save_path_list=[save_path, mdl.specific_model_folder],
       save_hist_folder_path=mdl.specific_model_folder)
-  del mdl
+  del mdl, x_train, x_val, x_test
 
 
 # ToDo: research how to perform multi gpu training
@@ -184,8 +184,7 @@ if __name__ == '__main__':
   ]
   start_time = time.time()
   for data_loader, transformer, dataset_name, class_name, run_i in experiments_list:
-    with 'a':
-      run_experiments(data_loader, transformer, dataset_name, class_name, run_i)
+    run_experiments(data_loader, transformer, dataset_name, class_name, run_i)
   print(
       "Time elapsed to train everything: " + utils.timer(start_time,
                                                          time.time()))
