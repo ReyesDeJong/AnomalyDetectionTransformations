@@ -16,7 +16,7 @@ from modules.geometric_transform.transformations_tf import AbstractTransformer
 from models.transformer_od import TransformODModel
 
 #TODO: figure out some way to give this as parameter to funciton
-RESULTS_DIR = os.path.join(PROJECT_PATH, 'results/ztf-diri-val-refact')
+RESULTS_DIR = os.path.join(PROJECT_PATH, 'results/testing_ram_usage')
 EPOCHS = 10
 
 # TODO: construct evaluator to only perfor new metrics calculation
@@ -111,7 +111,7 @@ if __name__ == '__main__':
   for gpu in gpus:
     tf.config.experimental.set_memory_growth(gpu, True)
 
-  N_RUNS = 6
+  N_RUNS = 20
   ztf_params = {
     loader_keys.DATA_PATH: os.path.join(
         PROJECT_PATH, '../datasets/ztf_v1_bogus_added.pkl'),
@@ -149,12 +149,12 @@ if __name__ == '__main__':
     # (
     #   ztf_outlier_dataset, kernel_transformer, 'ztf-real-bog-v1', 'real',
     #   N_RUNS),
-    # (
-    #   ztf_outlier_dataset, transformer, 'ztf-real-bog-v1', 'real',
-    #   N_RUNS),
-    # (
-    #   ztf_outlier_dataset, kernel_plus_transformer, 'ztf-real-bog-v1', 'real',
-    #   N_RUNS),
+    (
+      ztf_outlier_dataset, kernel_plus_transformer, 'ztf-real-bog-v1', 'real',
+      N_RUNS),
+    (
+      ztf_outlier_dataset, transformer, 'ztf-real-bog-v1', 'real',
+      N_RUNS),
     # (
     #   hits_outlier_dataset, transformer, 'hits', 'real',
     #   N_RUNS),
@@ -164,9 +164,9 @@ if __name__ == '__main__':
     # (
     #   hits_outlier_dataset, kernel_transformer, 'hits', 'real',
     #   N_RUNS),
-    (
-      hits_outlier_dataset, kernel_plus_transformer, 'hits', 'real',
-      N_RUNS),
+    # (
+    #   hits_outlier_dataset, kernel_plus_transformer, 'hits', 'real',
+    #   N_RUNS),
     # (
     #   ztf_outlier_dataset_63, trans_transformer, 'ztf-real-bog-v1-63', 'real',
     #   N_RUNS),
@@ -184,7 +184,8 @@ if __name__ == '__main__':
   ]
   start_time = time.time()
   for data_loader, transformer, dataset_name, class_name, run_i in experiments_list:
-    run_experiments(data_loader, transformer, dataset_name, class_name, run_i)
+    with 'a':
+      run_experiments(data_loader, transformer, dataset_name, class_name, run_i)
   print(
       "Time elapsed to train everything: " + utils.timer(start_time,
                                                          time.time()))
