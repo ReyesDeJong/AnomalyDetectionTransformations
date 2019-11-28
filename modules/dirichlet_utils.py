@@ -23,7 +23,7 @@ def calc_approx_alpha_sum(observations):
 def inv_psi(y, iters=5):
   # initial estimate
   cond = y >= -2.22
-  x = cond * (np.exp(y) + 0.5) + (1 - cond) * -1 / (y - psi(1))
+  x = cond * (np.exp(y) + 0.5) + (1 - cond) * -1 / ((y + 1e-6) - psi(1))
 
   for _ in range(iters):
     x = x - (psi(x) - y) / polygamma(1, x)

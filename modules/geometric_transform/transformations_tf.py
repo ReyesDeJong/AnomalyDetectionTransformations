@@ -18,7 +18,6 @@ def cnn2d_depthwise_tf(image_batch, filters):
 
 def makeGaussian(size, sigma=3, center=None):
   """ Make a square gaussian kernel.
-
   size is the length of a side of the square
   fwhm is full-width-half-maximum, which
   can be thought of as an effective radius.
@@ -38,7 +37,6 @@ def makeGaussian(size, sigma=3, center=None):
 
 def makeLoG(size, sigma=3, center=None):
   """ Make a square LoG kernel.
-
   size is the length of a side of the square
   fwhm is full-width-half-maximum, which
   can be thought of as an effective radius.
@@ -166,6 +164,7 @@ class AbstractTransformer(abc.ABC):
     return
 
   # This must be included within preprocessing mapping(?)
+  # TODO: refactor transform batch to avoid appending
   def transform_batch(self, x, t_inds):
     transformed_batch = []
     with tf.name_scope("transformations"):
@@ -199,7 +198,8 @@ class AbstractTransformer(abc.ABC):
   def apply_all_transforms(self, x, batch_size=None):
     """generate transform inds, that are the labels of each transform and
     its respective transformed data. It generates labels after images"""
-    print('Appliying all transforms to set of shape %s' % str(x.shape))
+    print('Appliying all %i transforms to set of shape %s' % (
+      self.n_transforms, str(x.shape)))
     transformations_inds = np.arange(self.n_transforms)
     return self.apply_transforms(x, transformations_inds, batch_size)
 
@@ -211,29 +211,29 @@ class AbstractTransformer(abc.ABC):
     train_ds = tf.data.Dataset.from_tensor_slices((x)).batch(
         self._transform_batch_size)
     # Todo: check which case is faste, if same, keep second way, it uses less memory
-    if x.shape[1] != 63: # or self.n_transforms>90:
-      x_transform = []
-      for images in train_ds:
-        transformed_batch = self.transform_batch(images, transformations_inds)
-
-        x_transform.append(transformed_batch)
-      x_transform = np.concatenate(
-          [tensor.numpy() for tensor in x_transform])
-    else:
-      x_transform = np.empty(
-          (x.shape[0] * len(transformations_inds), x.shape[1], x.shape[2], x.shape[3]),
-          dtype=np.float32)
-      #print(x_transform.shape)
-      i = 0
-      for images in train_ds:
-        transformed_batch = self.transform_batch(images, transformations_inds)
-        #print(transformed_batch)
-        x_transform[
-        i:i + self._transform_batch_size * len(transformations_inds)] = \
-          transformed_batch.numpy()
-        #print(type(x_transform[
-        #i:i + self._transform_batch_size * len(transformations_inds)][0,0,0,0]))
-        i += self._transform_batch_size * len(transformations_inds)
+    #if x.shape[1] != 63: # or self.n_transforms>90:
+    #  x_transform = []
+    #  for images in train_ds:
+    #    transformed_batch = self.transform_batch(images, transformations_inds)
+    #
+    #    x_transform.append(transformed_batch)
+    #  x_transform = np.concatenate(
+    #      [tensor.numpy() for tensor in x_transform])
+    #else:
+    x_transform = np.empty(
+        (x.shape[0] * len(transformations_inds), x.shape[1], x.shape[2], x.shape[3]),
+        dtype=np.float32)
+    #print(x_transform.shape)
+    i = 0
+    for images in train_ds:
+      transformed_batch = self.transform_batch(images, transformations_inds)
+      #print(transformed_batch)
+      x_transform[
+      i:i + self._transform_batch_size * len(transformations_inds)] = \
+        transformed_batch.numpy()
+      #print(type(x_transform[
+      #i:i + self._transform_batch_size * len(transformations_inds)][0,0,0,0]))
+      i += self._transform_batch_size * len(transformations_inds)
     y_transform_fixed_batch_size = np.repeat(transformations_inds,
                                              self._transform_batch_size)
     y_transform_fixed_batch_size = np.tile(y_transform_fixed_batch_size,
@@ -401,7 +401,7 @@ class PlusKernelTransformer(KernelTransformer):
       transformation = KernelTransformation(is_flip, tx, ty, k_rotate,
                                             is_gauss,
                                             is_log)
-    transformation_list.append(transformation)
+      transformation_list.append(transformation)
 
     self._transformation_list = transformation_list
 
@@ -617,3 +617,4 @@ if __name__ == "__main__":
   #                transformer.tranformation_to_perform[
   #                  transformed_dataset_v1[1][
   #                    sample_i_in_one_batch + transform_i * batch_size]])
+
