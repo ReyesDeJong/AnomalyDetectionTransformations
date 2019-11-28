@@ -14,14 +14,9 @@ from modules.geometric_transform.transformations_tf import AbstractTransformer
 from modules.data_loaders.ztf_outlier_loader import ZTFOutlierLoader
 from parameters import general_keys
 import numpy as np
-from modules import dirichlet_utils, utils
-from modules import scores
-from sklearn.metrics import roc_curve, precision_recall_curve, auc
-from modules.metrics import accuracies_by_threshold, accuracy_at_thr
-import pprint
+from modules import utils
 import datetime
 from tqdm import tqdm
-import matplotlib.pyplot as plt
 from models.transformer_od import TransformODModel
 
 """In situ transformation perform"""
@@ -136,14 +131,15 @@ class EnsembleOVATransformODModel(TransformODModel):
         x, transform_batch_size)
     matrix_scores = np.zeros((len(x), n_transforms, n_transforms))
     # TODO: paralelice this
-    for model_t_ind in range(n_transforms):
-      x_pred_model_t_ind = self.network.predict(x_transformed,
-                                                batch_size=predict_batch_size)
+    for model_t_ind in tqdm(range(n_transforms)):
+      x_pred_model_t_ind = self.models_list[model_t_ind].predict(x_transformed,
+                                                                 batch_size=predict_batch_size)
       for t_ind in range(n_transforms):
         ind_x_pred_model_t_ind_queal_to_t_ind = \
           np.where(y_transformed == t_ind)[0]
         matrix_scores[:, model_t_ind, t_ind] += x_pred_model_t_ind[
-          ind_x_pred_model_t_ind_queal_to_t_ind]
+                                                  ind_x_pred_model_t_ind_queal_to_t_ind][
+                                                :, 1]
     del x_transformed, y_transformed
     return matrix_scores
 
@@ -152,24 +148,24 @@ class EnsembleOVATransformODModel(TransformODModel):
   def predict_matrix_and_dirichlet_score(self, x_train, x_eval,
       transform_batch_size=512, predict_batch_size=1024,
       **kwargs):
-    n_transforms = self.transformer.n_transforms
-    matrix_scores_train = self.predict_matrix_score(
-        x_train, transform_batch_size, predict_batch_size, **kwargs)
+    # n_transforms = self.transformer.n_transforms
+    # matrix_scores_train = self.predict_matrix_score(
+    #     x_train, transform_batch_size, predict_batch_size, **kwargs)
     matrix_scores_eval = self.predict_matrix_score(
         x_eval, transform_batch_size, predict_batch_size, **kwargs)
     diri_scores = np.zeros(len(x_eval))
-    for t_ind in tqdm(range(n_transforms)):
-      observed_dirichlet = matrix_scores_train[:, :, t_ind]
-      x_eval_p = matrix_scores_eval[:, :, t_ind]
-      diri_scores += dirichlet_utils.dirichlet_score(
-          observed_dirichlet, x_eval_p)
-    diri_scores /= n_transforms
+    # for t_ind in range(n_transforms):
+    #   observed_dirichlet = matrix_scores_train[:, :, t_ind]
+    #   x_eval_p = matrix_scores_eval[:, :, t_ind]
+    #   diri_scores += dirichlet_utils.dirichlet_score(
+    #       observed_dirichlet, x_eval_p)
+    # diri_scores /= n_transforms
     return matrix_scores_eval, diri_scores
 
 
 if __name__ == '__main__':
   from parameters import loader_keys
-  from modules.geometric_transform.transformations_tf import Transformer, TransTransformer
+  from modules.geometric_transform.transformations_tf import TransTransformer
   import time
 
   gpus = tf.config.experimental.list_physical_devices('GPU')
@@ -197,13 +193,14 @@ if __name__ == '__main__':
   # model.load_weights(weight_path)
   model.fit(x_train, x_val)
   start_time = time.time()
+  model.create_specific_model_paths()
   met_dict = model.evaluate_od(
-      x_train, x_test, y_test, 'ztf-real-bog-v1', 'real', x_val)
+      x_train, x_test, y_test, 'ztf-real-bog-v1', 'real', x_val,
+      save_hist_folder_path=model.specific_model_folder)
   print(
       "Time model.evaluate_od %s" % utils.timer(
           start_time, time.time()),
       flush=True)
-
 
   # start_time = time.time()
   # pred = model.network.predict(x_test, batch_size=1024)
