@@ -16,8 +16,8 @@ from modules.geometric_transform.transformations_tf import AbstractTransformer
 from models.transformer_od import TransformODModel
 
 #TODO: figure out some way to give this as parameter to funciton
-RESULTS_DIR = os.path.join(PROJECT_PATH, 'results/testing_ram_usage')
-EPOCHS = 10
+RESULTS_DIR = os.path.join(PROJECT_PATH, 'results/refact')
+EPOCHS = 2
 
 # TODO: construct evaluator to only perfor new metrics calculation
 # TODO: make abstract data loader
@@ -182,12 +182,12 @@ if __name__ == '__main__':
     #   'real',
     #   N_RUNS),
   ]
-  start_time = time.time()
-  for data_loader, transformer, dataset_name, class_name, run_i in experiments_list:
-    run_experiments(data_loader, transformer, dataset_name, class_name, run_i)
-  print(
-      "Time elapsed to train everything: " + utils.timer(start_time,
-                                                         time.time()))
+  # start_time = time.time()
+  # for data_loader, transformer, dataset_name, class_name, run_i in experiments_list:
+  #   run_experiments(data_loader, transformer, dataset_name, class_name, run_i)
+  # print(
+  #     "Time elapsed to train everything: " + utils.timer(start_time,
+  #                                                        time.time()))
 
   metrics_to_create_table = {}
   create_auc_table()

@@ -139,13 +139,13 @@ class TransformODModel(tf.keras.Model):
       matrix_scores[:, :, t_ind] += x_eval_p
       del x_train_transformed, x_eval_transformed
     diri_scores /= n_transforms
-    matrix_scores /= n_transforms
     return matrix_scores, diri_scores
 
   def get_scores_dict(self, x_train, x_eval,
       transform_batch_size=512, predict_batch_size=1024, **kwargs):
     matrix_scores, diri_scores = self.predict_matrix_and_dirichlet_score(
         x_train, x_eval, transform_batch_size, predict_batch_size, **kwargs)
+    matrix_scores = matrix_scores/self.transformer.n_transforms
     scores_dict = {
       general_keys.DIRICHLET: diri_scores,
       general_keys.MATRIX_TRACE: np.trace(matrix_scores, axis1=1, axis2=2),
