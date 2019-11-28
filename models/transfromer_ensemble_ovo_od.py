@@ -18,6 +18,7 @@ from modules import utils
 import datetime
 from tqdm import tqdm
 from models.transformer_od import TransformODModel
+from modules import scores
 
 """In situ transformation perform"""
 
@@ -133,8 +134,13 @@ class EnsembleOVOTransformODModel(TransformODModel):
     # TODO: paralelice this
     for model_t_x in tqdm(range(n_transforms)):
       for t_ind in range(n_transforms):
+        if model_t_x == t_ind:
+          continue
+        ind_x_pred_model_t_x_queal_to_t_ind = \
+          np.where(y_transformed == t_ind)[0]
         x_pred_model_x_t_ind = self.models_list[model_t_x][t_ind].predict(
-            x_transformed, batch_size=predict_batch_size)
+            x_transformed[ind_x_pred_model_t_x_queal_to_t_ind],
+            batch_size=predict_batch_size)
         matrix_scores[:, model_t_x, t_ind] += x_pred_model_x_t_ind[:, 1]
     del x_transformed, y_transformed
     return matrix_scores
