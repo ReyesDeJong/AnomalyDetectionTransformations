@@ -18,7 +18,7 @@ from modules import utils
 import datetime
 from tqdm import tqdm
 from models.transformer_od import TransformODModel
-from modules import scores
+from modules import score_functions
 
 """In situ transformation perform"""
 

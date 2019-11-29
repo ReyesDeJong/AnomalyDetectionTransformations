@@ -15,7 +15,7 @@ from modules.data_loaders.ztf_outlier_loader import ZTFOutlierLoader
 from parameters import general_keys
 import numpy as np
 from modules import dirichlet_utils, utils
-from modules import scores
+from modules import score_functions
 from sklearn.metrics import roc_curve, precision_recall_curve, auc
 from modules.metrics import accuracies_by_threshold, accuracy_at_thr
 import pprint
@@ -147,9 +147,9 @@ class TransformODModel(tf.keras.Model):
     scores_dict = {
       general_keys.DIRICHLET: diri_scores,
       general_keys.MATRIX_TRACE: np.trace(matrix_scores, axis1=1, axis2=2),
-      general_keys.ENTROPY: -1 * scores.get_entropy(matrix_scores),
-      general_keys.CROSS_ENTROPY: -1 * scores.get_xH(self.transformer,
-                                                     matrix_scores)
+      general_keys.ENTROPY: -1 * score_functions.get_entropy(matrix_scores),
+      general_keys.CROSS_ENTROPY: -1 * score_functions.get_xH(self.transformer,
+                                                              matrix_scores)
     }
     return scores_dict
 

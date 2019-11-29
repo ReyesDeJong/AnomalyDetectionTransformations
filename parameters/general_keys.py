@@ -10,6 +10,8 @@ ACC = 'acc'
 ACCURACY = 'accuracy'
 
 # Names of scores
+DIRI_OVA_MDL = 'diri_ova_mdl'
+DIRI_OVA_TRANS = 'diri_ova_trans'
 DIRICHLET = 'dirichlet'
 MATRIX_TRACE = 'matrix_trace'
 ENTROPY = 'entropy'
