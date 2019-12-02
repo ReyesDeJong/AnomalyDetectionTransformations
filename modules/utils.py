@@ -109,6 +109,6 @@ def timer(start, end):
   return "{:0>2}:{:0>2}:{:05.2f}".format(int(hours), int(minutes), seconds)
 
 
-def normalize(array, axis=-1):
+def normalize_sum1(array, axis=-1):
   sums = np.sum(array, axis=axis)
   return array / np.expand_dims(sums, axis)

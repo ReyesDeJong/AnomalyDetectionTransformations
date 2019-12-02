@@ -8,7 +8,7 @@ PROJECT_PATH = os.path.abspath(
 sys.path.append(PROJECT_PATH)
 
 from scipy.special import psi, polygamma
-
+from modules.utils import normalize_sum1
 
 # ToDo: see if this can be done by tf
 
@@ -58,8 +58,9 @@ def dirichlet_normality_score(alpha, p):
 
 
 def dirichlet_score(predict_x_train, predict_x_eval):
-  observed_dirichlet = predict_x_train
-  x_eval_p = predict_x_eval
+  #TODO: test without this
+  observed_dirichlet = correct_0_value_predictions(predict_x_train)
+  x_eval_p = correct_0_value_predictions(predict_x_eval)
 
   log_p_hat_train = np.log(observed_dirichlet).mean(axis=0)
   alpha_sum_approx = calc_approx_alpha_sum(
@@ -68,3 +69,8 @@ def dirichlet_score(predict_x_train, predict_x_eval):
   mle_alpha_t = fixed_point_dirichlet_mle(alpha_0, log_p_hat_train)
   diri_score = dirichlet_normality_score(mle_alpha_t, x_eval_p)
   return diri_score
+
+def correct_0_value_predictions(predictions):
+  predictions[predictions==0] = 1e-10
+  return normalize_sum1(predictions)
+

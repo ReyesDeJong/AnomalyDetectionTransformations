@@ -171,7 +171,7 @@ class EnsembleOVOTransformODModel(TransformODModel):
     # TODO: implement both
     diri_scores = np.zeros(len(x_eval))
     for t_ind in range(n_transforms):
-      observed_dirichlet = utils.normalize(matrix_scores_train[:, :, t_ind])
+      observed_dirichlet = utils.normalize_sum1(matrix_scores_train[:, :, t_ind])
       x_eval_p = self._normalize(matrix_scores_eval[:, :, t_ind])
       diri_scores += dirichlet_utils.dirichlet_score(
           observed_dirichlet, x_eval_p)

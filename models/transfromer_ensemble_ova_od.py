@@ -158,14 +158,14 @@ class EnsembleOVATransformODModel(TransformODModel):
     diri_scores_transform = np.zeros(len(x_eval))
     for t_ind in range(n_transforms):
       observed_dirichlet = self._normalize(matrix_scores_train[:, :, t_ind])
-      x_eval_p = utils.normalize(matrix_scores_eval[:, :, t_ind])
+      x_eval_p = utils.normalize_sum1(matrix_scores_eval[:, :, t_ind])
       diri_scores_transform += dirichlet_utils.dirichlet_score(
           observed_dirichlet, x_eval_p)
     diri_scores_transform /= n_transforms
     diri_scores_model = np.zeros(len(x_eval))
     for mdl_ind in range(n_transforms):
       observed_dirichlet = self._normalize(matrix_scores_train[:, mdl_ind, :])
-      x_eval_p = utils.normalize(matrix_scores_eval[:, mdl_ind, :])
+      x_eval_p = utils.normalize_sum1(matrix_scores_eval[:, mdl_ind, :])
       diri_scores_model += dirichlet_utils.dirichlet_score(
           observed_dirichlet, x_eval_p)
     diri_scores_model /= n_transforms

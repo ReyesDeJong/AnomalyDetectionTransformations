@@ -9,19 +9,12 @@ PROJECT_PATH = os.path.abspath(
     os.path.join(os.path.dirname(__file__), '..'))
 sys.path.append(PROJECT_PATH)
 import tensorflow as tf
-from modules.networks.wide_residual_network import WideResidualNetwork
+from modules.networks.deep_hits import DeepHits
 from modules.geometric_transform.transformations_tf import AbstractTransformer
 from modules.data_loaders.ztf_outlier_loader import ZTFOutlierLoader
 from parameters import general_keys
-import numpy as np
-from modules import dirichlet_utils, utils
-from modules import scores
-from sklearn.metrics import roc_curve, precision_recall_curve, auc
-from modules.metrics import accuracies_by_threshold, accuracy_at_thr
-import pprint
+from modules import utils
 import datetime
-from tqdm import tqdm
-import matplotlib.pyplot as plt
 from models.transformer_od import TransformODModel
 
 """In situ transformation perform"""
@@ -29,8 +22,8 @@ from models.transformer_od import TransformODModel
 
 class TransformODSimpleModel(TransformODModel):
   def __init__(self, data_loader: ZTFOutlierLoader,
-      transformer: AbstractTransformer, input_shape, depth=10,
-      widen_factor=4, results_folder_name='', name='Transformer_OD_Simple_Model',
+      transformer: AbstractTransformer, input_shape, results_folder_name='',
+      name='Transformer_OD_Simple_Model',
       **kwargs):
     super(TransformODModel, self).__init__(name=name)
     self.date = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
@@ -41,19 +34,18 @@ class TransformODSimpleModel(TransformODModel):
     self.transformer = transformer
     self.network = self.get_network(
         input_shape=input_shape, n_classes=self.transformer.n_transforms,
-        depth=depth, widen_factor=widen_factor, **kwargs)
+        **kwargs)
 
   # TODO: do a param dict
-  def get_network(self, input_shape, n_classes,
-      depth, widen_factor, **kwargs):
-    return WideResidualNetwork(
-        input_shape=input_shape, n_classes=n_classes, depth=depth,
-        widen_factor=widen_factor, **kwargs)
+  def get_network(self, input_shape, n_classes, **kwargs):
+    return DeepHits(
+        input_shape=input_shape, n_classes=n_classes, **kwargs)
 
 
 if __name__ == '__main__':
   from parameters import loader_keys
   from modules.geometric_transform.transformations_tf import Transformer
+  import time
 
   gpus = tf.config.experimental.list_physical_devices('GPU')
   for gpu in gpus:
@@ -72,78 +64,34 @@ if __name__ == '__main__':
   (x_train, y_train), (x_val, y_val), (
     x_test, y_test) = ztf_od_loader.get_outlier_detection_datasets()
   transformer = Transformer()
-  model = TransformODModel(
+  model = TransformODSimpleModel(
       data_loader=ztf_od_loader, transformer=transformer,
       input_shape=x_train.shape[1:])
   model.build(tuple([None] + list(x_train.shape[1:])))
+  # print(model.network.model().summary())
   weight_path = os.path.join(PROJECT_PATH, 'results', model.name,
-                             'my_checkpoint.h5')
-  model.load_weights(weight_path)
-  # model.fit(x_train, x_val)
+                             'my_checkpoint_simple.h5')
+  if os.path.exists(weight_path):
+    model.load_weights(weight_path)
+  else:
+    model.fit(x_train, x_val)
 
-  # start_time = time.time()
-  # pred = model.network.predict(x_test, batch_size=1024)
-  # print("Time model.pred %s" % utils.timer(start_time, time.time()), flush=True)
-  # print(pred.shape)
-  #
-  # start_time = time.time()
-  # pred = model.predict_dirichlet_score(x_train, x_test)
-  # print("Time model.predict_dirichlet_score %s" % utils.timer(start_time,
-  #                                                             time.time()),
-  #       flush=True)
-  # print(pred.shape)
-  #
-  # start_time = time.time()
-  # pred = model.predict_matrix_score(x_test)
-  # print("Time model.predict_matrix_score %s" % utils.timer(start_time,
-  #                                                          time.time()),
-  #       flush=True)
-  # print(pred.shape)
-  #
-  # start_time = time.time()
-  # pred_mat, pred_score = model.predict_matrix_and_dirichlet_score(x_train, x_test)
-  # print(
-  #     "Time model.predict_matrix_and_dirichlet_score %s" % utils.timer(
-  #         start_time, time.time()),
-  #     flush=True)
-  # print(pred_mat.shape, pred_score.shape)
-  """
-  Time model.pred 00:00:04.92
-  (4302, 72)
-  Time model.predict_dirichlet_score 00:01:13.92
-  (4302,)
-  Appliying all transforms to set of shape (4302, 21, 21, 3)
-  Time model.predict_matrix_score 00:00:08.38
-  (4302, 72, 72)
-  Time model.predict_matrix_and_dirichlet_score 00:01:14.36
-  """
+  start_time = time.time()
+  met_dict = model.evaluate_od(
+      x_train, x_test, y_test, 'ztf-real-bog-v1', 'real', x_val)
+  print(
+      "Time model.evaluate_od %s" % utils.timer(
+          start_time, time.time()),
+      flush=True)
 
-  # start_time = time.time()
-  # dict = model.get_scores_dict(x_train, x_test)
-  # print(
-  #     "Time model.get_scores_dict %s" % utils.timer(
-  #         start_time, time.time()),
-  #     flush=True)
-  # start_time = time.time()
-  # met_dict = model.evaluate_od(
-  #     x_train, x_test, y_test, 'ztf-real-bog-v1', 'real', x_val)
-  # print(
-  #     "Time model.evaluate_od %s" % utils.timer(
-  #         start_time, time.time()),
-  #     flush=True)
-  # #
-  # # # pprint.pprint(met_dict)
-  # print('\nroc_auc')
-  # for key in met_dict.keys():
-  #   print(key, met_dict[key]['roc_auc'])
-  # print('\nacc_at_percentil')
-  # for key in met_dict.keys():
-  #   print(key, met_dict[key]['acc_at_percentil'])
-  # print('\nmax_accuracy')
-  # for key in met_dict.keys():
-  #   print(key, met_dict[key]['max_accuracy'])
-  #
-  #
+  print('\nroc_auc')
+  for key in met_dict.keys():
+    print(key, met_dict[key]['roc_auc'])
+  print('\nacc_at_percentil')
+  for key in met_dict.keys():
+    print(key, met_dict[key]['acc_at_percentil'])
+  print('\nmax_accuracy')
+  for key in met_dict.keys():
+    print(key, met_dict[key]['max_accuracy'])
 
-  # model.save_weights(
-  #   os.path.join(PROJECT_PATH, 'results', model.name, 'my_checkpoint.h5'))
+  model.save_weights(weight_path)
