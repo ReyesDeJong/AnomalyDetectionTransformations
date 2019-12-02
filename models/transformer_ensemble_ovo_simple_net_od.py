@@ -98,3 +98,12 @@ if __name__ == '__main__':
   print('\nmax_accuracy')
   for key in met_dict.keys():
     print(key, met_dict[key]['max_accuracy'])
+
+  # plot some matrices
+  results = model.predict_matrix_score(x_test)
+  import matplotlib.pyplot as plt
+
+  plt.imshow(results[-4])
+  plt.show()
+  plt.imshow(results[-3])
+  plt.show()

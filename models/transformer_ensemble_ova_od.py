@@ -157,14 +157,15 @@ class EnsembleOVATransformODModel(TransformODModel):
     # TODO: implement both
     diri_scores_transform = np.zeros(len(x_eval))
     for t_ind in range(n_transforms):
-      observed_dirichlet = self._normalize(matrix_scores_train[:, :, t_ind])
+      observed_dirichlet = utils.normalize_sum1(
+          matrix_scores_train[:, :, t_ind])
       x_eval_p = utils.normalize_sum1(matrix_scores_eval[:, :, t_ind])
       diri_scores_transform += dirichlet_utils.dirichlet_score(
           observed_dirichlet, x_eval_p)
     diri_scores_transform /= n_transforms
     diri_scores_model = np.zeros(len(x_eval))
     for mdl_ind in range(n_transforms):
-      observed_dirichlet = self._normalize(matrix_scores_train[:, mdl_ind, :])
+      observed_dirichlet = utils.normalize_sum1(matrix_scores_train[:, mdl_ind, :])
       x_eval_p = utils.normalize_sum1(matrix_scores_eval[:, mdl_ind, :])
       diri_scores_model += dirichlet_utils.dirichlet_score(
           observed_dirichlet, x_eval_p)
@@ -175,8 +176,8 @@ class EnsembleOVATransformODModel(TransformODModel):
       transform_batch_size=512, predict_batch_size=1024, **kwargs):
     matrix_scores, diri_scores_trans, diri_scores_mdl = \
       self.predict_matrix_and_dirichlet_score(
-        x_train, x_eval, transform_batch_size, predict_batch_size, **kwargs)
-    matrix_scores = matrix_scores/self.transformer.n_transforms
+          x_train, x_eval, transform_batch_size, predict_batch_size, **kwargs)
+    matrix_scores = matrix_scores / self.transformer.n_transforms
     scores_dict = {
       general_keys.DIRI_OVA_MDL: diri_scores_mdl,
       general_keys.DIRI_OVA_TRANS: diri_scores_trans,
