@@ -20,7 +20,7 @@ from sklearn.externals.joblib import Parallel, delayed
 from keras.models import Model, Input, Sequential
 from keras.layers import Dense, Dropout
 from keras.utils import to_categorical
-from modules.data_loaders.base_line_loaders import load_cifar10, load_fashion_mnist, load_hits_padded, load_hits, save_roc_pr_curve_data, get_class_name_from_index, get_channels_axis, load_ztf_real_bog
+from modules.data_loaders.base_line_loaders import load_cifar10, load_fashion_mnist, load_hits_padded, load_hits, save_roc_pr_curve_data, get_class_name_from_index, get_channels_axis, load_ztf_real_bog, load_hits4c, load_hits1c
 #from utils import save_roc_pr_curve_data, get_class_name_from_index, get_channels_axis
 from transformations import Transformer, TransTransformer, KernelTransformer, PlusKernelTransformer
 from models.wide_residual_network import create_wide_residual_network
@@ -34,9 +34,9 @@ from scripts.ensemble_transform_vs_all_od_hits import get_entropy
 import torch
 import torch.nn as nn
 
-RESULTS_DIR = os.path.join(PROJECT_PATH, 'results/nonsense')
+RESULTS_DIR = os.path.join(PROJECT_PATH, 'results/replication')
 LARGE_DATASET_NAMES = ['cats-vs-dogs', 'hits', 'hits_padded']
-PARALLEL_N_JOBS = 16
+PARALLEL_N_JOBS = 11
 
 def save_results_file(dataset_name, single_class_ind, scores, labels,
     experiment_name):
@@ -706,14 +706,14 @@ def run_experiments(load_dataset_fn, dataset_name, q, class_idx, n_runs):
        for p in processes:
            p.join()
     #
-    ## Trans-Transformations
-    #for _ in range(n_runs):
-    #    processes = [Process(target=_trans_transformations_experiment,
-    #                         args=(load_dataset_fn, dataset_name, class_idx, q))]
-    #    for p in processes:
-    #        p.start()
-    #    for p in processes:
-    #        p.join()
+    # Trans-Transformations
+    for _ in range(n_runs):
+       processes = [Process(target=_trans_transformations_experiment,
+                            args=(load_dataset_fn, dataset_name, class_idx, q))]
+       for p in processes:
+           p.start()
+       for p in processes:
+           p.join()
     #
     ## Kernel-Transformations
     #for _ in range(n_runs):
@@ -797,7 +797,8 @@ if __name__ == '__main__':
 
     # data_Set, dataset_name, class_idx_to_run_experiments_on, n_runs
     experiments_list = [
-        (load_ztf_real_bog, 'ztf-real-bog-v1', 1, 1),
+        (load_hits1c, 'hits-1-c', 1, 10),
+        (load_hits4c, 'hits-4-c', 1, 10)
     ]
 
     start_time = time.time()

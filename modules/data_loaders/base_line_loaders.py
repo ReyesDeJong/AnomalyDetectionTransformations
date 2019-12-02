@@ -209,6 +209,52 @@ def load_hits(n_samples_by_class=10000, test_size=0.20, val_size=0.10,
     return (X_train, y_train), (X_val, y_val), (X_test, y_test)
   return (X_train, y_train), (X_test, y_test)
 
+def load_hits4c(n_samples_by_class=10000, test_size=0.20, val_size=0.10,
+    return_val=False, channels_to_get=[0, 1, 2, 3]):  # [2]):  #
+  data_path = os.path.join(PROJECT_PATH, '..', 'datasets',
+                           'HiTS2013_300k_samples.pkl')
+  params = {
+    param_keys.DATA_PATH_TRAIN: data_path,
+    param_keys.BATCH_SIZE: 50
+  }
+  hits_loader = HiTSLoader(params, label_value=-1,
+                           first_n_samples_by_class=n_samples_by_class,
+                           test_size=test_size, validation_size=val_size,
+                           channels_to_get=channels_to_get)
+
+  (X_train, y_train), (X_val, y_val), (X_test, y_test) = hits_loader.load_data()
+
+  X_train = normalize_hits_minus1_1(cast_to_floatx(X_train))
+  X_val = normalize_hits_minus1_1(cast_to_floatx(X_val))
+  X_test = normalize_hits_minus1_1(cast_to_floatx(X_test))
+
+  if return_val:
+    return (X_train, y_train), (X_val, y_val), (X_test, y_test)
+  return (X_train, y_train), (X_test, y_test)
+
+def load_hits1c(n_samples_by_class=10000, test_size=0.20, val_size=0.10,
+    return_val=False, channels_to_get=[2]):  #
+  data_path = os.path.join(PROJECT_PATH, '..', 'datasets',
+                           'HiTS2013_300k_samples.pkl')
+  params = {
+    param_keys.DATA_PATH_TRAIN: data_path,
+    param_keys.BATCH_SIZE: 50
+  }
+  hits_loader = HiTSLoader(params, label_value=-1,
+                           first_n_samples_by_class=n_samples_by_class,
+                           test_size=test_size, validation_size=val_size,
+                           channels_to_get=channels_to_get)
+
+  (X_train, y_train), (X_val, y_val), (X_test, y_test) = hits_loader.load_data()
+
+  X_train = normalize_hits_minus1_1(cast_to_floatx(X_train))
+  X_val = normalize_hits_minus1_1(cast_to_floatx(X_val))
+  X_test = normalize_hits_minus1_1(cast_to_floatx(X_test))
+
+  if return_val:
+    return (X_train, y_train), (X_val, y_val), (X_test, y_test)
+  return (X_train, y_train), (X_test, y_test)
+
 
 def load_ztf_real_bog(val_percentage_of_inliers=0.10,
     return_val=False, channels_to_get=[0, 1, 2],
@@ -303,6 +349,8 @@ def get_class_name_from_index(index, dataset_name):
     'mnist': ('0', '1', '2', '3', '4', '5', '6', '7', '8', '9'),
     'cats-vs-dogs': ('cat', 'dog'),
     'hits': ('bogus', 'real'),
+    'hits-4-c': ('bogus', 'real'),
+    'hits-1-c': ('bogus', 'real'),
     'hits-padded': ('bogus', 'real'),
     'ztf-real-bog': ('bogus', 'real'),
     'ztf-real-bog-v0': ('bogus', 'real'),
