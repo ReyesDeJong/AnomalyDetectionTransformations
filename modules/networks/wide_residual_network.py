@@ -20,6 +20,7 @@ class WideResidualNetwork(tf.keras.Model):
       name='wide_resnet', data_format='channels_last',
       weight_decay=WEIGHT_DECAY):
     super().__init__(name=name)
+    self.inp_shape = input_shape
     self.input_channels = input_shape[_get_channels_axis(data_format)]
     self.data_format = data_format
     self.weight_decay = weight_decay
@@ -36,7 +37,7 @@ class WideResidualNetwork(tf.keras.Model):
     assert ((depth - 4) % 6 == 0), 'depth should be 6n+4'
     n_residual_blocks = (depth - 4) // 6
 
-    self.input_layer = tf.keras.layers.InputLayer(input_shape)
+    # self.input_layer = tf.keras.layers.InputLayer(input_shape)
     self.conv_1 = self.conv2d(n_channels[0], 3, 1)
     self.group_1 = self.conv_group(
         self.input_channels, n_channels[1], n_residual_blocks, 1, dropout_rate)
@@ -51,8 +52,8 @@ class WideResidualNetwork(tf.keras.Model):
     self.act_out = tf.keras.layers.Activation(final_activation)
 
   def call(self, input_tensor, training=False):
-    x = self.input_layer(input_tensor)
-    x = self.conv_1(x)
+    # x = self.input_layer(input_tensor)
+    x = self.conv_1(input_tensor)  # x)
     x = self.group_1(x, training=training)
     x = self.group_2(x, training=training)
     x = self.group_3(x, training=training)
@@ -62,6 +63,10 @@ class WideResidualNetwork(tf.keras.Model):
     x = self.fc_1(x)
     x = self.act_out(x)
     return x
+
+  def model(self):
+    x = tf.keras.layers.Input(shape=self.inp_shape)
+    return tf.keras.Model(inputs=x, outputs=self.call(x))
 
   def conv_group(self, in_channels, out_channels, n_res_blocks, strides,
       dropout_rate=0.0):
@@ -152,42 +157,42 @@ class ResnetBlock(tf.keras.Model):
 
 
 if __name__ == '__main__':
-  # x_shape = (None, 21, 21, 3)
-  # n_transforms = 72
-  # depth, widen_factor = (10, 4)
-  # model = WideResidualNetwork(input_shape=x_shape[1:], num_classes=n_transforms,
-  #                             depth=depth, widen_factor=widen_factor)
-  # model.compile(optimizer='adam',
-  #               loss='sparse_categorical_crossentropy',
-  #               metrics=['accuracy'])
+  x_shape = (None, 21, 21, 3)
+  n_transforms = 72
+  depth, widen_factor = (10, 4)
+  model = WideResidualNetwork(input_shape=x_shape[1:], n_classes=n_transforms,
+                              depth=depth, widen_factor=widen_factor)
+  model.compile(optimizer='adam',
+                loss='sparse_categorical_crossentropy',
+                metrics=['accuracy'])
   # model.build(x_shape)
-  # model.summary()
+  model.model().summary()
 
-  from modules.data_loaders.base_line_loaders import load_ztf_real_bog
-  from modules.geometric_transform.transformations_tf import Transformer
-
-  gpus = tf.config.experimental.list_physical_devices('GPU')
-  for gpu in gpus:
-    tf.config.experimental.set_memory_growth(gpu, True)
-
-  single_class_ind = 1
-  (x_train, y_train), (x_test, y_test) = load_ztf_real_bog()
-  transformer = Transformer(8, 8)
-  n, k = (10, 4)
-
-  mdl = WideResidualNetwork(x_train.shape[1:], transformer.n_transforms, n, k)
-  mdl.compile('adam', 'categorical_crossentropy', ['acc'])
-
-  x_train_task = x_train[y_train.flatten() == single_class_ind]
-
-  x_train_task_transformed, transformations_inds = transformer.apply_all_transforms(
-    x_train_task)
-  batch_size = 128
-
-  mdl.fit(x=x_train_task_transformed,
-          y=tf.keras.utils.to_categorical(transformations_inds),
-          batch_size=batch_size,
-          epochs=1  # int(np.ceil(200 / transformer.n_transforms))
-          )
-  pred = mdl(x_test)
-  print(pred)
+  # from modules.data_loaders.base_line_loaders import load_ztf_real_bog
+  # from modules.geometric_transform.transformations_tf import Transformer
+  #
+  # gpus = tf.config.experimental.list_physical_devices('GPU')
+  # for gpu in gpus:
+  #   tf.config.experimental.set_memory_growth(gpu, True)
+  #
+  # single_class_ind = 1
+  # (x_train, y_train), (x_test, y_test) = load_ztf_real_bog()
+  # transformer = Transformer(8, 8)
+  # n, k = (10, 4)
+  #
+  # mdl = WideResidualNetwork(x_train.shape[1:], transformer.n_transforms, n, k)
+  # mdl.compile('adam', 'categorical_crossentropy', ['acc'])
+  #
+  # x_train_task = x_train[y_train.flatten() == single_class_ind]
+  #
+  # x_train_task_transformed, transformations_inds = transformer.apply_all_transforms(
+  #   x_train_task)
+  # batch_size = 128
+  #
+  # mdl.fit(x=x_train_task_transformed,
+  #         y=tf.keras.utils.to_categorical(transformations_inds),
+  #         batch_size=batch_size,
+  #         epochs=1  # int(np.ceil(200 / transformer.n_transforms))
+  #         )
+  # pred = mdl(x_test)
+  # print(pred)

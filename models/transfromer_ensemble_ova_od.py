@@ -14,10 +14,11 @@ from modules.geometric_transform.transformations_tf import AbstractTransformer
 from modules.data_loaders.ztf_outlier_loader import ZTFOutlierLoader
 from parameters import general_keys
 import numpy as np
-from modules import utils
+from modules import utils, dirichlet_utils
 import datetime
 from tqdm import tqdm
 from models.transformer_od import TransformODModel
+from modules import score_functions
 
 """In situ transformation perform"""
 
@@ -146,19 +147,45 @@ class EnsembleOVATransformODModel(TransformODModel):
   def predict_matrix_and_dirichlet_score(self, x_train, x_eval,
       transform_batch_size=512, predict_batch_size=1024,
       **kwargs):
-    # n_transforms = self.transformer.n_transforms
-    # matrix_scores_train = self.predict_matrix_score(
-    #     x_train, transform_batch_size, predict_batch_size, **kwargs)
+    n_transforms = self.transformer.n_transforms
+    matrix_scores_train = self.predict_matrix_score(
+        x_train, transform_batch_size, predict_batch_size, **kwargs)
     matrix_scores_eval = self.predict_matrix_score(
         x_eval, transform_batch_size, predict_batch_size, **kwargs)
-    diri_scores = np.zeros(len(x_eval))
-    # for t_ind in range(n_transforms):
-    #   observed_dirichlet = matrix_scores_train[:, :, t_ind]
-    #   x_eval_p = matrix_scores_eval[:, :, t_ind]
-    #   diri_scores += dirichlet_utils.dirichlet_score(
-    #       observed_dirichlet, x_eval_p)
-    # diri_scores /= n_transforms
-    return matrix_scores_eval, diri_scores
+    # this across transforms considerates all models, and their discriminative power
+    # acros models is ingle model discriminative power
+    # TODO: implement both
+    diri_scores_transform = np.zeros(len(x_eval))
+    for t_ind in range(n_transforms):
+      observed_dirichlet = self._normalize(matrix_scores_train[:, :, t_ind])
+      x_eval_p = utils.normalize(matrix_scores_eval[:, :, t_ind])
+      diri_scores_transform += dirichlet_utils.dirichlet_score(
+          observed_dirichlet, x_eval_p)
+    diri_scores_transform /= n_transforms
+    diri_scores_model = np.zeros(len(x_eval))
+    for mdl_ind in range(n_transforms):
+      observed_dirichlet = self._normalize(matrix_scores_train[:, mdl_ind, :])
+      x_eval_p = utils.normalize(matrix_scores_eval[:, mdl_ind, :])
+      diri_scores_model += dirichlet_utils.dirichlet_score(
+          observed_dirichlet, x_eval_p)
+    diri_scores_model /= n_transforms
+    return matrix_scores_eval, diri_scores_transform, diri_scores_model
+
+  def get_scores_dict(self, x_train, x_eval,
+      transform_batch_size=512, predict_batch_size=1024, **kwargs):
+    matrix_scores, diri_scores_trans, diri_scores_mdl = \
+      self.predict_matrix_and_dirichlet_score(
+        x_train, x_eval, transform_batch_size, predict_batch_size, **kwargs)
+    matrix_scores = matrix_scores/self.transformer.n_transforms
+    scores_dict = {
+      general_keys.DIRI_OVA_MDL: diri_scores_mdl,
+      general_keys.DIRI_OVA_TRANS: diri_scores_trans,
+      general_keys.MATRIX_TRACE: np.trace(matrix_scores, axis1=1, axis2=2),
+      general_keys.ENTROPY: -1 * score_functions.get_entropy(matrix_scores),
+      general_keys.CROSS_ENTROPY: -1 * score_functions.get_xH(self.transformer,
+                                                              matrix_scores)
+    }
+    return scores_dict
 
 
 if __name__ == '__main__':
