@@ -59,6 +59,9 @@ def dirichlet_normality_score(alpha, p):
 
 def dirichlet_score(predict_x_train, predict_x_eval):
   #TODO: test without this
+
+  # observed_dirichlet = predict_x_train
+  # x_eval_p = predict_x_eval
   observed_dirichlet = correct_0_value_predictions(predict_x_train)
   x_eval_p = correct_0_value_predictions(predict_x_eval)
 

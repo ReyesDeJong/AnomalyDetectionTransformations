@@ -22,9 +22,18 @@ import pprint
 import datetime
 from tqdm import tqdm
 import matplotlib.pyplot as plt
+from sklearn.model_selection import ParameterGrid
+from sklearn.externals.joblib import Parallel, delayed
+from sklearn.metrics import roc_auc_score
+from sklearn.svm import OneClassSVM
 
 """In situ transformation perform"""
 
+
+def _train_ocsvm_and_score(params, x_train, val_labels, x_val):
+  return np.mean(val_labels ==
+                 OneClassSVM(**params).fit(x_train).predict(
+                     x_val))
 
 # TODO: think if its better to create a trainer instead of an encapsulated model
 class TransformODModel(tf.keras.Model):
@@ -115,7 +124,7 @@ class TransformODModel(tf.keras.Model):
     n_transforms = self.transformer.n_transforms
     x_transformed, y_transformed = self.transformer.apply_all_transforms(
         x, transform_batch_size)
-    x_pred = self.network.predict(x_transformed, batch_size=predict_batch_size)
+    x_pred = self.predict(x_transformed, batch_size=predict_batch_size)
     matrix_scores = np.zeros((len(x), n_transforms, n_transforms))
     # TODO: paralelice this
     for t_ind in range(n_transforms):
@@ -158,9 +167,64 @@ class TransformODModel(tf.keras.Model):
       general_keys.CROSS_ENTROPY: -1 * score_functions.get_xH(self.transformer,
                                                               matrix_scores),
       general_keys.MUTUAL_INFORMATION: score_functions.get_xy_mutual_info(
-        matrix_scores)
+          matrix_scores)
     }
     return scores_dict
+
+  def oc_svm_score(self, x_train, x_eval, y_eval, dataset_name, class_name,
+      x_val=None, transform_batch_size=512, predict_batch_size=1024,
+      sub_sample_train_size=5000, raw_matrices=False, n_jobs=15,
+      additional_score_save_path_list=None, save_hist_folder_path=None,
+      **kwargs):
+    subsample_inds = np.random.choice(len(x_train), sub_sample_train_size,
+                                      replace=False)
+    x_train = x_train[subsample_inds]
+    matrix_scores_train = self.predict_matrix_score(
+        x_train, transform_batch_size, predict_batch_size,
+        **kwargs) / self.transformer.n_transforms
+    matrix_scores_val = self.predict_matrix_score(
+        x_val, transform_batch_size, predict_batch_size,
+        **kwargs) / self.transformer.n_transforms
+    matrix_scores_eval = self.predict_matrix_score(
+        x_eval, transform_batch_size, predict_batch_size,
+        **kwargs) / self.transformer.n_transforms
+
+    train_data = matrix_scores_train
+    validation_data = matrix_scores_val
+    eval_data = matrix_scores_eval
+    if not raw_matrices:
+      train_data = self._process_data_for_svm(matrix_scores_train)
+      validation_data = self._process_data_for_svm(matrix_scores_val)
+      eval_data = self._process_data_for_svm(matrix_scores_eval)
+
+    pg = ParameterGrid({'nu': np.linspace(0.1, 0.9, num=9),
+                        'gamma': np.logspace(-7, 2, num=10, base=2)})
+    results = Parallel(n_jobs=n_jobs)(
+        delayed(_train_ocsvm_and_score)(d, train_data,
+                                             np.ones((len(validation_data))),
+                                             validation_data)
+        for d in pg)
+    best_params, best_acc_score = max(zip(pg, results), key=lambda t: t[-1])
+    print(best_params, best_acc_score)
+    self.best_ocsvm = OneClassSVM(**best_params).fit(train_data)
+    scores_eval = self.best_ocsvm.decision_function(eval_data)
+    scores_val = self.best_ocsvm.decision_function(validation_data)
+    metrics_save_path = self.get_metrics_save_path('oc-svm', dataset_name,
+                                                   class_name)
+    metrics_of_score = self.get_metrics_dict(
+        scores_eval, scores_val, y_eval, metrics_save_path)
+    self._save_on_additional_paths(
+        additional_score_save_path_list, metrics_save_path,
+        metrics_of_score)
+    self._save_histogram(metrics_of_score, 'oc-svm',
+                         dataset_name, class_name, save_hist_folder_path)
+    return metrics_of_score
+
+  def _process_data_for_svm(self, data):
+    y_proy = data.sum(axis=1)
+    x_proy = data.sum(axis=2)
+    xy_proy = np.concatenate([y_proy, x_proy], axis=-1)
+    return xy_proy
 
   # TODO: refactor, too long and include keys
   def get_metrics_save_path(self, score_name, dataset_name, class_name):
@@ -369,6 +433,15 @@ if __name__ == '__main__':
           start_time, time.time()),
       flush=True)
 
+  start_time = time.time()
+  met_svm = model.oc_svm_score(
+      x_train, x_test, y_test, 'ztf-real-bog-v1', 'real', x_val)
+  print(
+      "Time model.oc_svm_score %s" % utils.timer(
+          start_time, time.time()),
+      flush=True)
+  met_dict['svm'] = met_svm
+
   print('\nroc_auc')
   for key in met_dict.keys():
     print(key, met_dict[key]['roc_auc'])
@@ -380,3 +453,21 @@ if __name__ == '__main__':
     print(key, met_dict[key]['max_accuracy'])
 
   model.save_weights(weight_path)
+  """
+  100%|██████████| 72/72 [01:12<00:00,  1.01s/it]
+100%|██████████| 72/72 [01:07<00:00,  1.07it/s]
+Time model.evaluate_od 00:02:47.28
+Appliying all 72 transforms to set of shape (2000, 21, 21, 3)
+Appliying all 72 transforms to set of shape (3047, 21, 21, 3)
+Appliying all 72 transforms to set of shape (4302, 21, 21, 3)
+{'gamma': 0.0078125, 'nu': 0.1}
+Time model.oc_svm_score 00:00:27.00
+
+roc_auc
+dirichlet 0.9677384006790004
+matrix_trace 0.9508392515692808
+entropy 0.9648059209808245
+cross_entropy 0.9523999411256285
+mutual_information 0.9644361190377542
+svm 0.931138166521534
+  """
