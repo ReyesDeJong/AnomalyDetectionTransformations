@@ -39,9 +39,16 @@ class TransformODModel(tf.keras.Model):
     utils.check_paths(self.main_model_path)
     self.data_loader = data_loader
     self.transformer = transformer
-    self.network = WideResidualNetwork(
+    self.network = self.get_network(
         input_shape=input_shape, n_classes=self.transformer.n_transforms,
         depth=depth, widen_factor=widen_factor, **kwargs)
+
+  # TODO: do a param dict
+  def get_network(self, input_shape, n_classes,
+      depth, widen_factor, **kwargs):
+    return WideResidualNetwork(
+        input_shape=input_shape, n_classes=n_classes, depth=depth,
+        widen_factor=widen_factor, **kwargs)
 
   def call(self, input_tensor, training=False):
     return self.network(input_tensor, training)
@@ -60,13 +67,13 @@ class TransformODModel(tf.keras.Model):
 
   def create_specific_model_paths(self):
     self.specific_model_folder = os.path.join(self.main_model_path,
-                                         self.transformer.name,
-                                         '%s_%s' % (self.name, self.date))
-    self.checkpoint_folder = os.path.join(self.specific_model_folder, 'checkpoints')
+                                              self.transformer.name,
+                                              '%s_%s' % (self.name, self.date))
+    self.checkpoint_folder = os.path.join(self.specific_model_folder,
+                                          'checkpoints')
     # self.tb_path = os.path.join(self.model_path, 'tb_summaries')
     utils.check_paths(
         [self.specific_model_folder, self.checkpoint_folder])
-
 
   def fit(self, x_train, x_val, transform_batch_size=512, train_batch_size=128,
       epochs=2, **kwargs):
@@ -87,7 +94,7 @@ class TransformODModel(tf.keras.Model):
     self.network.fit(
         x=x_train_transform, y=tf.keras.utils.to_categorical(y_train_transform),
         validation_data=(
-        x_val_transform, tf.keras.utils.to_categorical(y_val_transform)),
+          x_val_transform, tf.keras.utils.to_categorical(y_val_transform)),
         batch_size=train_batch_size,
         epochs=epochs, callbacks=[es], **kwargs)
     weight_path = os.path.join(self.checkpoint_folder,
@@ -143,7 +150,7 @@ class TransformODModel(tf.keras.Model):
       transform_batch_size=512, predict_batch_size=1024, **kwargs):
     matrix_scores, diri_scores = self.predict_matrix_and_dirichlet_score(
         x_train, x_eval, transform_batch_size, predict_batch_size, **kwargs)
-    matrix_scores = matrix_scores/self.transformer.n_transforms
+    matrix_scores = matrix_scores / self.transformer.n_transforms
     scores_dict = {
       general_keys.DIRICHLET: diri_scores,
       general_keys.MATRIX_TRACE: np.trace(matrix_scores, axis1=1, axis2=2),
