@@ -195,7 +195,7 @@ def _trans_transformations_experiment(dataset_load_fn, dataset_name, single_clas
     batch_size = 128
 
     mdl.fit(x=x_train_task_transformed, y=to_categorical(transformations_inds),
-            batch_size=batch_size, epochs=2#int(np.ceil(200/transformer.n_transforms))
+            batch_size=batch_size, epochs=int(np.ceil(200/transformer.n_transforms))
             )
 
     scores = np.zeros((len(x_test),))
