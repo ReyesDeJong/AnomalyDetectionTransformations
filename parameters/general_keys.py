@@ -16,6 +16,7 @@ DIRICHLET = 'dirichlet'
 MATRIX_TRACE = 'matrix_trace'
 ENTROPY = 'entropy'
 CROSS_ENTROPY = 'cross_entropy'
+MUTUAL_INFORMATION = 'mutual_information'
 
 
 # To evaluate the metrics

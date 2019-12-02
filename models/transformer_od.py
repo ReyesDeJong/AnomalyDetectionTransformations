@@ -156,7 +156,9 @@ class TransformODModel(tf.keras.Model):
       general_keys.MATRIX_TRACE: np.trace(matrix_scores, axis1=1, axis2=2),
       general_keys.ENTROPY: -1 * score_functions.get_entropy(matrix_scores),
       general_keys.CROSS_ENTROPY: -1 * score_functions.get_xH(self.transformer,
-                                                              matrix_scores)
+                                                              matrix_scores),
+      general_keys.MUTUAL_INFORMATION: score_functions.get_xy_mutual_info(
+        matrix_scores)
     }
     return scores_dict
 
@@ -328,6 +330,7 @@ class TransformODModel(tf.keras.Model):
 if __name__ == '__main__':
   from parameters import loader_keys
   from modules.geometric_transform.transformations_tf import Transformer
+  import time
 
   gpus = tf.config.experimental.list_physical_devices('GPU')
   for gpu in gpus:
@@ -350,74 +353,30 @@ if __name__ == '__main__':
       data_loader=ztf_od_loader, transformer=transformer,
       input_shape=x_train.shape[1:])
   model.build(tuple([None] + list(x_train.shape[1:])))
+  # print(model.network.model().summary())
   weight_path = os.path.join(PROJECT_PATH, 'results', model.name,
                              'my_checkpoint.h5')
-  model.load_weights(weight_path)
-  # model.fit(x_train, x_val)
+  if os.path.exists(weight_path):
+    model.load_weights(weight_path)
+  else:
+    model.fit(x_train, x_val)
 
-  # start_time = time.time()
-  # pred = model.network.predict(x_test, batch_size=1024)
-  # print("Time model.pred %s" % utils.timer(start_time, time.time()), flush=True)
-  # print(pred.shape)
-  #
-  # start_time = time.time()
-  # pred = model.predict_dirichlet_score(x_train, x_test)
-  # print("Time model.predict_dirichlet_score %s" % utils.timer(start_time,
-  #                                                             time.time()),
-  #       flush=True)
-  # print(pred.shape)
-  #
-  # start_time = time.time()
-  # pred = model.predict_matrix_score(x_test)
-  # print("Time model.predict_matrix_score %s" % utils.timer(start_time,
-  #                                                          time.time()),
-  #       flush=True)
-  # print(pred.shape)
-  #
-  # start_time = time.time()
-  # pred_mat, pred_score = model.predict_matrix_and_dirichlet_score(x_train, x_test)
-  # print(
-  #     "Time model.predict_matrix_and_dirichlet_score %s" % utils.timer(
-  #         start_time, time.time()),
-  #     flush=True)
-  # print(pred_mat.shape, pred_score.shape)
-  """
-  Time model.pred 00:00:04.92
-  (4302, 72)
-  Time model.predict_dirichlet_score 00:01:13.92
-  (4302,)
-  Appliying all transforms to set of shape (4302, 21, 21, 3)
-  Time model.predict_matrix_score 00:00:08.38
-  (4302, 72, 72)
-  Time model.predict_matrix_and_dirichlet_score 00:01:14.36
-  """
+  start_time = time.time()
+  met_dict = model.evaluate_od(
+      x_train, x_test, y_test, 'ztf-real-bog-v1', 'real', x_val)
+  print(
+      "Time model.evaluate_od %s" % utils.timer(
+          start_time, time.time()),
+      flush=True)
 
-  # start_time = time.time()
-  # dict = model.get_scores_dict(x_train, x_test)
-  # print(
-  #     "Time model.get_scores_dict %s" % utils.timer(
-  #         start_time, time.time()),
-  #     flush=True)
-  # start_time = time.time()
-  # met_dict = model.evaluate_od(
-  #     x_train, x_test, y_test, 'ztf-real-bog-v1', 'real', x_val)
-  # print(
-  #     "Time model.evaluate_od %s" % utils.timer(
-  #         start_time, time.time()),
-  #     flush=True)
-  # #
-  # # # pprint.pprint(met_dict)
-  # print('\nroc_auc')
-  # for key in met_dict.keys():
-  #   print(key, met_dict[key]['roc_auc'])
-  # print('\nacc_at_percentil')
-  # for key in met_dict.keys():
-  #   print(key, met_dict[key]['acc_at_percentil'])
-  # print('\nmax_accuracy')
-  # for key in met_dict.keys():
-  #   print(key, met_dict[key]['max_accuracy'])
-  #
-  #
+  print('\nroc_auc')
+  for key in met_dict.keys():
+    print(key, met_dict[key]['roc_auc'])
+  print('\nacc_at_percentil')
+  for key in met_dict.keys():
+    print(key, met_dict[key]['acc_at_percentil'])
+  print('\nmax_accuracy')
+  for key in met_dict.keys():
+    print(key, met_dict[key]['max_accuracy'])
 
-  # model.save_weights(
-  #   os.path.join(PROJECT_PATH, 'results', model.name, 'my_checkpoint.h5'))
+  model.save_weights(weight_path)
