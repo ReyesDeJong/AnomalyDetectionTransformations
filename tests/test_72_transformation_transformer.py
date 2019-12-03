@@ -103,19 +103,7 @@ if __name__ == '__main__':
     tf.config.experimental.set_memory_growth(gpu, True)
 
   # Transformer
-  transformer = transformations.Transformer()
-  start_time = time.time()
   transformer_traditional_test()
-  print(
-      "Time transformer_traditional_test() %s" % utils.timer(
-          start_time, time.time()),
-      flush=True)
 
   # TF_Transformer
-  transformer = transformations.Transformer()
-  start_time = time.time()
   transformer_tf_test()
-  print(
-      "Time transformer_traditional_test() %s" % utils.timer(
-          start_time, time.time()),
-      flush=True)
