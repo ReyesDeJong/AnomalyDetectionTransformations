@@ -82,3 +82,8 @@ def merge_datasets_dict(datasets_dict1, datasets_dict2):
 def save_pickle(data, path):
   with open(path, 'wb') as handle:
     pkl.dump(data, handle, protocol=pkl.HIGHEST_PROTOCOL)
+
+def timer(start, end):
+  hours, rem = divmod(end - start, 3600)
+  minutes, seconds = divmod(rem, 60)
+  return "{:0>2}:{:0>2}:{:05.2f}".format(int(hours), int(minutes), seconds)
