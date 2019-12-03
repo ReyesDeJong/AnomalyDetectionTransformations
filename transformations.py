@@ -171,6 +171,8 @@ class AbstractTransformer(abc.ABC):
   def apply_all_transforms(self, x):
     """generate transform inds, that are the labels of each transform and
     its respective transformed data"""
+    print('Appliying all %i transforms to set of shape %s' % (
+      self.n_transforms, str(x.shape)))
     transform_inds = np.tile(np.arange(self.n_transforms), len(x))
     x_transformed = self.transform_batch(
       np.repeat(x, self.n_transforms, axis=0),
@@ -279,13 +281,13 @@ class KernelTransformer(AbstractTransformer):
 if __name__ == "__main__":
   # tf 1
   import matplotlib.pyplot as plt
-  from keras.backend.tensorflow_backend import set_session
+  # from keras.backend.tensorflow_backend import set_session
   from modules.utils import createCircularMask
 
-  config = tf.ConfigProto()
-  config.gpu_options.allow_growth = True  # dynamically grow the memory used on the GPU
-  sess = tf.Session(config=config)
-  set_session(sess)
+  # config = tf.ConfigProto()
+  # config.gpu_options.allow_growth = True  # dynamically grow the memory used on the GPU
+  # sess = tf.Session(config=config)
+  # set_session(sess)
 
 
   def plot_image(image):
