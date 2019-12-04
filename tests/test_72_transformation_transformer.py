@@ -3,6 +3,11 @@ import sys
 
 """
 Test 72 transform tf2 model on hits
+
+Conclusion: Delete transformed data after usage
+When you run on console after normal run, Memory is accumulated
+Even if you load data as _ = something() Memory is allocatted, its better to 
+delete everything explicitly
 """
 
 PROJECT_PATH = os.path.abspath(
@@ -55,7 +60,7 @@ def transformer_tf_test():
           start_time, time.time()),
       flush=True)
   """
-  ---Running this code outside function----
+  ---Running this code outside function (second call on terminal)----
   Initial RAM 4.6GB, FINAL 13.2GB, MAX ~13.2GB
   Time transformer_test(transformer_tf) 00:00:08.29
   It accumulates 6GB of RAM at each run
@@ -80,7 +85,7 @@ def transformer_traditional_test():
           start_time, time.time()),
       flush=True)
   """
-  ---Running this code outside function----
+  ---Running this code outside function (second call on terminal)----
   Initial RAM 5.37GB, FINAL 11.4GB, MAX ~13.3GB
   Time transformer_test(transformer) 00:02:24.06
   It accumulates 6GB of RAM at each run
@@ -95,6 +100,18 @@ def transformer_traditional_test():
   """
 
 
+def transformer_tf_returning_test():
+  # Transformer tf
+  transformer_tf = transformations_tf.Transformer()
+  start_time = time.time()
+  data = transformer_test(transformer_tf)
+  print(
+      "Time transformer_test(transformer_tf) %s" % utils.timer(
+          start_time, time.time()),
+      flush=True)
+  del transformer_tf
+  return data
+
 if __name__ == '__main__':
   results_path = os.path.join(PROJECT_PATH, 'results', 'replication')
   # Not use all gpu
@@ -102,8 +119,21 @@ if __name__ == '__main__':
   for gpu in gpus:
     tf.config.experimental.set_memory_growth(gpu, True)
 
-  # Transformer
-  transformer_traditional_test()
-
+  # # Transformer
+  # transformer_traditional_test()
+  #
   # TF_Transformer
-  transformer_tf_test()
+  transformer_tf = transformations_tf.Transformer()
+  for i in range(3):
+    start_time = time.time()
+    data = transformer_test(transformer_tf)
+    del data
+    print(
+        "Time transformer_test(transformer_tf) %s" % utils.timer(
+            start_time, time.time()),
+        flush=True)
+
+  for i in range(3):
+    data = transformer_tf_returning_test()
+    del data
+  data = transformer_tf_returning_test()
