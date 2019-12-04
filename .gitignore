@@ -1,5 +1,7 @@
 # Custom
 *.png
+*.pkl
+*.pickle
 *.h5
 *.npz
 *.csv
