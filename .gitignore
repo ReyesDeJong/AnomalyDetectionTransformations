@@ -5,6 +5,7 @@
 *.h5
 *.npz
 *.csv
+*.txt
 *.zip
 .idea/
 
@@ -19,6 +20,8 @@ __pycache__/
 # Distribution / packaging
 .Python
 venv/
+/aux_results
+/aux_data
 env/
 build/
 results/
