@@ -30,6 +30,8 @@ lib/
 lib64/
 parts/
 sdist/
+aux_results/
+aux_data/
 var/
 *.egg-info/
 .installed.cfg
