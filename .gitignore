@@ -2,6 +2,8 @@
 *.png
 *.h5
 *.npz
+*.pickle
+*.pkl
 *.csv
 *.zip
 .idea/
