@@ -6,6 +6,7 @@
 *.pkl
 *.csv
 *.zip
+*.txt
 .idea/
 
 # Byte-compiled / optimized / DLL files
