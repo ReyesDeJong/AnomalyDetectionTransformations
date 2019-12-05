@@ -71,6 +71,9 @@ def check_paths(paths):
     if not os.path.exists(path):
       os.makedirs(path)
 
+def check_path(path):
+  check_paths(path)
+
 
 def merge_datasets_dict(datasets_dict1, datasets_dict2):
   merged_datasets_dict = {}
@@ -112,3 +115,8 @@ def timer(start, end):
 def normalize_sum1(array, axis=-1):
   sums = np.sum(array, axis=axis)
   return array / np.expand_dims(sums, axis)
+
+def delta_timer(delta_time):
+  hours, rem = divmod(delta_time, 3600)
+  minutes, seconds = divmod(rem, 60)
+  return "{:0>2}:{:0>2}:{:05.2f}".format(int(hours), int(minutes), seconds)
