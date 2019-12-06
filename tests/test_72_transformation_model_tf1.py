@@ -3,41 +3,42 @@ import sys
 
 """
 Test 72 transform tf1 model on hits
-I mixed this with tf2, sorry
 """
 
 PROJECT_PATH = os.path.abspath(
     os.path.join(os.path.dirname(__file__), '..'))
 sys.path.append(PROJECT_PATH)
 from modules import utils
-import numpy as np
-import pandas as pd
-import torch
 import time
-import scipy
-from sklearn.metrics import roc_curve, auc
-from torch import nn
-from models.transformer_od_already_transformed import AlreadyTransformODModel
-from models.transformer_od import TransformODModel
+import transformations
+import numpy as np
+from models.wide_residual_network import create_wide_residual_network
 from scipy.special import psi, polygamma
-from modules.geometric_transform import transformations_tf
-from modules.data_loaders.hits_outlier_loader import HiTSOutlierLoader
-from parameters import general_keys, loader_keys
-from models.simple_network import create_simple_network
+import torch
+import torch.nn as nn
+from modules.data_loaders.base_line_loaders import save_roc_pr_curve_data, \
+  get_class_name_from_index, load_hits4c, load_hits1c
+import datetime
+from keras.utils import to_categorical
+from scripts.ensemble_transform_vs_all_od_hits import get_entropy
+from sklearn.metrics import roc_curve, auc
+import pandas as pd
+import keras.backend as K
 import tensorflow as tf
-from tensorflow.keras.utils import to_categorical
-from models.transformer_od_simple_net import TransformODSimpleModel
-
-N_RUNS = 10
+from models.simple_network import create_simple_network
+import scipy
 
 
-def get_entropy(matrix_scores, epsilon=1e-10):
-  norm_scores = matrix_scores / np.sum(matrix_scores, axis=(1, 2))[
-    ..., np.newaxis, np.newaxis]
-  log_scores = np.log(norm_scores + epsilon)
-  product = norm_scores * log_scores
-  entropy = -np.sum(product, axis=(1, 2))
-  return entropy
+def save_results_file(results_dir, dataset_name, single_class_ind, scores,
+    labels,
+    experiment_name):
+  res_file_name = '{}_{}_{}_{}.npz'.format(dataset_name, experiment_name,
+                                           get_class_name_from_index(
+                                               single_class_ind, dataset_name),
+                                           datetime.datetime.now().strftime(
+                                               '%Y-%m-%d-%H%M'))
+  res_file_path = os.path.join(results_dir, dataset_name, res_file_name)
+  save_roc_pr_curve_data(scores, labels, res_file_path)
 
 
 def get_xH(transformer, matrix_evals):
@@ -105,43 +106,172 @@ def get_roc_auc(scores, labels):
   return roc_auc
 
 
-def test_tf1_transformed_data_on_tf2_model_original_diri(
-    mdl: AlreadyTransformODModel, transformer,
-    dataset_name='hits-4-c',
-    single_class_ind=1, tf_version='tf1', transformer_name='transtransformed',
-    model_name='resnet', epochs=None):
+def test_model_original(transformer, loader, dataset_name='hits-4-c',
+    single_class_ind=1):
   results_dir = os.path.join(PROJECT_PATH, 'tests', 'aux_results')
-  data_dir = os.path.join(PROJECT_PATH, 'tests', 'aux_data')
-  utils.check_path(data_dir)
+  save_dir = os.path.join(PROJECT_PATH, 'tests', 'aux_data')
+  utils.check_path(results_dir)
+  utils.check_path(save_dir)
   utils.check_path(os.path.join(results_dir, dataset_name))
 
-  # load data
-  normal_data_path = os.path.join(
-      data_dir, 'normal_data_%s_%s_loading.pkl' % (dataset_name, tf_version))
+  # load-save data
   (x_train, y_train), (x_val, y_val), (
-    x_test, y_test) = pd.read_pickle(normal_data_path)
+    x_test, y_test) = loader(return_val=True)
+  normal_data = (x_train, y_train), (x_val, y_val), (x_test, y_test)
+  utils.save_pickle(normal_data, os.path.join(
+      save_dir, 'normal_data_%s_tf1_original.pkl' % dataset_name))
+  # create model
+  n, k = (10, 4)
+  mdl = create_wide_residual_network(
+      x_train.shape[1:], transformer.n_transforms, n, k)
+  mdl.compile('adam', 'categorical_crossentropy', ['acc'])
+  # get inliers of specific class
+  # get inliers
+  x_train_task = x_train[y_train.flatten() == single_class_ind]
+  print(x_train_task.shape)
+  # transform inliers
+  transformations_inds = np.tile(np.arange(transformer.n_transforms),
+                                 len(x_train_task))
+  x_train_task_transformed = transformer.transform_batch(
+      np.repeat(x_train_task, transformer.n_transforms, axis=0),
+      transformations_inds)
+  print(x_train_task_transformed.shape)
+  # train model
+  batch_size = 128
+  mdl.fit(x=x_train_task_transformed, y=to_categorical(transformations_inds),
+          batch_size=batch_size,
+          epochs=int(np.ceil(200 / transformer.n_transforms))
+          )
+  scores = np.zeros((len(x_test),))
+  matrix_evals = np.zeros(
+      (len(x_test), transformer.n_transforms, transformer.n_transforms))
+  observed_data = x_train_task
+  for t_ind in range(transformer.n_transforms):
+    observed_dirichlet = mdl.predict(
+        transformer.transform_batch(observed_data,
+                                    [t_ind] * len(observed_data)),
+        batch_size=1024)
+    log_p_hat_train = np.log(observed_dirichlet).mean(axis=0)
 
-  # load transformed data
+    alpha_sum_approx = calc_approx_alpha_sum(observed_dirichlet)
+    alpha_0 = observed_dirichlet.mean(axis=0) * alpha_sum_approx
+
+    mle_alpha_t = fixed_point_dirichlet_mle(alpha_0, log_p_hat_train)
+
+    x_test_p = mdl.predict(
+        transformer.transform_batch(x_test, [t_ind] * len(x_test)),
+        batch_size=1024)
+    matrix_evals[:, :, t_ind] += x_test_p
+    scores += dirichlet_normality_score(mle_alpha_t, x_test_p)
+
+  scores /= transformer.n_transforms
+  matrix_evals /= transformer.n_transforms
+  scores_simple = np.trace(matrix_evals, axis1=1, axis2=2)
+  scores_entropy = -1 * get_entropy(matrix_evals)
+  scores_xH = -1 * get_xH(transformer, matrix_evals)
+  labels = y_test.flatten() == single_class_ind
+
+  save_results_file(results_dir, dataset_name, single_class_ind, scores=scores,
+                    labels=labels, experiment_name='transformations')
+  save_results_file(results_dir, dataset_name, single_class_ind,
+                    scores=scores_simple,
+                    labels=labels, experiment_name='transformations-simple')
+  save_results_file(results_dir, dataset_name, single_class_ind,
+                    scores=scores_entropy,
+                    labels=labels, experiment_name='transformations-entropy')
+  save_results_file(results_dir, dataset_name, single_class_ind,
+                    scores=scores_xH,
+                    labels=labels, experiment_name='transformations-xH')
+  mdl_weights_name = '{}_tf1_original_{}_weights.h5'.format(dataset_name,
+                                                            get_class_name_from_index(
+                                                                single_class_ind,
+                                                                dataset_name))
+  mdl_weights_path = os.path.join(results_dir, dataset_name, mdl_weights_name)
+  mdl.save_weights(mdl_weights_path)
+  """
+  Time test_model_original(transformer, load_hits4c, dataset_name='hits-4-c') 00:06:58.37
+  (0.9917134999999999, 0.9350055, 0.9872614999999999, 0.94142025)
+  (0.9938067500000001, 0.9923547500000001, 0.9931685, 0.992637375)
+  (0.9912172499999999, 0.9883357499999998, 0.9909070000000001, 0.9886706249999999)
+  #train only Time test_model_original(transformer, load_hits4c, dataset_name='hits-4-c', tf_version='tf1') 00:03:48.29
+  """
+  return get_roc_auc(scores, labels), get_roc_auc(scores_simple, labels), \
+         get_roc_auc(scores_entropy, labels), get_roc_auc(scores_xH, labels)
+
+
+def test_model_loading(transformer, mdl, loader, dataset_name='hits-4-c',
+    single_class_ind=1, tf_version='tf1', transformer_name='transformed',
+    model_name='resnet', epochs=None):
+  results_dir = os.path.join(PROJECT_PATH, 'tests', 'aux_results')
+  save_dir = os.path.join(PROJECT_PATH, 'tests', 'aux_data')
+  utils.check_path(results_dir)
+  utils.check_path(save_dir)
+  utils.check_path(os.path.join(results_dir, dataset_name))
+
+  # load-save data
+  normal_data_path = os.path.join(
+      save_dir, 'normal_data_%s_%s_loading.pkl' % (dataset_name, tf_version))
+  if os.path.exists(normal_data_path):
+    (x_train, y_train), (x_val, y_val), (
+      x_test, y_test) = pd.read_pickle(normal_data_path)
+  else:
+    (x_train, y_train), (x_val, y_val), (
+      x_test, y_test) = loader(return_val=True)
+    normal_data = (x_train, y_train), (x_val, y_val), (x_test, y_test)
+    utils.save_pickle(normal_data, normal_data_path)
+  # create model
+  # n, k = (10, 4)
+  # mdl = create_wide_residual_network(
+  #     x_train.shape[1:], transformer.n_transforms, n, k)
+  mdl.compile('adam', 'categorical_crossentropy', ['acc'])
+  # selec inliers
+  x_train = x_train[y_train.flatten() == single_class_ind]
+  x_val = x_val[y_val.flatten() == single_class_ind]
+
+  # load-save transformed data
   transformed_data_path = os.path.join(
-      data_dir,
+      save_dir,
       '%s_data_%s_%s_loading.pkl' % (
         transformer_name, dataset_name, tf_version))
-  (x_train_transform_tf1, y_train_transform_tf1), (
-    x_val_transform_tf1, y_val_transform_tf1), (
-    x_test_transform_tf1, y_test_transform_tf1) = pd.read_pickle(
-      transformed_data_path)
+  if os.path.exists(transformed_data_path):
+    (x_train_transform_tf1, y_train_transform_tf1), (
+      x_val_transform_tf1, y_val_transform_tf1), (
+      x_test_transform_tf1, y_test_transform_tf1) = pd.read_pickle(
+        transformed_data_path)
+  else:
+    # transform all data
+    y_train_transform_tf1 = np.tile(np.arange(transformer.n_transforms),
+                                    len(x_train))
+    x_train_transform_tf1 = transformer.transform_batch(
+        np.repeat(x_train, transformer.n_transforms, axis=0),
+        y_train_transform_tf1)
+    y_val_transform_tf1 = np.tile(np.arange(transformer.n_transforms),
+                                  len(x_val))
+    x_val_transform_tf1 = transformer.transform_batch(
+        np.repeat(x_val, transformer.n_transforms, axis=0),
+        y_val_transform_tf1)
+    y_test_transform_tf1 = np.tile(np.arange(transformer.n_transforms),
+                                   len(x_test))
+    x_test_transform_tf1 = transformer.transform_batch(
+        np.repeat(x_test, transformer.n_transforms, axis=0),
+        y_test_transform_tf1)
+    transformed_data = (
+      (x_train_transform_tf1, y_train_transform_tf1), (x_val_transform_tf1,
+                                                       y_val_transform_tf1),
+      (x_test_transform_tf1, y_test_transform_tf1))
+    utils.save_pickle(transformed_data, transformed_data_path)
   print(x_train.shape)
   print(x_train_transform_tf1.shape)
   print(x_test.shape)
   print(x_test_transform_tf1.shape)
-
   # train model
   batch_size = 128
   if epochs is None:
     epochs = int(np.ceil(200 / transformer.n_transforms))
-  mdl.fit((x_train_transform_tf1, y_train_transform_tf1),
-          (x_val_transform_tf1, y_val_transform_tf1),
-          train_batch_size=batch_size, epochs=epochs)
+  mdl.fit(x=x_train_transform_tf1, y=to_categorical(y_train_transform_tf1),
+          batch_size=batch_size,
+          epochs=epochs
+          )
   scores = np.zeros((len(x_test),))
   matrix_evals = np.zeros(
       (len(x_test), transformer.n_transforms, transformer.n_transforms))
@@ -170,6 +300,35 @@ def test_tf1_transformed_data_on_tf2_model_original_diri(
   scores_xH = -1 * get_xH(transformer, matrix_evals)
   labels = y_test.flatten() == single_class_ind
 
+  save_results_file(results_dir, dataset_name, single_class_ind, scores=scores,
+                    labels=labels,
+                    experiment_name='%s-%s-loading-%s' % (
+                      model_name, transformer_name, tf_version))
+  save_results_file(results_dir, dataset_name, single_class_ind,
+                    scores=scores_simple,
+                    labels=labels,
+                    experiment_name='%s-%s-simple-loading-%s' % (
+                      model_name, transformer_name, tf_version))
+  save_results_file(results_dir, dataset_name, single_class_ind,
+                    scores=scores_entropy,
+                    labels=labels,
+                    experiment_name='%s-%s-entropy-loading-%s' % (
+                      model_name, transformer_name, tf_version))
+  save_results_file(results_dir, dataset_name, single_class_ind,
+                    scores=scores_xH,
+                    labels=labels,
+                    experiment_name='%s-%s-xH-loading-%s' % (
+                      model_name, transformer_name, tf_version))
+  mdl_weights_name = '{}_{}_{}_{}_loading_{}_weights.h5'.format(model_name,
+                                                                transformer_name,
+                                                                dataset_name,
+                                                                tf_version,
+                                                                get_class_name_from_index(
+                                                                    single_class_ind,
+                                                                    dataset_name))
+  mdl_weights_path = os.path.join(results_dir, dataset_name, mdl_weights_name)
+  mdl.save_weights(mdl_weights_path)
+  reset_weights()
   """
   Time test_model_original(transformer, load_hits4c, dataset_name='hits-4-c', tf_version='tf1') 00:04:31.65
   (0.992217, 0.9895665, 0.99131725, 0.989478125)
@@ -179,195 +338,8 @@ def test_tf1_transformed_data_on_tf2_model_original_diri(
          get_roc_auc(scores_entropy, labels), get_roc_auc(scores_xH, labels)
 
 
-def test_tf1_transformed_data_on_tf2_keras_model_diri(
-    mdl: tf.keras.Model, transformer,
-    dataset_name='hits-4-c',
-    single_class_ind=1, tf_version='tf1', transformer_name='transtransformed',
-    model_name='resnet', epochs=None):
-  results_dir = os.path.join(PROJECT_PATH, 'tests', 'aux_results')
-  data_dir = os.path.join(PROJECT_PATH, 'tests', 'aux_data')
-  utils.check_path(data_dir)
-  utils.check_path(os.path.join(results_dir, dataset_name))
-
-  # load data
-  normal_data_path = os.path.join(
-      data_dir, 'normal_data_%s_%s_loading.pkl' % (dataset_name, tf_version))
-  (x_train, y_train), (x_val, y_val), (
-    x_test, y_test) = pd.read_pickle(normal_data_path)
-
-  # load transformed data
-  transformed_data_path = os.path.join(
-      data_dir,
-      '%s_data_%s_%s_loading.pkl' % (
-        transformer_name, dataset_name, tf_version))
-  (x_train_transform_tf1, y_train_transform_tf1), (
-    x_val_transform_tf1, y_val_transform_tf1), (
-    x_test_transform_tf1, y_test_transform_tf1) = pd.read_pickle(
-      transformed_data_path)
-  print(x_train.shape)
-  print(x_train_transform_tf1.shape)
-  print(x_test.shape)
-  print(x_test_transform_tf1.shape)
-
-  # train model
-  batch_size = 128
-  if epochs is None:
-    epochs = int(np.ceil(200 / transformer.n_transforms))
-  mdl.fit(x_train_transform_tf1, to_categorical(y_train_transform_tf1),
-          validation_data=(
-          x_val_transform_tf1, to_categorical(y_val_transform_tf1)),
-          batch_size=batch_size, epochs=epochs)
-  scores = np.zeros((len(x_test),))
-  matrix_evals = np.zeros(
-      (len(x_test), transformer.n_transforms, transformer.n_transforms))
-  x_pred_train = mdl.predict(x_train_transform_tf1, batch_size=1024)
-  x_pred_test = mdl.predict(x_test_transform_tf1, batch_size=1024)
-  print(x_pred_train.shape)
-  print(x_pred_test.shape)
-  for t_ind in range(transformer.n_transforms):
-    ind_x_pred_equal_to_t_ind = np.where(y_train_transform_tf1 == t_ind)[0]
-    observed_dirichlet = x_pred_train[ind_x_pred_equal_to_t_ind]
-    log_p_hat_train = np.log(observed_dirichlet).mean(axis=0)
-
-    alpha_sum_approx = calc_approx_alpha_sum(observed_dirichlet)
-    alpha_0 = observed_dirichlet.mean(axis=0) * alpha_sum_approx
-
-    mle_alpha_t = fixed_point_dirichlet_mle(alpha_0, log_p_hat_train)
-    ind_x_pred_test_equal_to_t_ind = np.where(y_test_transform_tf1 == t_ind)[0]
-    x_test_p = x_pred_test[ind_x_pred_test_equal_to_t_ind]
-    matrix_evals[:, :, t_ind] += x_test_p
-    scores += dirichlet_normality_score(mle_alpha_t, x_test_p)
-
-  scores /= transformer.n_transforms
-  matrix_evals /= transformer.n_transforms
-  scores_simple = np.trace(matrix_evals, axis1=1, axis2=2)
-  scores_entropy = -1 * get_entropy(matrix_evals)
-  scores_xH = -1 * get_xH(transformer, matrix_evals)
-  labels = y_test.flatten() == single_class_ind
-
-  """
-  Time test_model_original(transformer, load_hits4c, dataset_name='hits-4-c', tf_version='tf1') 00:04:31.65
-  (0.992217, 0.9895665, 0.99131725, 0.989478125)
-  (0.99240075, 0.9900822499999999, 0.99215325, 0.9901300000000001)
-  """
-  return get_roc_auc(scores, labels), get_roc_auc(scores_simple, labels), \
-         get_roc_auc(scores_entropy, labels), get_roc_auc(scores_xH, labels)
-
-
-def test_tf1_transformed_data_on_tf2_model_original(
-    mdl: AlreadyTransformODModel, transformer,
-    dataset_name='hits-4-c',
-    single_class_ind=1, tf_version='tf1', transformer_name='transtransformed',
-    model_name='resnet', epochs=None):
-  """Dirichlet as in object"""
-  results_dir = os.path.join(PROJECT_PATH, 'tests', 'aux_results')
-  data_dir = os.path.join(PROJECT_PATH, 'tests', 'aux_data')
-  utils.check_path(data_dir)
-  utils.check_path(os.path.join(results_dir, dataset_name))
-
-  # load data
-  normal_data_path = os.path.join(
-      data_dir, 'normal_data_%s_%s_loading.pkl' % (dataset_name, tf_version))
-  (x_train, y_train), (x_val, y_val), (
-    x_test, y_test) = pd.read_pickle(normal_data_path)
-
-  # load transformed data
-  transformed_data_path = os.path.join(
-      data_dir,
-      '%s_data_%s_%s_loading.pkl' % (
-        transformer_name, dataset_name, tf_version))
-  (x_train_transform_tf1, y_train_transform_tf1), (
-    x_val_transform_tf1, y_val_transform_tf1), (
-    x_test_transform_tf1, y_test_transform_tf1) = pd.read_pickle(
-      transformed_data_path)
-  print(x_train.shape)
-  print(x_train_transform_tf1.shape)
-  print(x_test.shape)
-  print(x_test_transform_tf1.shape)
-
-  # train model
-  batch_size = 128
-  if epochs is None:
-    epochs = int(np.ceil(200 / transformer.n_transforms))
-  mdl.fit((x_train_transform_tf1, y_train_transform_tf1),
-          (x_val_transform_tf1, y_val_transform_tf1),
-          train_batch_size=batch_size, epochs=epochs)
-  met_dict = mdl.evaluate_od(
-      (x_train_transform_tf1, y_train_transform_tf1),
-      (x_test_transform_tf1, y_test_transform_tf1), y_test, dataset_name,
-      'real',
-      (x_val_transform_tf1, y_val_transform_tf1))
-
-  """
-  roc_auc
-  dirichlet 0.9896582500000001
-  matrix_trace 0.9541035
-  entropy 0.9820515000000001
-  cross_entropy 0.9614397499999999
-  mutual_information 0.9889197499999999
-  """
-  return met_dict[general_keys.DIRICHLET]['roc_auc'], \
-         met_dict[general_keys.MATRIX_TRACE]['roc_auc'], \
-         met_dict[general_keys.ENTROPY]['roc_auc'], \
-         met_dict[general_keys.CROSS_ENTROPY]['roc_auc']
-
-
-def test_tf1_normal_data_on_tf2_transformer_model_original(
-    mdl: TransformODModel, transformer,
-    dataset_name='hits-4-c', tf_version='tf1', epochs=None):
-  """Dirichlet as in object"""
-  results_dir = os.path.join(PROJECT_PATH, 'tests', 'aux_results')
-  data_dir = os.path.join(PROJECT_PATH, 'tests', 'aux_data')
-  utils.check_path(data_dir)
-  utils.check_path(os.path.join(results_dir, dataset_name))
-
-  # load data
-  normal_data_path = os.path.join(
-      data_dir, 'normal_data_%s_%s_loading.pkl' % (dataset_name, tf_version))
-  (x_train, y_train), (x_val, y_val), (
-    x_test, y_test) = pd.read_pickle(normal_data_path)
-  x_train = x_train[y_train == 1]
-  x_val = x_val[y_val == 1]
-
-  # train model
-  batch_size = 128
-  if epochs is None:
-    epochs = int(np.ceil(200 / transformer.n_transforms))
-  mdl.fit(x_train, x_val, train_batch_size=batch_size, epochs=epochs)
-  met_dict = mdl.evaluate_od(
-      x_train, x_test, y_test, dataset_name, 'real', x_val)
-
-  return met_dict[general_keys.DIRICHLET]['roc_auc'], \
-         met_dict[general_keys.MATRIX_TRACE]['roc_auc'], \
-         met_dict[general_keys.ENTROPY]['roc_auc'], \
-         met_dict[general_keys.CROSS_ENTROPY]['roc_auc']
-
-
-def test_all_tf2(
-    mdl: TransformODModel, transformer, data_loader,
-    dataset_name='hits-4-c', epochs=None):
-  """Dirichlet as in object"""
-  results_dir = os.path.join(PROJECT_PATH, 'tests', 'aux_results')
-  data_dir = os.path.join(PROJECT_PATH, 'tests', 'aux_data')
-  utils.check_path(data_dir)
-  utils.check_path(os.path.join(results_dir, dataset_name))
-
-  # load data
-  (x_train, y_train), (x_val, y_val), (
-    x_test, y_test) = data_loader.get_outlier_detection_datasets()
-
-  # train model
-  batch_size = 128
-  if epochs is None:
-    epochs = int(np.ceil(200 / transformer.n_transforms))
-  mdl.fit(x_train, x_val, train_batch_size=batch_size, epochs=epochs)
-  met_dict = mdl.evaluate_od(
-      x_train, x_test, y_test, dataset_name, 'real', x_val)
-
-  return met_dict[general_keys.DIRICHLET]['roc_auc'], \
-         met_dict[general_keys.MATRIX_TRACE]['roc_auc'], \
-         met_dict[general_keys.ENTROPY]['roc_auc'], \
-         met_dict[general_keys.CROSS_ENTROPY]['roc_auc']
+def reset_weights():
+  K.get_session().run(tf.global_variables_initializer())
 
 
 def group_scores(scores_list):
@@ -387,277 +359,134 @@ def print_scores_times_to_file(file_path, header, scores_list, times_list):
     scores_grouped = group_scores(scores_list)
     metric_names = ['diri', 'simple', 'entropy', 'xH']
     for i in range(len(scores_grouped)):
-      text_file.write('%s: %.5f+/-%.5f\n' % (metric_names[i],
-                                             np.mean(scores_grouped[i]),
-                                             scipy.stats.sem(
-                                                 scores_grouped[i])))
+      text_file.write('%s: %.5f+/-%.5f\n' % ( metric_names[i],
+        np.mean(scores_grouped[i]), scipy.stats.sem(scores_grouped[i])))
       text_file.write("Time: %s\n\n" % utils.delta_timer(np.mean(times_list)))
 
 
-###########################TEsts
-
 def test_resnet_transformer():
-  transformer = transformations_tf.Transformer()
+  n_runs = 10
+  transformer = transformations.Transformer()
+  n, k = (10, 4)
+  mdl_resnet = create_wide_residual_network(
+      [21, 21, 4], transformer.n_transforms, n, k)
   scores_list = []
   delta_times_list = []
-  for i in range(N_RUNS):
-    mdl = AlreadyTransformODModel(
-        transformer=transformer,
-        input_shape=[21, 21, 4])
+  for i in range(n_runs):
     start_time = time.time()
-    scores = test_tf1_transformed_data_on_tf2_model_original_diri(
-        mdl, transformer, dataset_name='hits-4-c', tf_version='tf1',
-        transformer_name='transformed', model_name='resnet')
+    scores = test_model_loading(transformer, mdl_resnet, load_hits4c,
+                                dataset_name='hits-4-c', tf_version='tf1',
+                                transformer_name='transformed',
+                                model_name='resnet')
     end_time = time.time()
     delta_times_list.append(end_time - start_time)
     scores_list.append(scores)
-    del mdl
   file_path = os.path.join(PROJECT_PATH, 'tests', 'aux_results',
                            'test_models_tf1-tf2.txt')
   print_scores_times_to_file(file_path,
-                             'Data_transformer_tf1_models_diri_tf2_resnet_transformer\n NRUNS: %i' % N_RUNS,
+                             'Data_transformer_tf1_models_tf1_resnet_transformer\n NRUNS: %i' % n_runs,
                              scores_list, delta_times_list)
+  del mdl_resnet
 
-
-def test_resnet_transtransformer_tf2_unchanged():
-  transformer = transformations_tf.TransTransformer()
+def test_resnet_transformer_1c():
+  n_runs = 10
+  transformer = transformations.Transformer()
+  n, k = (10, 4)
+  mdl_resnet = create_wide_residual_network(
+      [21, 21, 1], transformer.n_transforms, n, k)
   scores_list = []
   delta_times_list = []
-  for i in range(N_RUNS):
-    mdl = AlreadyTransformODModel(
-        transformer=transformer,
-        input_shape=(21, 21, 4))
+  for i in range(n_runs):
     start_time = time.time()
-    scores = test_tf1_transformed_data_on_tf2_model_original(
-        mdl, transformer, dataset_name='hits-4-c', tf_version='tf1',
-        transformer_name='transtransformed', model_name='resnet', epochs=2)
+    scores = test_model_loading(transformer, mdl_resnet, load_hits1c,
+                                dataset_name='hits-1-c', tf_version='tf1',
+                                transformer_name='transformed',
+                                model_name='resnet')
     end_time = time.time()
     delta_times_list.append(end_time - start_time)
     scores_list.append(scores)
-    del mdl
   file_path = os.path.join(PROJECT_PATH, 'tests', 'aux_results',
                            'test_models_tf1-tf2.txt')
   print_scores_times_to_file(file_path,
-                             'Data_transformer_tf1_models_tf2_unchanged_resnet_transtransformer\n NRUNS: %i' % N_RUNS,
+                             'Data_transformer_tf1_models_tf1_resnet_transformer_1c\n NRUNS: %i' % n_runs,
                              scores_list, delta_times_list)
-
-
-def test_tf2_resnet_transtransformer_unchanged():
-  transformer = transformations_tf.TransTransformer()
-  scores_list = []
-  delta_times_list = []
-  for i in range(N_RUNS):
-    mdl = TransformODModel(data_loader=None,
-                           transformer=transformer,
-                           input_shape=(21, 21, 4))
-    start_time = time.time()
-    scores = test_tf1_normal_data_on_tf2_transformer_model_original(
-        mdl, transformer, dataset_name='hits-4-c', tf_version='tf1', epochs=2)
-    end_time = time.time()
-    delta_times_list.append(end_time - start_time)
-    scores_list.append(scores)
-    del mdl
-  file_path = os.path.join(PROJECT_PATH, 'tests', 'aux_results',
-                           'test_models_tf1-tf2.txt')
-  print_scores_times_to_file(file_path,
-                             'Data_normal_tf1_models_and_transforms_tf2_unchanged_resnet_transtransformer\n NRUNS: %i' % N_RUNS,
-                             scores_list, delta_times_list)
-
-
-def test_tf2_resnet_transtransformer_unchanged_1c():
-  transformer = transformations_tf.TransTransformer()
-  scores_list = []
-  delta_times_list = []
-  for i in range(N_RUNS):
-    mdl = TransformODModel(data_loader=None,
-                           transformer=transformer,
-                           input_shape=(21, 21, 1))
-    start_time = time.time()
-    scores = test_tf1_normal_data_on_tf2_transformer_model_original(
-        mdl, transformer, dataset_name='hits-1-c', tf_version='tf1', epochs=2)
-    end_time = time.time()
-    delta_times_list.append(end_time - start_time)
-    scores_list.append(scores)
-    del mdl
-  file_path = os.path.join(PROJECT_PATH, 'tests', 'aux_results',
-                           'test_models_tf1-tf2.txt')
-  print_scores_times_to_file(file_path,
-                             'Data_normal_tf1_models_and_transforms_tf2_unchanged_resnet_transtransformer_1c\n NRUNS: %i' % N_RUNS,
-                             scores_list, delta_times_list)
-
-
-def test_resnet_transtransformer_tf2_unchanged_1c():
-  transformer = transformations_tf.TransTransformer()
-  scores_list = []
-  delta_times_list = []
-  for i in range(N_RUNS):
-    mdl = AlreadyTransformODModel(
-        transformer=transformer,
-        input_shape=(21, 21, 1))
-    start_time = time.time()
-    scores = test_tf1_transformed_data_on_tf2_model_original(
-        mdl, transformer, dataset_name='hits-1-c', tf_version='tf1',
-        transformer_name='transtransformed', model_name='resnet', epochs=2)
-    end_time = time.time()
-    delta_times_list.append(end_time - start_time)
-    scores_list.append(scores)
-    del mdl
-  file_path = os.path.join(PROJECT_PATH, 'tests', 'aux_results',
-                           'test_models_tf1-tf2.txt')
-  print_scores_times_to_file(file_path,
-                             'Data_transformer_tf1_models_tf2_unchanged_resnet_transtransformer_1c\n NRUNS: %i' % N_RUNS,
-                             scores_list, delta_times_list)
-
+  del mdl_resnet
 
 def test_resnet_transtransformer():
-  transformer = transformations_tf.TransTransformer()
+  n_runs = 10
+  transformer = transformations.TransTransformer()
+  n, k = (10, 4)
+  mdl_resnet = create_wide_residual_network(
+      [21, 21, 4], transformer.n_transforms, n, k)
   scores_list = []
   delta_times_list = []
-  for i in range(N_RUNS):
-    mdl = AlreadyTransformODModel(
-        transformer=transformer,
-        input_shape=(21, 21, 4))
+  for i in range(n_runs):
     start_time = time.time()
-    scores = test_tf1_transformed_data_on_tf2_model_original_diri(
-        mdl, transformer, dataset_name='hits-4-c', tf_version='tf1',
-        transformer_name='transtransformed', model_name='resnet', epochs=2)
+    scores = test_model_loading(transformer, mdl_resnet, load_hits4c,
+                                dataset_name='hits-4-c', tf_version='tf1',
+                                transformer_name='transtransformed',
+                                model_name='resnet', epochs=2)
     end_time = time.time()
     delta_times_list.append(end_time - start_time)
     scores_list.append(scores)
-    del mdl
   file_path = os.path.join(PROJECT_PATH, 'tests', 'aux_results',
                            'test_models_tf1-tf2.txt')
   print_scores_times_to_file(file_path,
-                             'Data_transformer_tf1_models_diri_tf2_resnet_transtransformer\n NRUNS: %i' % N_RUNS,
+                             'Data_transformer_tf1_models_tf1_resnet_transtransformer\n NRUNS: %i' % n_runs,
                              scores_list, delta_times_list)
+  del mdl_resnet
 
-
-def test_all_tf2_resnet_transtransformer():
-  transformer = transformations_tf.TransTransformer()
-  hits_params = {
-    loader_keys.DATA_PATH: os.path.join(
-        PROJECT_PATH, '../datasets/HiTS2013_300k_samples.pkl'),
-    loader_keys.N_SAMPLES_BY_CLASS: 10000,
-    loader_keys.TEST_PERCENTAGE: 0.2,
-    loader_keys.VAL_SET_INLIER_PERCENTAGE: 0.1,
-    loader_keys.USED_CHANNELS: [0, 1, 2, 3],
-    loader_keys.CROP_SIZE: 21,
-    general_keys.RANDOM_SEED: 42,
-    loader_keys.TRANSFORMATION_INLIER_CLASS_VALUE: 1
-  }
-  hits_outlier_dataset = HiTSOutlierLoader(hits_params)
+def test_resnet_transtransformer_1c():
+  n_runs = 10
+  transformer = transformations.TransTransformer()
+  n, k = (10, 4)
+  mdl_resnet = create_wide_residual_network(
+      [21, 21, 1], transformer.n_transforms, n, k)
   scores_list = []
   delta_times_list = []
-  for i in range(N_RUNS):
-    mdl = TransformODModel(
-        data_loader=None, transformer=transformer, input_shape=(21, 21, 4))
+  for i in range(n_runs):
     start_time = time.time()
-    scores = test_all_tf2(
-        mdl, transformer, hits_outlier_dataset, dataset_name='hits-4-c',
-        epochs=2)
+    scores = test_model_loading(transformer, mdl_resnet, load_hits1c,
+                                dataset_name='hits-1-c', tf_version='tf1',
+                                transformer_name='transtransformed',
+                                model_name='resnet', epochs=2)
     end_time = time.time()
     delta_times_list.append(end_time - start_time)
     scores_list.append(scores)
-    del mdl
   file_path = os.path.join(PROJECT_PATH, 'tests', 'aux_results',
                            'test_models_tf1-tf2.txt')
   print_scores_times_to_file(file_path,
-                             'all_tf2_unchanged_resnet_transtransformer\n NRUNS: %i' % N_RUNS,
+                             'Data_transformer_tf1_models_tf1_resnet_transtransformer_1c\n NRUNS: %i' % n_runs,
                              scores_list, delta_times_list)
-
-
-def test_all_tf2_resnet_transtransformer_1c():
-  transformer = transformations_tf.TransTransformer()
-  hits_params = {
-    loader_keys.DATA_PATH: os.path.join(
-        PROJECT_PATH, '../datasets/HiTS2013_300k_samples.pkl'),
-    loader_keys.N_SAMPLES_BY_CLASS: 10000,
-    loader_keys.TEST_PERCENTAGE: 0.2,
-    loader_keys.VAL_SET_INLIER_PERCENTAGE: 0.1,
-    loader_keys.USED_CHANNELS: [2],
-    loader_keys.CROP_SIZE: 21,
-    general_keys.RANDOM_SEED: 42,
-    loader_keys.TRANSFORMATION_INLIER_CLASS_VALUE: 1
-  }
-  hits_outlier_dataset = HiTSOutlierLoader(hits_params)
-  scores_list = []
-  delta_times_list = []
-  for i in range(N_RUNS):
-    mdl = TransformODModel(
-        data_loader=None, transformer=transformer, input_shape=(21, 21, 1))
-    start_time = time.time()
-    scores = test_all_tf2(
-        mdl, transformer, hits_outlier_dataset, dataset_name='hits-1-c',
-        epochs=2)
-    end_time = time.time()
-    delta_times_list.append(end_time - start_time)
-    scores_list.append(scores)
-    del mdl
-  file_path = os.path.join(PROJECT_PATH, 'tests', 'aux_results',
-                           'test_models_tf1-tf2.txt')
-  print_scores_times_to_file(file_path,
-                             'all_tf2_unchanged_resnet_transtransformer_1c\n NRUNS: %i' % N_RUNS,
-                             scores_list, delta_times_list)
-
+  del mdl_resnet
 
 def test_dh_transtransformer_1c():
-  transformer = transformations_tf.TransTransformer()
+  n_runs = 10
+  transformer = transformations.TransTransformer()
+  mdl = create_simple_network(
+      [21, 21, 1], transformer.n_transforms)
   scores_list = []
   delta_times_list = []
-  for i in range(N_RUNS):
-    mdl = create_simple_network(
-        input_shape=(21, 21, 1), num_classes=transformer.n_transforms,
-        dropout_rate=0.0)
-    mdl.compile('adam', 'categorical_crossentropy', ['acc'])
+  for i in range(n_runs):
     start_time = time.time()
-    scores = test_tf1_transformed_data_on_tf2_keras_model_diri(
-        mdl, transformer, dataset_name='hits-1-c', tf_version='tf1',
-        transformer_name='transtransformed', model_name='dh', epochs=2)
+    scores = test_model_loading(transformer, mdl, load_hits1c,
+                                dataset_name='hits-1-c', tf_version='tf1',
+                                transformer_name='transtransformed',
+                                model_name='dh', epochs=2)
     end_time = time.time()
     delta_times_list.append(end_time - start_time)
     scores_list.append(scores)
-    del mdl
   file_path = os.path.join(PROJECT_PATH, 'tests', 'aux_results',
                            'test_models_tf1-tf2.txt')
   print_scores_times_to_file(file_path,
-                             'Data_transformer_tf1_models_diri_tf2_dh_transtransformer_functionModel\n NRUNS: %i' % N_RUNS,
+                             'Data_transformer_tf1_models_tf1_dh_transtransformer_1c\n NRUNS: %i' % n_runs,
                              scores_list, delta_times_list)
-
-def test_all_tf2_dh_transtransformer_1c():
-  transformer = transformations_tf.TransTransformer()
-  hits_params = {
-    loader_keys.DATA_PATH: os.path.join(
-        PROJECT_PATH, '../datasets/HiTS2013_300k_samples.pkl'),
-    loader_keys.N_SAMPLES_BY_CLASS: 10000,
-    loader_keys.TEST_PERCENTAGE: 0.2,
-    loader_keys.VAL_SET_INLIER_PERCENTAGE: 0.1,
-    loader_keys.USED_CHANNELS: [2],
-    loader_keys.CROP_SIZE: 21,
-    general_keys.RANDOM_SEED: 42,
-    loader_keys.TRANSFORMATION_INLIER_CLASS_VALUE: 1
-  }
-  hits_outlier_dataset = HiTSOutlierLoader(hits_params)
-  scores_list = []
-  delta_times_list = []
-  for i in range(N_RUNS):
-    mdl = TransformODSimpleModel(
-        data_loader=None, transformer=transformer, input_shape=(21, 21, 1), drop_rate=0.0)
-    start_time = time.time()
-    scores = test_all_tf2(
-        mdl, transformer, hits_outlier_dataset, dataset_name='hits-1-c',
-        epochs=2)
-    end_time = time.time()
-    delta_times_list.append(end_time - start_time)
-    scores_list.append(scores)
-    del mdl
-  file_path = os.path.join(PROJECT_PATH, 'tests', 'aux_results',
-                           'test_models_tf1-tf2.txt')
-  print_scores_times_to_file(file_path,
-                             'all_tf2_unchanged_dh_transtransformer_1c_DP0.0_fast_no_prints\n NRUNS: %i' % N_RUNS,
-                             scores_list, delta_times_list)
-
+  del mdl
 
 if __name__ == '__main__':
+  K.set_session(tf.Session())
+  results_path = os.path.join(PROJECT_PATH, 'results', 'replication')
+
   # transformer = transformations.Transformer()
   # start_time = time.time()
   # scores = test_model_original(transformer, load_hits4c,
@@ -667,6 +496,9 @@ if __name__ == '__main__':
   #         start_time, time.time()),
   #     flush=True)
   # print(scores)
-  # test_tf2_resnet_transtransformer_unchanged()
+
+  test_resnet_transtransformer()
+  #
+  # test_resnet_transtransformer_1c()
   # test_dh_transtransformer_1c()
-  test_all_tf2_dh_transtransformer_1c()
+
