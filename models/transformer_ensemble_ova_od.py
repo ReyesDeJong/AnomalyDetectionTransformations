@@ -111,6 +111,10 @@ class EnsembleOVATransformODModel(TransformODModel):
       es = tf.keras.callbacks.EarlyStopping(
           monitor='val_loss', mode='min', verbose=1, patience=0,
           restore_best_weights=True)
+      if epochs == 2:
+        es = tf.keras.callbacks.EarlyStopping(
+            monitor='val_loss', mode='min', verbose=1, patience=0,
+            restore_best_weights=False)
       model.fit(
           x=train_x_binary,
           y=tf.keras.utils.to_categorical(train_y_binary),

@@ -201,7 +201,7 @@ class TransformODModel(tf.keras.Model):
     matrix_scores_eval = self.predict_matrix_score(
         x_eval, transform_batch_size, predict_batch_size, **kwargs)
     del x_eval
-    for t_ind in range(n_transforms):
+    for t_ind in tqdm(range(n_transforms)):
       observed_dirichlet = matrix_scores_train[:, :, t_ind]
       x_eval_p = matrix_scores_eval[:, :, t_ind]
       diri_scores += dirichlet_utils.dirichlet_score(

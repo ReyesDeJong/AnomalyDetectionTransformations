@@ -3,6 +3,7 @@ import sys
 
 """
 Test 72 transform tf1 model on hits
+I mixed this with tf2, sorry
 """
 
 PROJECT_PATH = os.path.abspath(
