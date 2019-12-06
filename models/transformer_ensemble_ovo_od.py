@@ -18,6 +18,7 @@ from modules import utils, dirichlet_utils
 import datetime
 from tqdm import tqdm
 from models.transformer_od import TransformODModel
+import itertools
 
 """In situ transformation perform"""
 
@@ -73,61 +74,71 @@ class EnsembleOVOTransformODModel(TransformODModel):
     x_val_transform, y_val_transform = \
       self.transformer.apply_all_transforms(
           x=x_val, batch_size=transform_batch_size)
-    for model_ind_x in range(self.transformer.n_transforms):
-      for t_mdl_ind_y, model_y in enumerate(self.models_list[model_ind_x]):
-        if model_ind_x >= t_mdl_ind_y:
-          continue
-        model_y.compile(
-            general_keys.ADAM, general_keys.CATEGORICAL_CROSSENTROPY,
-            [general_keys.ACC])
-        # TODO: make this step a function
+    transforms_arange = np.arange(self.transformer.n_transforms)
+    transforms_tuples = list(
+      itertools.product(transforms_arange, transforms_arange))
+    models_tuple = []
+    for x_y_tuple in transforms_tuples:
+      if x_y_tuple[0] < x_y_tuple[1]:
+        models_tuple.append(x_y_tuple)
+    for x_y_tuple in tqdm(models_tuple):
+      model_ind_x = x_y_tuple[0]
+      t_mdl_ind_y = x_y_tuple[1]
+      model_y = self.models_list[model_ind_x][t_mdl_ind_y]
+      if model_ind_x >= t_mdl_ind_y:
+        raise ValueError('Condition not met!')
+        continue
+      model_y.compile(
+          general_keys.ADAM, general_keys.CATEGORICAL_CROSSENTROPY,
+          [general_keys.ACC])
+      # TODO: make this step a function
 
-        # separate inliers as an specific transform an the rest as outlier for an specific classifier, balance by replication
-        transformation_x_to_train = model_ind_x
-        # this to be class 1
-        transformation_y_to_train = t_mdl_ind_y
-        transform_x_indxs_train = \
-          np.where(y_train_transform == transformation_x_to_train)[0]
-        transform_y_indxs_train = \
-          np.where(y_train_transform == transformation_y_to_train)[0]
-        transform_x_indxs_val = \
-          np.where(y_val_transform == transformation_x_to_train)[0]
-        transform_y_indxs_val = \
-          np.where(y_val_transform == transformation_y_to_train)[0]
-        train_x_binary = np.concatenate(
-            [x_train_transform[transform_x_indxs_train],
-             x_train_transform[transform_y_indxs_train]])
-        train_y_binary = np.concatenate(
-            [np.zeros_like(transform_x_indxs_train),
-             np.ones_like(transform_y_indxs_train)])
-        val_x_binary = np.concatenate(
-            [x_val_transform[transform_x_indxs_val],
-             x_val_transform[transform_y_indxs_val]])
-        val_y_binary = np.concatenate([np.zeros_like(transform_x_indxs_val),
-                                       np.ones_like(transform_y_indxs_val)])
-        print('Training Model x%i (0) y%i (1)' % (model_ind_x, t_mdl_ind_y))
-        print('Train_size: ', np.unique(train_y_binary, return_counts=True))
-        print('Val_size: ', np.unique(val_y_binary, return_counts=True))
+      # separate inliers as an specific transform an the rest as outlier for an specific classifier, balance by replication
+      transformation_x_to_train = model_ind_x
+      # this to be class 1
+      transformation_y_to_train = t_mdl_ind_y
+      transform_x_indxs_train = \
+        np.where(y_train_transform == transformation_x_to_train)[0]
+      transform_y_indxs_train = \
+        np.where(y_train_transform == transformation_y_to_train)[0]
+      transform_x_indxs_val = \
+        np.where(y_val_transform == transformation_x_to_train)[0]
+      transform_y_indxs_val = \
+        np.where(y_val_transform == transformation_y_to_train)[0]
+      train_x_binary = np.concatenate(
+          [x_train_transform[transform_x_indxs_train],
+           x_train_transform[transform_y_indxs_train]])
+      train_y_binary = np.concatenate(
+          [np.zeros_like(transform_x_indxs_train),
+           np.ones_like(transform_y_indxs_train)])
+      val_x_binary = np.concatenate(
+          [x_val_transform[transform_x_indxs_val],
+           x_val_transform[transform_y_indxs_val]])
+      val_y_binary = np.concatenate([np.zeros_like(transform_x_indxs_val),
+                                     np.ones_like(transform_y_indxs_val)])
+      # print('Training Model x%i (0) y%i (1)' % (model_ind_x, t_mdl_ind_y))
+      # print('Train_size: ', np.unique(train_y_binary, return_counts=True))
+      # print('Val_size: ', np.unique(val_y_binary, return_counts=True))
 
+      es = tf.keras.callbacks.EarlyStopping(
+          monitor='val_loss', mode='min', patience=0,
+          restore_best_weights=True, **kwargs)
+      if epochs == 2:
         es = tf.keras.callbacks.EarlyStopping(
-            monitor='val_loss', mode='min', verbose=1, patience=0,
-            restore_best_weights=True)
-        if epochs == 2:
-          es = tf.keras.callbacks.EarlyStopping(
-              monitor='val_loss', mode='min', verbose=1, patience=0,
-              restore_best_weights=False)
-        model_y.fit(
-            x=train_x_binary,
-            y=tf.keras.utils.to_categorical(train_y_binary),
-            validation_data=(
-              val_x_binary, tf.keras.utils.to_categorical(val_y_binary)),
-            batch_size=train_batch_size,
-            epochs=epochs, callbacks=[es], **kwargs)
-        weight_path = os.path.join(self.checkpoint_folder,
-                                   'final_weights_modelx%iy%i.h5' % (
-                                     model_ind_x, t_mdl_ind_y))
-        # TODO: what happens if y do self.save_weights??
-        model_y.save_weights(weight_path)
+            monitor='val_loss', mode='min', patience=0,
+            restore_best_weights=False, **kwargs)
+      model_y.fit(
+          x=train_x_binary,
+          y=tf.keras.utils.to_categorical(train_y_binary),
+          validation_data=(
+            val_x_binary, tf.keras.utils.to_categorical(val_y_binary)),
+          batch_size=train_batch_size,
+          epochs=epochs, callbacks=[es], **kwargs)
+      weight_path = os.path.join(self.checkpoint_folder,
+                                 'final_weights_modelx%iy%i.h5' % (
+                                   model_ind_x, t_mdl_ind_y))
+      # TODO: what happens if y do self.save_weights??
+      model_y.save_weights(weight_path)
 
   def predict_matrix_score(self, x, transform_batch_size=512,
       predict_batch_size=1024, **kwargs):
@@ -175,14 +186,13 @@ class EnsembleOVOTransformODModel(TransformODModel):
     # TODO: implement both
     diri_scores = np.zeros(len(x_eval))
     for t_ind in range(n_transforms):
-      observed_dirichlet = utils.normalize_sum1(matrix_scores_train[:, :, t_ind])
+      observed_dirichlet = utils.normalize_sum1(
+          matrix_scores_train[:, :, t_ind])
       x_eval_p = utils.normalize_sum1(matrix_scores_eval[:, :, t_ind])
       diri_scores += dirichlet_utils.dirichlet_score(
           observed_dirichlet, x_eval_p)
     diri_scores /= n_transforms
     return matrix_scores_eval, diri_scores
-
-
 
 
 if __name__ == '__main__':
