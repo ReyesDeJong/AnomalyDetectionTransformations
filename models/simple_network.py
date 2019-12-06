@@ -1,5 +1,5 @@
-from keras.layers import *
-from keras.models import Model
+from tensorflow.keras.layers import *
+from tensorflow.keras.models import Model
 # import tensorflow as tf
 # from tensorflow.keras.layers import Conv2D, Dense, Dropout, Flatten, Input, \
 #   MaxPool2D, ZeroPadding2D, Activation

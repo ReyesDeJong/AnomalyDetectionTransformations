@@ -24,7 +24,6 @@ from tqdm import tqdm
 import matplotlib.pyplot as plt
 from sklearn.model_selection import ParameterGrid
 from sklearn.externals.joblib import Parallel, delayed
-from sklearn.metrics import roc_auc_score
 from sklearn.svm import OneClassSVM
 
 """In situ transformation perform"""
@@ -34,6 +33,7 @@ def _train_ocsvm_and_score(params, x_train, val_labels, x_val):
   return np.mean(val_labels ==
                  OneClassSVM(**params).fit(x_train).predict(
                      x_val))
+
 
 # TODO: think if its better to create a trainer instead of an encapsulated model
 class TransformODModel(tf.keras.Model):
@@ -100,6 +100,14 @@ class TransformODModel(tf.keras.Model):
     es = tf.keras.callbacks.EarlyStopping(
         monitor='val_loss', mode='min', verbose=1, patience=0,
         restore_best_weights=True)
+    if epochs == 2:
+      es = tf.keras.callbacks.EarlyStopping(
+        monitor='val_loss', mode='min', verbose=1, patience=0,
+        restore_best_weights=False)
+    # print(x_train_transform.shape)
+    # print(np.unique(y_train_transform, return_counts=True))
+    # print(x_val_transform.shape)
+    # print(np.unique(y_val_transform, return_counts=True))
     self.network.fit(
         x=x_train_transform, y=tf.keras.utils.to_categorical(y_train_transform),
         validation_data=(
@@ -132,28 +140,74 @@ class TransformODModel(tf.keras.Model):
       matrix_scores[:, :, t_ind] += x_pred[ind_x_pred_queal_to_t_ind]
     return matrix_scores
 
+  # # TODO: implement pre-transofrmed, in-situ-all, efficient transforming
+  # def predict_matrix_and_dirichlet_score(self, x_train, x_eval,
+  #     transform_batch_size=512, predict_batch_size=1024,
+  # transforms at each step!!
+  #     **kwargs):
+  #   n_transforms = self.transformer.n_transforms
+  #   diri_scores = np.zeros(len(x_eval))
+  #   matrix_scores = np.zeros((len(x_eval), n_transforms, n_transforms))
+  #   for t_ind in tqdm(range(n_transforms)):
+  #     x_train_transformed, _ = self.transformer.apply_transforms(
+  #         x_train, [t_ind], transform_batch_size)
+  #     observed_dirichlet = self.predict(
+  #         x_train_transformed, batch_size=predict_batch_size, **kwargs)
+  #     x_eval_transformed, _ = self.transformer.apply_transforms(
+  #         x_eval, [t_ind], transform_batch_size)
+  #     x_eval_p = self.predict(
+  #         x_eval_transformed, batch_size=predict_batch_size, **kwargs)
+  #     diri_scores += dirichlet_utils.dirichlet_score(
+  #         observed_dirichlet, x_eval_p)
+  #     matrix_scores[:, :, t_ind] += x_eval_p
+  #     del x_train_transformed, x_eval_transformed
+  #   diri_scores /= n_transforms
+  #   return matrix_scores, diri_scores
+
+  # def predict_matrix_and_dirichlet_score(self, x_train, x_eval,
+  # Apliying matrix scores ans transforms at same time!!!
+  #     transform_batch_size=512, predict_batch_size=1024,
+  #     **kwargs):
+  #   n_transforms = self.transformer.n_transforms
+  #   diri_scores = np.zeros(len(x_eval))
+  #   x_train_transformed, y_train_transformed = self.transformer.apply_all_transforms(
+  #       x_train, transform_batch_size)
+  #   x_train_pred = self.predict(x_train_transformed, batch_size=predict_batch_size)
+  #   x_eval_transformed, y_eval_transformed = self.transformer.apply_all_transforms(
+  #       x_eval, transform_batch_size)
+  #   x_eval_pred = self.predict(x_eval_transformed, batch_size=predict_batch_size)
+  #   matrix_scores = np.zeros((len(x_eval), n_transforms, n_transforms))
+  #   for t_ind in tqdm(range(n_transforms)):
+  #     ind_x_pred_train_queal_to_t_ind = np.where(y_train_transformed == t_ind)[0]
+  #     ind_x_pred_eval_queal_to_t_ind = np.where(y_eval_transformed == t_ind)[
+  #       0]
+  #     observed_dirichlet = x_train_pred[ind_x_pred_train_queal_to_t_ind]
+  #     x_eval_p = x_eval_pred[ind_x_pred_eval_queal_to_t_ind]
+  #     diri_scores += dirichlet_utils.dirichlet_score(
+  #         observed_dirichlet, x_eval_p)
+  #     matrix_scores[:, :, t_ind] += x_eval_p
+  #   diri_scores /= n_transforms
+  #   return matrix_scores, diri_scores
+
   # TODO: implement pre-transofrmed, in-situ-all, efficient transforming
   def predict_matrix_and_dirichlet_score(self, x_train, x_eval,
       transform_batch_size=512, predict_batch_size=1024,
       **kwargs):
     n_transforms = self.transformer.n_transforms
     diri_scores = np.zeros(len(x_eval))
-    matrix_scores = np.zeros((len(x_eval), n_transforms, n_transforms))
-    for t_ind in tqdm(range(n_transforms)):
-      x_train_transformed, _ = self.transformer.apply_transforms(
-          x_train, [t_ind], transform_batch_size)
-      observed_dirichlet = self.predict(
-          x_train_transformed, batch_size=predict_batch_size, **kwargs)
-      x_eval_transformed, _ = self.transformer.apply_transforms(
-          x_eval, [t_ind], transform_batch_size)
-      x_eval_p = self.predict(
-          x_eval_transformed, batch_size=predict_batch_size, **kwargs)
+    matrix_scores_train = self.predict_matrix_score(
+        x_train, transform_batch_size, predict_batch_size, **kwargs)
+    del x_train
+    matrix_scores_eval = self.predict_matrix_score(
+        x_eval, transform_batch_size, predict_batch_size, **kwargs)
+    del x_eval
+    for t_ind in range(n_transforms):
+      observed_dirichlet = matrix_scores_train[:, :, t_ind]
+      x_eval_p = matrix_scores_eval[:, :, t_ind]
       diri_scores += dirichlet_utils.dirichlet_score(
           observed_dirichlet, x_eval_p)
-      matrix_scores[:, :, t_ind] += x_eval_p
-      del x_train_transformed, x_eval_transformed
     diri_scores /= n_transforms
-    return matrix_scores, diri_scores
+    return matrix_scores_eval, diri_scores
 
   def get_scores_dict(self, x_train, x_eval,
       transform_batch_size=512, predict_batch_size=1024, **kwargs):
@@ -201,8 +255,8 @@ class TransformODModel(tf.keras.Model):
                         'gamma': np.logspace(-7, 2, num=10, base=2)})
     results = Parallel(n_jobs=n_jobs)(
         delayed(_train_ocsvm_and_score)(d, train_data,
-                                             np.ones((len(validation_data))),
-                                             validation_data)
+                                        np.ones((len(validation_data))),
+                                        validation_data)
         for d in pg)
     best_params, best_acc_score = max(zip(pg, results), key=lambda t: t[-1])
     print(best_params, best_acc_score)

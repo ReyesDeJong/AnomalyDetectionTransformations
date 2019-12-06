@@ -81,17 +81,17 @@ class AlreadyTransformODModel(TransformODModel):
     return matrix_scores
 
   # TODO: implement pre-transofrmed, in-situ-all, efficient transforming
-  def predict_matrix_and_dirichlet_score(self, train_data, eval_data,
+  def predict_matrix_and_dirichlet_score(self, x_train, x_eval,
       transform_batch_size=512, predict_batch_size=1024,
       **kwargs):
     n_transforms = self.transformer.n_transforms
-    diri_scores = np.zeros(int(len(eval_data[0]) / n_transforms))
+    diri_scores = np.zeros(int(len(x_eval[0]) / n_transforms))
     matrix_scores_train = self.predict_matrix_score(
-        train_data, transform_batch_size, predict_batch_size, **kwargs)
-    del train_data
+        x_train, transform_batch_size, predict_batch_size, **kwargs)
+    del x_train
     matrix_scores_eval = self.predict_matrix_score(
-        eval_data, transform_batch_size, predict_batch_size, **kwargs)
-    del eval_data
+        x_eval, transform_batch_size, predict_batch_size, **kwargs)
+    del x_eval
     for t_ind in tqdm(range(n_transforms)):
       observed_dirichlet = matrix_scores_train[:, :, t_ind]
       x_eval_p = matrix_scores_eval[:, :, t_ind]
