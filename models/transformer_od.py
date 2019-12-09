@@ -1,5 +1,5 @@
 """
-First attempt (keras like) to build geometric trasnformer for outlier detection in tf2
+First attempt (train_step_tf2 like) to build geometric trasnformer for outlier detection in tf2
 """
 
 import os

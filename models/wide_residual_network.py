@@ -1,4 +1,4 @@
-# from tensorflow.keras.initializers import _compute_fans
+# from tensorflow.train_step_tf2.initializers import _compute_fans
 from tensorflow.keras.layers import *
 from tensorflow.keras.models import Model
 from tensorflow.keras.optimizers import SGD

@@ -15,7 +15,7 @@ from transformations import Transformer
 from models.wide_residual_network import create_wide_residual_network
 import time
 import datetime
-# from tensorflow.keras.backend.tensorflow_backend import set_session
+# from tensorflow.train_step_tf2.backend.tensorflow_backend import set_session
 import tensorflow as tf
 from tqdm import tqdm
 from sklearn.metrics import auc

@@ -23,7 +23,7 @@ from modules import score_functions
 """In situ transformation perform"""
 
 
-# TODO: create ensemble of models as direct keras model? or no.
+# TODO: create ensemble of models as direct train_step_tf2 model? or no.
 #  If so, object from list are by ref, meaning, can they be trained separately?
 class EnsembleOVATransformODModel(TransformODModel):
   def __init__(self, data_loader: ZTFOutlierLoader,

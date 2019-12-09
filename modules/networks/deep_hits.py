@@ -8,7 +8,7 @@ from parameters import constants
 
 
 class DeepHits(tf.keras.Model):
-  def __init__(self, input_shape, n_classes, drop_rate=0.5,
+  def __init__(self, input_shape, n_classes, drop_rate=0.0,
       final_activation='softmax', name='deep_hits', **kwargs):
     super().__init__(name=name)
     self.inp_shape = input_shape
@@ -56,6 +56,8 @@ class DeepHits(tf.keras.Model):
     return tf.keras.Model(inputs=x, outputs=self.call(x))
 
 
+
+
 if __name__ == '__main__':
   x_shape = (None, 21, 21, 3)
   n_transforms = 72
@@ -87,7 +89,7 @@ if __name__ == '__main__':
   # batch_size = 128
   #
   # mdl.fit(x=x_train_task_transformed,
-  #         y=tf.keras.utils.to_categorical(transformations_inds),
+  #         y=tf.train_step_tf2.utils.to_categorical(transformations_inds),
   #         batch_size=batch_size,
   #         epochs=1  # int(np.ceil(200 / transformer.n_transforms))
   #         )

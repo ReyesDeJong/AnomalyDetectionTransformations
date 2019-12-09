@@ -281,7 +281,7 @@ class KernelTransformer(AbstractTransformer):
 if __name__ == "__main__":
   # tf 1
   import matplotlib.pyplot as plt
-  # from keras.backend.tensorflow_backend import set_session
+  # from train_step_tf2.backend.tensorflow_backend import set_session
   from modules.utils import createCircularMask
 
   # config = tf.ConfigProto()

@@ -59,7 +59,7 @@ def makeLoG(size, sigma=3, center=None):
 
 
 def apply_affine_transform(res_x, t_x, t_y):
-  # this are inverted, because to perform as keras, we need to invert them
+  # this are inverted, because to perform as train_step_tf2, we need to invert them
   tx = t_y
   ty = t_x
   res_x_padded = tf.pad(res_x,

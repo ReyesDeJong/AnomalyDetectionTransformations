@@ -36,7 +36,7 @@ EXPERIMENT_NAME = 'ResnetEnsembleTransformationsFocalLoss'
 
 
 def focal_loss_keras(layer):
-  # Define focal loss only applyiable for a keras model, not compatible with tensorflow
+  # Define focal loss only applyiable for a train_step_tf2 model, not compatible with tensorflow
   def loss(y_true, y_pred):
     xH_loss = K.categorical_crossentropy(target=y_true, output=y_pred)
     proba_correct_class = tf.reduce_sum(

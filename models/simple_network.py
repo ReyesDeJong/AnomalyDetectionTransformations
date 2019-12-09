@@ -1,9 +1,9 @@
 from tensorflow.keras.layers import *
 from tensorflow.keras.models import Model
 # import tensorflow as tf
-# from tensorflow.keras.layers import Conv2D, Dense, Dropout, Flatten, Input, \
+# from tensorflow.train_step_tf2.layers import Conv2D, Dense, Dropout, Flatten, Input, \
 #   MaxPool2D, ZeroPadding2D, Activation
-# from tensorflow.keras import Model
+# from tensorflow.train_step_tf2 import Model
 
 
 def rotate(img):

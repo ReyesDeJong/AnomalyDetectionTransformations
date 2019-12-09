@@ -23,7 +23,7 @@ import itertools
 """In situ transformation perform"""
 
 
-# TODO: create ensemble of models as direct keras model? or no.
+# TODO: create ensemble of models as direct train_step_tf2 model? or no.
 #  If so, object from list are by ref, meaning, can they be trained separately?
 class EnsembleOVOTransformODModel(TransformODModel):
   def __init__(self, data_loader: ZTFOutlierLoader,
@@ -31,15 +31,18 @@ class EnsembleOVOTransformODModel(TransformODModel):
       widen_factor=4, results_folder_name='',
       name='Ensemble_OVO_Transformer_OD_Model', **kwargs):
     super(TransformODModel, self).__init__(name=name)
+    self.builder_input_shape = input_shape
+    self.depth = 10
+    self.widen_factor = widen_factor
     self.date = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
     self.main_model_path = self.create_main_model_paths(results_folder_name,
                                                         self.name)
     utils.check_paths(self.main_model_path)
     self.data_loader = data_loader
     self.transformer = transformer
-    self.models_list = self._get_model_list(input_shape, depth=depth,
-                                            widen_factor=widen_factor,
-                                            **kwargs)
+    # self.models_list = self._get_model_list(input_shape, depth=depth,
+    #                                         widen_factor=widen_factor,
+    #                                         **kwargs)
     self.models_index_tuples = self._get_models_index_tuples()
 
   def _get_models_index_tuples(self):
@@ -77,11 +80,27 @@ class EnsembleOVOTransformODModel(TransformODModel):
       models_list.append(models_list_x)
     return models_list
 
-  def compile_models(self):
+  def _get_n_models(self, input_shape, depth, widen_factor, **kwargs):
+    models_list = []
+    for transform_idx_x in range(self.transformer.n_transforms):
+      models_list_x = []
+      for transform_idx_y in range(self.transformer.n_transforms):
+        if transform_idx_x >= transform_idx_y:
+          models_list_x.append(None)
+          continue
+        network = WideResidualNetwork(
+            input_shape=input_shape, n_classes=2,
+            depth=depth, widen_factor=widen_factor, **kwargs)
+        models_list_x.append(network)
+      models_list.append(models_list_x)
+    return models_list
+
+  def compile_and_build_models(self):
     for x_y_tuple in tqdm(self.models_index_tuples):
       model_ind_x = x_y_tuple[0]
       t_mdl_ind_y = x_y_tuple[1]
       model_y = self.models_list[model_ind_x][t_mdl_ind_y]
+      model_y.build((None,) + self.builder_input_shape)
       model_y.compile(
           general_keys.ADAM, general_keys.CATEGORICAL_CROSSENTROPY,
           [general_keys.ACC])
@@ -97,9 +116,70 @@ class EnsembleOVOTransformODModel(TransformODModel):
         [np.zeros_like(transform_x_indxs), np.ones_like(transform_y_indxs)])
     return data_binary, labels_binary
 
+  def _large_model_fit(self, x_train, x_val, transform_batch_size,
+      train_batch_size, epochs, **kwargs):
+    x_train_transform, y_train_transform = \
+      self.transformer.apply_all_transforms(
+          x=x_train, batch_size=transform_batch_size)
+    x_val_transform, y_val_transform = \
+      self.transformer.apply_all_transforms(
+          x=x_val, batch_size=transform_batch_size)
+    print('large Fit')
+    for x_y_tuple in tqdm(self.models_index_tuples):
+      model_ind_x = x_y_tuple[0]
+      t_mdl_ind_y = x_y_tuple[1]
+      model = self.get_network(
+          input_shape=self.builder_input_shape, n_classes=2, depth=self.depth,
+          widen_factor=self.widen_factor)
+      # if model_ind_x >= t_mdl_ind_y:
+      #   raise ValueError('Condition not met!')
+      #   continue
+      model.compile(
+          general_keys.ADAM, general_keys.CATEGORICAL_CROSSENTROPY,
+          [general_keys.ACC])
+      # separate inliers as an specific transform an the rest as outlier for an specific classifier, balance by replication
+      transform_x_ind_to_train = model_ind_x
+      # this to be class 1
+      transform_y_ind_to_train = t_mdl_ind_y
+      train_x_binary, train_y_binary = self._get_binary_data(
+          x_train_transform, y_train_transform, transform_x_ind_to_train,
+          transform_y_ind_to_train)
+      val_x_binary, val_y_binary = self._get_binary_data(
+          x_val_transform, y_val_transform, transform_x_ind_to_train,
+          transform_y_ind_to_train)
+      # print('Training Model x%i (0) y%i (1)' % (model_ind_x, t_mdl_ind_y))
+      # print('Train_size: ', np.unique(train_y_binary, return_counts=True))
+      # print('Val_size: ', np.unique(val_y_binary, return_counts=True))
+      es = tf.keras.callbacks.EarlyStopping(
+          monitor='val_loss', mode='min', patience=0,
+          restore_best_weights=True, **kwargs)
+      callbacks = [es]
+      validation_data = (
+        val_x_binary, tf.keras.utils.to_categorical(val_y_binary))
+      if epochs < 3:
+        callbacks = None
+        validation_data = None
+      model.fit_tf(
+          x=train_x_binary,
+          y=tf.keras.utils.to_categorical(train_y_binary),
+          validation_data=validation_data,
+          batch_size=train_batch_size,
+          epochs=epochs, callbacks=callbacks, **kwargs)
+      weight_path = os.path.join(self.checkpoint_folder,
+                                 'final_weights_modelx%iy%i.h5' % (
+                                   model_ind_x, t_mdl_ind_y))
+      # print(os.path.abspath(weight_path))
+      # TODO: what happens if y do self.save_weights??
+      model.save_weights(weight_path)
+      del model, validation_data, val_x_binary, val_y_binary, train_y_binary, train_x_binary
+
   def fit(self, x_train, x_val, transform_batch_size=512, train_batch_size=128,
       epochs=2, **kwargs):
     self.create_specific_model_paths()
+    if len(self.models_index_tuples) > 500:
+      return self._large_model_fit(
+          x_train, x_val, transform_batch_size, train_batch_size, epochs,
+          **kwargs)
     # transforming data
     x_train_transform, y_train_transform = \
       self.transformer.apply_all_transforms(
@@ -111,12 +191,12 @@ class EnsembleOVOTransformODModel(TransformODModel):
       model_ind_x = x_y_tuple[0]
       t_mdl_ind_y = x_y_tuple[1]
       model_y = self.models_list[model_ind_x][t_mdl_ind_y]
-      if model_ind_x >= t_mdl_ind_y:
-        raise ValueError('Condition not met!')
-        continue
-      # model_y.compile(
-      #     general_keys.ADAM, general_keys.CATEGORICAL_CROSSENTROPY,
-      #     [general_keys.ACC])
+      # if model_ind_x >= t_mdl_ind_y:
+      #   raise ValueError('Condition not met!')
+      #   continue
+      model_y.compile(
+          general_keys.ADAM, general_keys.CATEGORICAL_CROSSENTROPY,
+          [general_keys.ACC])
       # separate inliers as an specific transform an the rest as outlier for an specific classifier, balance by replication
       transform_x_ind_to_train = model_ind_x
       # this to be class 1
@@ -148,6 +228,7 @@ class EnsembleOVOTransformODModel(TransformODModel):
       weight_path = os.path.join(self.checkpoint_folder,
                                  'final_weights_modelx%iy%i.h5' % (
                                    model_ind_x, t_mdl_ind_y))
+      print(os.path.abspath(weight_path))
       # TODO: what happens if y do self.save_weights??
       model_y.save_weights(weight_path)
       del model_y, validation_data, val_x_binary, val_y_binary, train_y_binary, train_x_binary
