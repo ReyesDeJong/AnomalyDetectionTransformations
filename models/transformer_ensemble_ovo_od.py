@@ -37,8 +37,20 @@ class EnsembleOVOTransformODModel(TransformODModel):
     utils.check_paths(self.main_model_path)
     self.data_loader = data_loader
     self.transformer = transformer
-    self.models_list = self._get_model_list(input_shape, depth, widen_factor,
+    self.models_list = self._get_model_list(input_shape, depth=depth,
+                                            widen_factor=widen_factor,
                                             **kwargs)
+    self.models_index_tuples = self._get_models_index_tuples()
+
+  def _get_models_index_tuples(self):
+    transforms_arange = np.arange(self.transformer.n_transforms)
+    transforms_tuples = list(
+        itertools.product(transforms_arange, transforms_arange))
+    models_index_tuples = []
+    for x_y_tuple in transforms_tuples:
+      if x_y_tuple[0] < x_y_tuple[1]:
+        models_index_tuples.append(x_y_tuple)
+    return models_index_tuples
 
   # def call(self, input_tensor, training=False):
   #   output = []
@@ -65,80 +77,80 @@ class EnsembleOVOTransformODModel(TransformODModel):
       models_list.append(models_list_x)
     return models_list
 
+  def compile_models(self):
+    for x_y_tuple in tqdm(self.models_index_tuples):
+      model_ind_x = x_y_tuple[0]
+      t_mdl_ind_y = x_y_tuple[1]
+      model_y = self.models_list[model_ind_x][t_mdl_ind_y]
+      model_y.compile(
+          general_keys.ADAM, general_keys.CATEGORICAL_CROSSENTROPY,
+          [general_keys.ACC])
+
+  def _get_binary_data(self, data_transformed, labels_transformed, x_ind,
+      y_ind):
+    transform_x_indxs = np.where(labels_transformed == x_ind)[0]
+    transform_y_indxs = np.where(labels_transformed == y_ind)[0]
+    data_binary = np.concatenate(
+        [data_transformed[transform_x_indxs],
+         data_transformed[transform_y_indxs]])
+    labels_binary = np.concatenate(
+        [np.zeros_like(transform_x_indxs), np.ones_like(transform_y_indxs)])
+    return data_binary, labels_binary
+
   def fit(self, x_train, x_val, transform_batch_size=512, train_batch_size=128,
       epochs=2, **kwargs):
     self.create_specific_model_paths()
+    # transforming data
     x_train_transform, y_train_transform = \
       self.transformer.apply_all_transforms(
           x=x_train, batch_size=transform_batch_size)
     x_val_transform, y_val_transform = \
       self.transformer.apply_all_transforms(
           x=x_val, batch_size=transform_batch_size)
-    transforms_arange = np.arange(self.transformer.n_transforms)
-    transforms_tuples = list(
-      itertools.product(transforms_arange, transforms_arange))
-    models_tuple = []
-    for x_y_tuple in transforms_tuples:
-      if x_y_tuple[0] < x_y_tuple[1]:
-        models_tuple.append(x_y_tuple)
-    for x_y_tuple in tqdm(models_tuple):
+    for x_y_tuple in tqdm(self.models_index_tuples):
       model_ind_x = x_y_tuple[0]
       t_mdl_ind_y = x_y_tuple[1]
       model_y = self.models_list[model_ind_x][t_mdl_ind_y]
       if model_ind_x >= t_mdl_ind_y:
         raise ValueError('Condition not met!')
         continue
-      model_y.compile(
-          general_keys.ADAM, general_keys.CATEGORICAL_CROSSENTROPY,
-          [general_keys.ACC])
-      # TODO: make this step a function
-
+      # model_y.compile(
+      #     general_keys.ADAM, general_keys.CATEGORICAL_CROSSENTROPY,
+      #     [general_keys.ACC])
       # separate inliers as an specific transform an the rest as outlier for an specific classifier, balance by replication
-      transformation_x_to_train = model_ind_x
+      transform_x_ind_to_train = model_ind_x
       # this to be class 1
-      transformation_y_to_train = t_mdl_ind_y
-      transform_x_indxs_train = \
-        np.where(y_train_transform == transformation_x_to_train)[0]
-      transform_y_indxs_train = \
-        np.where(y_train_transform == transformation_y_to_train)[0]
-      transform_x_indxs_val = \
-        np.where(y_val_transform == transformation_x_to_train)[0]
-      transform_y_indxs_val = \
-        np.where(y_val_transform == transformation_y_to_train)[0]
-      train_x_binary = np.concatenate(
-          [x_train_transform[transform_x_indxs_train],
-           x_train_transform[transform_y_indxs_train]])
-      train_y_binary = np.concatenate(
-          [np.zeros_like(transform_x_indxs_train),
-           np.ones_like(transform_y_indxs_train)])
-      val_x_binary = np.concatenate(
-          [x_val_transform[transform_x_indxs_val],
-           x_val_transform[transform_y_indxs_val]])
-      val_y_binary = np.concatenate([np.zeros_like(transform_x_indxs_val),
-                                     np.ones_like(transform_y_indxs_val)])
+      transform_y_ind_to_train = t_mdl_ind_y
+      train_x_binary, train_y_binary = self._get_binary_data(
+          x_train_transform, y_train_transform, transform_x_ind_to_train,
+          transform_y_ind_to_train)
+      val_x_binary, val_y_binary = self._get_binary_data(
+          x_val_transform, y_val_transform, transform_x_ind_to_train,
+          transform_y_ind_to_train)
       # print('Training Model x%i (0) y%i (1)' % (model_ind_x, t_mdl_ind_y))
       # print('Train_size: ', np.unique(train_y_binary, return_counts=True))
       # print('Val_size: ', np.unique(val_y_binary, return_counts=True))
-
       es = tf.keras.callbacks.EarlyStopping(
           monitor='val_loss', mode='min', patience=0,
           restore_best_weights=True, **kwargs)
-      if epochs == 2:
-        es = tf.keras.callbacks.EarlyStopping(
-            monitor='val_loss', mode='min', patience=0,
-            restore_best_weights=False, **kwargs)
+      callbacks = [es]
+      validation_data = (
+        val_x_binary, tf.keras.utils.to_categorical(val_y_binary))
+      if epochs < 3:
+        callbacks = None
+        validation_data = None
       model_y.fit(
           x=train_x_binary,
           y=tf.keras.utils.to_categorical(train_y_binary),
-          validation_data=(
-            val_x_binary, tf.keras.utils.to_categorical(val_y_binary)),
+          validation_data=validation_data,
           batch_size=train_batch_size,
-          epochs=epochs, callbacks=[es], **kwargs)
+          epochs=epochs, callbacks=callbacks, **kwargs)
       weight_path = os.path.join(self.checkpoint_folder,
                                  'final_weights_modelx%iy%i.h5' % (
                                    model_ind_x, t_mdl_ind_y))
       # TODO: what happens if y do self.save_weights??
       model_y.save_weights(weight_path)
+      del model_y, validation_data, val_x_binary, val_y_binary, train_y_binary, train_x_binary
 
   def predict_matrix_score(self, x, transform_batch_size=512,
       predict_batch_size=1024, **kwargs):
@@ -146,16 +158,15 @@ class EnsembleOVOTransformODModel(TransformODModel):
     x_transformed, y_transformed = self.transformer.apply_all_transforms(
         x, transform_batch_size)
     matrix_scores = np.zeros((len(x), n_transforms, n_transforms))
-    for model_t_x in tqdm(range(n_transforms)):
-      for t_mdl_ind_y in range(n_transforms):
-        if model_t_x >= t_mdl_ind_y:
-          continue
-        ind_x_pred_model_t_x_queal_to_t_ind = \
-          np.where(y_transformed == t_mdl_ind_y)[0]
-        x_pred_model_x_t_ind = self.models_list[model_t_x][t_mdl_ind_y].predict(
-            x_transformed[ind_x_pred_model_t_x_queal_to_t_ind],
-            batch_size=predict_batch_size)
-        matrix_scores[:, model_t_x, t_mdl_ind_y] += x_pred_model_x_t_ind[:, 0]
+    for x_y_tuple in tqdm(self.models_index_tuples):
+      model_t_x = x_y_tuple[0]
+      t_mdl_ind_y = x_y_tuple[1]
+      ind_x_pred_model_t_x_queal_to_t_ind = \
+        np.where(y_transformed == t_mdl_ind_y)[0]
+      x_pred_model_x_t_ind = self.models_list[model_t_x][t_mdl_ind_y].predict(
+          x_transformed[ind_x_pred_model_t_x_queal_to_t_ind],
+          batch_size=predict_batch_size, **kwargs)
+      matrix_scores[:, model_t_x, t_mdl_ind_y] += x_pred_model_x_t_ind[:, 0]
     del x_transformed, y_transformed
     return self._post_process_matrix_score(matrix_scores)
 

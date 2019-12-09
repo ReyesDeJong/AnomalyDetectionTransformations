@@ -46,7 +46,7 @@ def hits4c():
   mdl = EnsembleOVOTransformODSimpleModel(
       data_loader, transformer=transformer, input_shape=x_train.shape[1:],
       results_folder_name='transform_selection')
-  mdl.fit(x_train, x_val, train_batch_size=1024, verbose=0)
+  # mdl.fit(x_train, x_val, train_batch_size=1024, verbose=0)
   train_matrix_scores = mdl.predict_matrix_score(
       x_train, transform_batch_size=1024)
   test_outlier_matrix_scores = mdl.predict_matrix_score(
@@ -93,7 +93,7 @@ if __name__ == '__main__':
   for gpu in gpus:
     tf.config.experimental.set_memory_growth(gpu, True)
 
-  hits1c()
+  # hits1c()
   hits4c()
 
 

@@ -9,7 +9,7 @@ from parameters import constants
 
 class DeepHits(tf.keras.Model):
   def __init__(self, input_shape, n_classes, drop_rate=0.5,
-      final_activation='softmax', name='deep_hits'):
+      final_activation='softmax', name='deep_hits', **kwargs):
     super().__init__(name=name)
     self.inp_shape = input_shape
     self.zp = tf.keras.layers.ZeroPadding2D(padding=(3, 3))
