@@ -6,6 +6,7 @@
 *.npz
 *.csv
 *.txt
+*.ckpt
 *.zip
 .idea/
 

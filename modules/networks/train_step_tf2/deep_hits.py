@@ -13,6 +13,7 @@ sys.path.append(PROJECT_PATH)
 
 from modules.utils import delta_timer
 import time
+import numpy as np
 
 
 class DeepHits(tf.keras.Model):
@@ -40,6 +41,15 @@ class DeepHits(tf.keras.Model):
     self.do_2 = tf.keras.layers.Dropout(drop_rate)
     self.dense_3 = tf.keras.layers.Dense(n_classes)
     self.act_out = tf.keras.layers.Activation(final_activation)
+    # builds
+    self.loss_object = tf.keras.losses.CategoricalCrossentropy()
+    self.optimizer = tf.keras.optimizers.Adam()
+    self.train_loss = tf.keras.metrics.Mean(name='train_loss')
+    self.train_accuracy = tf.keras.metrics.CategoricalAccuracy(
+        name='train_accuracy')
+    # self.val_loss = tf.keras.metrics.Mean(name='val_loss')
+    # self.val_accuracy = tf.keras.metrics.CategoricalAccuracy(
+    #     name='val_accuracy')
 
   def call(self, input_tensor, training=False):
     x = self.zp(input_tensor)
@@ -75,19 +85,20 @@ class DeepHits(tf.keras.Model):
 
   @tf.function
   def test_step(self, images, labels):
-    predictions = self.call(images)
+    predictions = self.call(images, training=False)
     t_loss = self.loss_object(labels, predictions)
     self.val_loss(t_loss)
     self.val_accuracy(labels, predictions)
 
+  @tf.function
+  def eval_step(self, images, labels, eval_loss, eval_acc):
+    predictions = self.call(images, training=False)
+    t_loss = self.loss_object(labels, predictions)
+    eval_loss(t_loss)
+    eval_acc(labels, predictions)
+
   def fit_tf(self, x, y, validation_data=None, batch_size=128, epochs=1,
       **kwargs):
-    # builds
-    self.loss_object = tf.keras.losses.CategoricalCrossentropy()
-    self.optimizer = tf.keras.optimizers.Adam()
-    self.train_loss = tf.keras.metrics.Mean(name='train_loss')
-    self.train_accuracy = tf.keras.metrics.CategoricalAccuracy(
-        name='train_accuracy')
 
     train_ds = tf.data.Dataset.from_tensor_slices(
         (x, y)).shuffle(10000).batch(batch_size)
@@ -107,16 +118,6 @@ class DeepHits(tf.keras.Model):
 
   def fit_tf_val(self, x, y, validation_data=None, batch_size=128, epochs=1,
       **kwargs):
-    # builds
-    self.loss_object = tf.keras.losses.CategoricalCrossentropy()
-    self.optimizer = tf.keras.optimizers.Adam()
-    self.train_loss = tf.keras.metrics.Mean(name='train_loss')
-    self.train_accuracy = tf.keras.metrics.CategoricalAccuracy(
-        name='train_accuracy')
-    self.val_loss = tf.keras.metrics.Mean(name='val_loss')
-    self.val_accuracy = tf.keras.metrics.CategoricalAccuracy(
-        name='val_accuracy')
-
     train_ds = tf.data.Dataset.from_tensor_slices(
         (x, y)).shuffle(10000).batch(batch_size)
     val_ds = tf.data.Dataset.from_tensor_slices(
@@ -145,7 +146,24 @@ class DeepHits(tf.keras.Model):
     predictions = []
     for images in eval_ds:
       predictions.append(self.call(images))
-    return predictions
+    return np.concatenate(predictions, axis=0)
+
+  def eval_tf(self, x, y, batch_size=1024, **kwargs):
+    eval_loss = tf.keras.metrics.Mean(name='eval_loss')
+    eval_accuracy = tf.keras.metrics.CategoricalAccuracy(
+        name='eval_accuracy')
+    train_ds = tf.data.Dataset.from_tensor_slices(
+        (x, y)).shuffle(10000).batch(batch_size)
+    start_time = time.time()
+    for images, labels in train_ds:
+      self.eval_step(images, labels, eval_loss, eval_accuracy)
+    if kwargs['verbose']:
+      template = 'Loss: {}, Acc: {}, Time: {}'
+      print(template.format(
+          eval_loss.result(),
+          eval_accuracy.result() * 100,
+          delta_timer(time.time() - start_time)
+      ))
 
 
 if __name__ == '__main__':
@@ -172,25 +190,29 @@ if __name__ == '__main__':
   data_loader = HiTSOutlierLoader(hits_params)
   (x_train, y_train), (x_val, y_val), (
     x_test, y_test) = data_loader.get_outlier_detection_datasets()
-  transformer = transformations_tf.Transformer()
+  transformer = transformations_tf.KernelTransformer(
+      flips=True, gauss=False, log=False)
   x_train_transformed, transformations_inds = transformer.apply_all_transforms(
       x_train)
   x_val_transformed, transformations_inds_val = transformer.apply_all_transforms(
       x_val)
   mdl = DeepHits(input_shape=x_train.shape[1:],
                  n_classes=transformer.n_transforms)
-  mdl.compile(optimizer='adam',
-              loss='categorical_crossentropy',
-              metrics=['accuracy'])
-  mdl.fit_tf_val(x_train_transformed, to_categorical(transformations_inds),
-                 verbose=1,
-                 epochs=2, batch_size=100, validation_data=(
-    x_val_transformed, to_categorical(transformations_inds_val)))
-  # for i in range(2556):
-  #   mdl = DeepHits(input_shape=x_train.shape[1:],
-  #                  n_classes=transformer.n_transforms)
-  #   mdl.compile(optimizer='adam',
-  #               loss='categorical_crossentropy',
-  #               metrics=['accuracy'])
-  #   mdl.fit(x_train_transformed, to_categorical(transformations_inds), verbose=1,
-  #           epochs=1, batch_size=100)
+  mdl.fit_tf(x_train_transformed, to_categorical(transformations_inds),
+             verbose=1,
+             epochs=1, batch_size=100, validation_data=(
+      x_val_transformed, to_categorical(transformations_inds_val)))
+  mdl.eval_tf(x_train_transformed, to_categorical(transformations_inds),
+              verbose=1)
+  mdl.save_weights('dummy.h5')
+  print(mdl.layers)
+  del mdl
+  mdl = DeepHits(input_shape=x_train.shape[1:],
+                 n_classes=transformer.n_transforms)
+  # mdl.build((None,) + x_train.shape[1:])
+  print(mdl.layers)
+  mdl.eval_tf(x_train_transformed, to_categorical(transformations_inds),
+              verbose=1)
+  mdl.load_weights('dummy.h5')
+  mdl.eval_tf(x_train_transformed, to_categorical(transformations_inds),
+              verbose=1)

@@ -40,9 +40,9 @@ class EnsembleOVOTransformODModel(TransformODModel):
     utils.check_paths(self.main_model_path)
     self.data_loader = data_loader
     self.transformer = transformer
-    # self.models_list = self._get_model_list(input_shape, depth=depth,
-    #                                         widen_factor=widen_factor,
-    #                                         **kwargs)
+    self.models_list = self._get_model_list(input_shape, depth=depth,
+                                            widen_factor=widen_factor,
+                                            **kwargs)
     self.models_index_tuples = self._get_models_index_tuples()
 
   def _get_models_index_tuples(self):
@@ -105,6 +105,13 @@ class EnsembleOVOTransformODModel(TransformODModel):
           general_keys.ADAM, general_keys.CATEGORICAL_CROSSENTROPY,
           [general_keys.ACC])
 
+  def build_models(self):
+    for x_y_tuple in tqdm(self.models_index_tuples):
+      model_ind_x = x_y_tuple[0]
+      t_mdl_ind_y = x_y_tuple[1]
+      model_y = self.models_list[model_ind_x][t_mdl_ind_y]
+      model_y.build((None,) + self.builder_input_shape)
+
   def _get_binary_data(self, data_transformed, labels_transformed, x_ind,
       y_ind):
     transform_x_indxs = np.where(labels_transformed == x_ind)[0]
@@ -118,6 +125,7 @@ class EnsembleOVOTransformODModel(TransformODModel):
 
   def _large_model_fit(self, x_train, x_val, transform_batch_size,
       train_batch_size, epochs, **kwargs):
+    del self.models_list
     x_train_transform, y_train_transform = \
       self.transformer.apply_all_transforms(
           x=x_train, batch_size=transform_batch_size)
@@ -219,7 +227,7 @@ class EnsembleOVOTransformODModel(TransformODModel):
       if epochs < 3:
         callbacks = None
         validation_data = None
-      model_y.fit(
+      model_y.fit_tf(
           x=train_x_binary,
           y=tf.keras.utils.to_categorical(train_y_binary),
           validation_data=validation_data,
@@ -228,10 +236,10 @@ class EnsembleOVOTransformODModel(TransformODModel):
       weight_path = os.path.join(self.checkpoint_folder,
                                  'final_weights_modelx%iy%i.h5' % (
                                    model_ind_x, t_mdl_ind_y))
-      print(os.path.abspath(weight_path))
+
       # TODO: what happens if y do self.save_weights??
       model_y.save_weights(weight_path)
-      del model_y, validation_data, val_x_binary, val_y_binary, train_y_binary, train_x_binary
+      # del model_y, validation_data, val_x_binary, val_y_binary, train_y_binary, train_x_binary
 
   def predict_matrix_score(self, x, transform_batch_size=512,
       predict_batch_size=1024, **kwargs):
@@ -244,7 +252,7 @@ class EnsembleOVOTransformODModel(TransformODModel):
       t_mdl_ind_y = x_y_tuple[1]
       ind_x_pred_model_t_x_queal_to_t_ind = \
         np.where(y_transformed == t_mdl_ind_y)[0]
-      x_pred_model_x_t_ind = self.models_list[model_t_x][t_mdl_ind_y].predict(
+      x_pred_model_x_t_ind = self.models_list[model_t_x][t_mdl_ind_y].predict_tf(
           x_transformed[ind_x_pred_model_t_x_queal_to_t_ind],
           batch_size=predict_batch_size, **kwargs)
       matrix_scores[:, model_t_x, t_mdl_ind_y] += x_pred_model_x_t_ind[:, 0]
@@ -285,6 +293,16 @@ class EnsembleOVOTransformODModel(TransformODModel):
           observed_dirichlet, x_eval_p)
     diri_scores /= n_transforms
     return matrix_scores_eval, diri_scores
+
+  def load_model_weights(self, checkpoints_folder):
+    for x_y_tuple in tqdm(self.models_index_tuples):
+      model_ind_x = x_y_tuple[0]
+      t_mdl_ind_y = x_y_tuple[1]
+      weights_name = 'final_weights_modelx%iy%i.h5' % (model_ind_x, t_mdl_ind_y)
+      weights_path = os.path.join(checkpoints_folder, weights_name)
+      self.models_list[model_ind_x][t_mdl_ind_y].load_weights(weights_path)
+
+
 
 
 if __name__ == '__main__':
