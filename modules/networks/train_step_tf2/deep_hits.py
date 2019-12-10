@@ -47,9 +47,9 @@ class DeepHits(tf.keras.Model):
     self.train_loss = tf.keras.metrics.Mean(name='train_loss')
     self.train_accuracy = tf.keras.metrics.CategoricalAccuracy(
         name='train_accuracy')
-    # self.val_loss = tf.keras.metrics.Mean(name='val_loss')
-    # self.val_accuracy = tf.keras.metrics.CategoricalAccuracy(
-    #     name='val_accuracy')
+    self.val_loss = tf.keras.metrics.Mean(name='val_loss')
+    self.val_accuracy = tf.keras.metrics.CategoricalAccuracy(
+        name='val_accuracy')
 
   def call(self, input_tensor, training=False):
     x = self.zp(input_tensor)
@@ -80,15 +80,8 @@ class DeepHits(tf.keras.Model):
       loss = self.loss_object(labels, predictions)
     gradients = tape.gradient(loss, self.trainable_variables)
     self.optimizer.apply_gradients(zip(gradients, self.trainable_variables))
-    self.train_loss(loss)
-    self.train_accuracy(labels, predictions)
-
-  @tf.function
-  def test_step(self, images, labels):
-    predictions = self.call(images, training=False)
-    t_loss = self.loss_object(labels, predictions)
-    self.val_loss(t_loss)
-    self.val_accuracy(labels, predictions)
+    # self.train_loss(loss)
+    # self.train_accuracy(labels, predictions)
 
   @tf.function
   def eval_step(self, images, labels, eval_loss, eval_acc):
@@ -107,39 +100,49 @@ class DeepHits(tf.keras.Model):
       for images, labels in train_ds:
         self.train_step(images, labels)
       if kwargs['verbose']:
+        self.eval_step(images, labels, self.train_loss,
+                       self.train_accuracy)
         template = 'Epoch {}, Loss: {}, Acc: {}, Time: {}'
         print(template.format(epoch + 1,
                               self.train_loss.result(),
                               self.train_accuracy.result() * 100,
                               delta_timer(time.time() - start_time)
                               ))
-      self.train_loss.reset_states()
-      self.train_accuracy.reset_states()
+        self.train_loss.reset_states()
+        self.train_accuracy.reset_states()
+        self.eval_tf(x,y, verbose=kwargs['verbose'])
 
   def fit_tf_val(self, x, y, validation_data=None, batch_size=128, epochs=1,
-      **kwargs):
+      iterations_to_validate=None, **kwargs):
+    if iterations_to_validate is None:
+      iterations_to_validate = len(y)//batch_size
     train_ds = tf.data.Dataset.from_tensor_slices(
         (x, y)).shuffle(10000).batch(batch_size)
     val_ds = tf.data.Dataset.from_tensor_slices(
         (validation_data[0], validation_data[1])).batch(1024)
     for epoch in range(epochs):
       start_time = time.time()
-      for images, labels in train_ds:
+      for it_i, (images, labels) in enumerate(train_ds):
         self.train_step(images, labels)
-      for test_images, test_labels in val_ds:
-        self.test_step(test_images, test_labels)
-
-      if kwargs['verbose']:
-        template = 'Epoch {}, Loss: {}, Acc: {}, Val loss: {}, Val acc: {}, Time: {}'
-        print(template.format(epoch + 1,
-                              self.train_loss.result(),
-                              self.train_accuracy.result() * 100,
-                              self.val_loss.result(),
-                              self.val_accuracy.result() * 100,
-                              delta_timer(time.time() - start_time)
-                              ))
-      self.train_loss.reset_states()
-      self.train_accuracy.reset_states()
+        if it_i%iterations_to_validate==0:
+          for test_images, test_labels in val_ds:
+            self.eval_step(test_images, test_labels, self.val_loss,
+                           self.val_accuracy)
+          self.eval_step(images, labels, self.train_loss,
+                         self.train_accuracy)
+          if kwargs['verbose']:
+            template = 'Epoch {}, Loss: {}, Acc: {}, Val loss: {}, Val acc: {}, Time: {}'
+            print(template.format(epoch + 1,
+                                  self.train_loss.result(),
+                                  self.train_accuracy.result() * 100,
+                                  self.val_loss.result(),
+                                  self.val_accuracy.result() * 100,
+                                  delta_timer(time.time() - start_time)
+                                  ))
+          self.train_loss.reset_states()
+          self.train_accuracy.reset_states()
+          self.val_loss.reset_states()
+          self.val_accuracy.reset_states()
 
   def predict_tf(self, x, batch_size=1024, **kwargs):
     eval_ds = tf.data.Dataset.from_tensor_slices((x)).batch(batch_size)
@@ -190,8 +193,9 @@ if __name__ == '__main__':
   data_loader = HiTSOutlierLoader(hits_params)
   (x_train, y_train), (x_val, y_val), (
     x_test, y_test) = data_loader.get_outlier_detection_datasets()
-  transformer = transformations_tf.KernelTransformer(
-      flips=True, gauss=False, log=False)
+  # transformer = transformations_tf.KernelTransformer(
+  #     flips=True, gauss=False, log=False)
+  transformer = transformations_tf.Transformer()
   x_train_transformed, transformations_inds = transformer.apply_all_transforms(
       x_train)
   x_val_transformed, transformations_inds_val = transformer.apply_all_transforms(
@@ -199,20 +203,20 @@ if __name__ == '__main__':
   mdl = DeepHits(input_shape=x_train.shape[1:],
                  n_classes=transformer.n_transforms)
   mdl.fit_tf(x_train_transformed, to_categorical(transformations_inds),
-             verbose=1,
-             epochs=1, batch_size=100, validation_data=(
+             verbose=1, iterations_to_validate=100,
+             epochs=2, batch_size=128, validation_data=(
       x_val_transformed, to_categorical(transformations_inds_val)))
   mdl.eval_tf(x_train_transformed, to_categorical(transformations_inds),
               verbose=1)
-  mdl.save_weights('dummy.h5')
-  print(mdl.layers)
-  del mdl
-  mdl = DeepHits(input_shape=x_train.shape[1:],
-                 n_classes=transformer.n_transforms)
-  # mdl.build((None,) + x_train.shape[1:])
-  print(mdl.layers)
-  mdl.eval_tf(x_train_transformed, to_categorical(transformations_inds),
-              verbose=1)
-  mdl.load_weights('dummy.h5')
-  mdl.eval_tf(x_train_transformed, to_categorical(transformations_inds),
-              verbose=1)
+  # mdl.save_weights('dummy.h5')
+  # print(mdl.layers)
+  # del mdl
+  # mdl = DeepHits(input_shape=x_train.shape[1:],
+  #                n_classes=transformer.n_transforms)
+  # # mdl.build((None,) + x_train.shape[1:])
+  # print(mdl.layers)
+  # mdl.eval_tf(x_train_transformed, to_categorical(transformations_inds),
+  #             verbose=1)
+  # mdl.load_weights('dummy.h5')
+  # mdl.eval_tf(x_train_transformed, to_categorical(transformations_inds),
+  #             verbose=1)

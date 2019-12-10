@@ -142,9 +142,9 @@ class EnsembleOVOTransformODModel(TransformODModel):
       # if model_ind_x >= t_mdl_ind_y:
       #   raise ValueError('Condition not met!')
       #   continue
-      model.compile(
-          general_keys.ADAM, general_keys.CATEGORICAL_CROSSENTROPY,
-          [general_keys.ACC])
+      # model.compile(
+      #     general_keys.ADAM, general_keys.CATEGORICAL_CROSSENTROPY,
+      #     [general_keys.ACC])
       # separate inliers as an specific transform an the rest as outlier for an specific classifier, balance by replication
       transform_x_ind_to_train = model_ind_x
       # this to be class 1
@@ -202,9 +202,9 @@ class EnsembleOVOTransformODModel(TransformODModel):
       # if model_ind_x >= t_mdl_ind_y:
       #   raise ValueError('Condition not met!')
       #   continue
-      model_y.compile(
-          general_keys.ADAM, general_keys.CATEGORICAL_CROSSENTROPY,
-          [general_keys.ACC])
+      # model_y.compile(
+      #     general_keys.ADAM, general_keys.CATEGORICAL_CROSSENTROPY,
+      #     [general_keys.ACC])
       # separate inliers as an specific transform an the rest as outlier for an specific classifier, balance by replication
       transform_x_ind_to_train = model_ind_x
       # this to be class 1
