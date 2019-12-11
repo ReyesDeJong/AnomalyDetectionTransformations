@@ -14,6 +14,7 @@ sys.path.append(PROJECT_PATH)
 from modules.utils import delta_timer
 import time
 import numpy as np
+from parameters import loader_keys, general_keys
 
 
 class DeepHits(tf.keras.Model):
@@ -110,12 +111,12 @@ class DeepHits(tf.keras.Model):
                               ))
         self.train_loss.reset_states()
         self.train_accuracy.reset_states()
-        self.eval_tf(x,y, verbose=kwargs['verbose'])
+        self.eval_tf(x, y, verbose=kwargs['verbose'])
 
   def fit_tf_val(self, x, y, validation_data=None, batch_size=128, epochs=1,
-      iterations_to_validate=None, **kwargs):
+      iterations_to_validate=None, verbose=0):
     if iterations_to_validate is None:
-      iterations_to_validate = len(y)//batch_size
+      iterations_to_validate = len(y) // batch_size
     train_ds = tf.data.Dataset.from_tensor_slices(
         (x, y)).shuffle(10000).batch(batch_size)
     val_ds = tf.data.Dataset.from_tensor_slices(
@@ -124,13 +125,13 @@ class DeepHits(tf.keras.Model):
       start_time = time.time()
       for it_i, (images, labels) in enumerate(train_ds):
         self.train_step(images, labels)
-        if it_i%iterations_to_validate==0:
+        if it_i % iterations_to_validate == 0:
           for test_images, test_labels in val_ds:
             self.eval_step(test_images, test_labels, self.val_loss,
                            self.val_accuracy)
           self.eval_step(images, labels, self.train_loss,
                          self.train_accuracy)
-          if kwargs['verbose']:
+          if verbose:
             template = 'Epoch {}, Loss: {}, Acc: {}, Val loss: {}, Val acc: {}, Time: {}'
             print(template.format(epoch + 1,
                                   self.train_loss.result(),
@@ -144,14 +145,14 @@ class DeepHits(tf.keras.Model):
           self.val_loss.reset_states()
           self.val_accuracy.reset_states()
 
-  def predict_tf(self, x, batch_size=1024, **kwargs):
+  def predict_tf(self, x, batch_size=1024):
     eval_ds = tf.data.Dataset.from_tensor_slices((x)).batch(batch_size)
     predictions = []
     for images in eval_ds:
       predictions.append(self.call(images))
     return np.concatenate(predictions, axis=0)
 
-  def eval_tf(self, x, y, batch_size=1024, **kwargs):
+  def eval_tf(self, x, y, batch_size=1024, verbose=0):
     eval_loss = tf.keras.metrics.Mean(name='eval_loss')
     eval_accuracy = tf.keras.metrics.CategoricalAccuracy(
         name='eval_accuracy')
@@ -160,17 +161,18 @@ class DeepHits(tf.keras.Model):
     start_time = time.time()
     for images, labels in train_ds:
       self.eval_step(images, labels, eval_loss, eval_accuracy)
-    if kwargs['verbose']:
+    if verbose:
       template = 'Loss: {}, Acc: {}, Time: {}'
       print(template.format(
           eval_loss.result(),
           eval_accuracy.result() * 100,
           delta_timer(time.time() - start_time)
       ))
+    return {general_keys.LOSS: eval_loss.result(),
+            general_keys.ACCURACY: eval_accuracy.result()}
 
 
 if __name__ == '__main__':
-  from parameters import loader_keys, general_keys
   from modules.geometric_transform import transformations_tf
   from modules.data_loaders.hits_outlier_loader import HiTSOutlierLoader
   from tensorflow.keras.utils import to_categorical

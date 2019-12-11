@@ -274,8 +274,9 @@ class SimpleTransformer(AbstractTransformer):
 
   def _create_transformation_list(self):
     transformation_list = []
-    for is_flip, k_rotate in itertools.product((False, True),
-                                               range(4)):
+    self.tranformation_to_perform = list(itertools.product((False, True),
+                                               range(4)))
+    for is_flip, k_rotate in self.tranformation_to_perform:
       transformation = AffineTransformation(is_flip, 0, 0, k_rotate)
       transformation_list.append(transformation)
 
@@ -292,10 +293,11 @@ class TransTransformer(AbstractTransformer):
 
   def _create_transformation_list(self):
     transformation_list = []
-    for tx, ty in itertools.product(
+    self.tranformation_to_perform = list(itertools.product(
         (0, -self.max_tx, self.max_tx),
         (0, -self.max_ty, self.max_ty),
-    ):
+    ))
+    for tx, ty in self.tranformation_to_perform:
       transformation = AffineTransformation(False, tx, ty, 0)
       transformation_list.append(transformation)
 
@@ -331,13 +333,14 @@ class KernelTransformer(AbstractTransformer):
 
   def _create_transformation_list(self):
     transformation_list = []
-    for is_flip, tx, ty, k_rotate, is_gauss, is_log in itertools.product(
+    self.tranformation_to_perform = list(itertools.product(
         self.iterable_flips,
         self.iterable_tx,
         self.iterable_ty,
         self.iterable_rot,
         self.iterable_gauss,
-        self.iterable_log):
+        self.iterable_log))
+    for is_flip, tx, ty, k_rotate, is_gauss, is_log in self.tranformation_to_perform:
       transformation = KernelTransformation(is_flip, tx, ty, k_rotate, is_gauss,
                                             is_log)
       transformation_list.append(transformation)

@@ -17,6 +17,7 @@ import numpy as np
 from modules import utils, dirichlet_utils
 import datetime
 from tqdm import tqdm
+from tensorflow.keras.utils import to_categorical
 from models.transformer_od import TransformODModel
 import itertools
 
@@ -66,21 +67,6 @@ class EnsembleOVOTransformODModel(TransformODModel):
   #   return tf.stack(output, axis=-1)
 
   def _get_model_list(self, input_shape, depth, widen_factor, **kwargs):
-    models_list = []
-    for transform_idx_x in range(self.transformer.n_transforms):
-      models_list_x = []
-      for transform_idx_y in range(self.transformer.n_transforms):
-        if transform_idx_x >= transform_idx_y:
-          models_list_x.append(None)
-          continue
-        network = WideResidualNetwork(
-            input_shape=input_shape, n_classes=2,
-            depth=depth, widen_factor=widen_factor, **kwargs)
-        models_list_x.append(network)
-      models_list.append(models_list_x)
-    return models_list
-
-  def _get_n_models(self, input_shape, depth, widen_factor, **kwargs):
     models_list = []
     for transform_idx_x in range(self.transformer.n_transforms):
       models_list_x = []
@@ -266,11 +252,31 @@ class EnsembleOVOTransformODModel(TransformODModel):
     # del x_transformed, y_transformed
     return self._post_process_matrix_score(matrix_scores)
 
+  def get_acc_matrix(self, x, transform_batch_size=512,
+      predict_batch_size=1024, **kwargs):
+    print('\nPredicting Acc Matrix\n')
+    n_transforms = self.transformer.n_transforms
+    x_transformed, y_transformed = self.transformer.apply_all_transforms(
+        x, transform_batch_size)
+    matrix_scores = np.zeros((n_transforms, n_transforms))
+    for x_y_tuple in tqdm(self.models_index_tuples):
+      model_t_x = x_y_tuple[0]
+      t_mdl_ind_y = x_y_tuple[1]
+      x_binary, y_binary = self._get_binary_data(
+          x_transformed, y_transformed, model_t_x, t_mdl_ind_y)
+      acc_model_x_t_ind = self.models_list[model_t_x][
+        t_mdl_ind_y].eval_tf(
+          x_binary, to_categorical(y_binary), predict_batch_size)[
+        general_keys.ACCURACY]
+      matrix_scores[model_t_x, t_mdl_ind_y] += acc_model_x_t_ind
+    # del x_transformed, y_transformed
+    return self._post_process_matrix_score(matrix_scores)
+
   def _post_process_matrix_score(self, matrix_score):
     """fill diagonal with 1- mean of row, and triangle bottom with reflex of
     up"""
-    for i_x in range(matrix_score.shape[1]):
-      for i_y in range(matrix_score.shape[2]):
+    for i_x in range(matrix_score.shape[-2]):
+      for i_y in range(matrix_score.shape[-1]):
         if i_x == i_y:
           matrix_score[:, i_x, i_y] = 1 - np.mean(matrix_score[:, i_x, :],
                                                   axis=-1)
@@ -307,10 +313,10 @@ class EnsembleOVOTransformODModel(TransformODModel):
       model_ind_x = x_y_tuple[0]
       t_mdl_ind_y = x_y_tuple[1]
       weights_name = 'final_weights_modelx%iy%i.ckpt' % (
-      model_ind_x, t_mdl_ind_y)
+        model_ind_x, t_mdl_ind_y)
       weights_path = os.path.join(checkpoints_folder, weights_name)
       self.models_list[model_ind_x][t_mdl_ind_y].load_weights(
-        weights_path).expect_partial()
+          weights_path).expect_partial()
 
 
 if __name__ == '__main__':
