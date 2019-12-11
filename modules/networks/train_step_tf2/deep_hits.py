@@ -193,9 +193,9 @@ if __name__ == '__main__':
   data_loader = HiTSOutlierLoader(hits_params)
   (x_train, y_train), (x_val, y_val), (
     x_test, y_test) = data_loader.get_outlier_detection_datasets()
-  # transformer = transformations_tf.KernelTransformer(
-  #     flips=True, gauss=False, log=False)
-  transformer = transformations_tf.Transformer()
+  transformer = transformations_tf.KernelTransformer(
+      flips=True, gauss=False, log=False)
+  # transformer = transformations_tf.Transformer()
   x_train_transformed, transformations_inds = transformer.apply_all_transforms(
       x_train)
   x_val_transformed, transformations_inds_val = transformer.apply_all_transforms(
@@ -204,19 +204,19 @@ if __name__ == '__main__':
                  n_classes=transformer.n_transforms)
   mdl.fit_tf(x_train_transformed, to_categorical(transformations_inds),
              verbose=1, iterations_to_validate=100,
-             epochs=2, batch_size=128, validation_data=(
+             epochs=1, batch_size=128, validation_data=(
       x_val_transformed, to_categorical(transformations_inds_val)))
   mdl.eval_tf(x_train_transformed, to_categorical(transformations_inds),
               verbose=1)
-  # mdl.save_weights('dummy.h5')
-  # print(mdl.layers)
-  # del mdl
-  # mdl = DeepHits(input_shape=x_train.shape[1:],
-  #                n_classes=transformer.n_transforms)
+  mdl.save_weights('dummy.ckpt')
+  print(mdl.layers)
+  del mdl
+  mdl = DeepHits(input_shape=x_train.shape[1:],
+                 n_classes=transformer.n_transforms)
   # # mdl.build((None,) + x_train.shape[1:])
-  # print(mdl.layers)
+  print(mdl.layers)
   # mdl.eval_tf(x_train_transformed, to_categorical(transformations_inds),
   #             verbose=1)
-  # mdl.load_weights('dummy.h5')
-  # mdl.eval_tf(x_train_transformed, to_categorical(transformations_inds),
-  #             verbose=1)
+  mdl.load_weights('dummy.ckpt').expect_partial()
+  mdl.eval_tf(x_train_transformed, to_categorical(transformations_inds),
+              verbose=1)

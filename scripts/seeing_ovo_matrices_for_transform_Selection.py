@@ -48,18 +48,18 @@ def hits4c_tr18():
       data_loader, transformer=transformer, input_shape=x_train.shape[1:],
       results_folder_name='transform_selection_1')
   mdl.fit(x_train, x_val, train_batch_size=1024, verbose=0)
-  # train_matrix_scores = mdl.predict_matrix_score(
-  #     x_train, transform_batch_size=1024)
-  # val_matrix_scores = mdl.predict_matrix_score(
-  #     x_val, transform_batch_size=1024)
-  # test_outlier_matrix_scores = mdl.predict_matrix_score(
-  #     x_test[y_test == 0], transform_batch_size=1024)
-  # utils.save_pickle(train_matrix_scores, os.path.join(
-  #     mdl.main_model_path, 'train_matrix_scores_translations+flip(18)_train_step.pkl'))
-  # utils.save_pickle(val_matrix_scores, os.path.join(
-  #     mdl.main_model_path, 'val_matrix_scores_translations+flip(18)_train_step.pkl'))
-  # utils.save_pickle(test_outlier_matrix_scores, os.path.join(
-  #     mdl.main_model_path, 'test_matrix_scores_translations+flip(18)_train_step.pkl'))
+  train_matrix_scores = mdl.predict_matrix_score(
+      x_train, transform_batch_size=1024)
+  val_matrix_scores = mdl.predict_matrix_score(
+      x_val, transform_batch_size=1024)
+  test_outlier_matrix_scores = mdl.predict_matrix_score(
+      x_test[y_test == 0], transform_batch_size=1024)
+  utils.save_pickle(train_matrix_scores, os.path.join(
+      mdl.main_model_path, 'train_matrix_scores_translations+flip(18)_train_step.pkl'))
+  utils.save_pickle(val_matrix_scores, os.path.join(
+      mdl.main_model_path, 'val_matrix_scores_translations+flip(18)_train_step.pkl'))
+  utils.save_pickle(test_outlier_matrix_scores, os.path.join(
+      mdl.main_model_path, 'test_matrix_scores_translations+flip(18)_train_step.pkl'))
 
 
 def hits4c():
@@ -84,18 +84,18 @@ def hits4c():
       data_loader, transformer=transformer, input_shape=x_train.shape[1:],
       results_folder_name='transform_selection_2')
   mdl.fit(x_train, x_val, train_batch_size=1024, verbose=0)
-  # train_matrix_scores = mdl.predict_matrix_score(
-  #     x_train, transform_batch_size=1024)
-  # val_matrix_scores = mdl.predict_matrix_score(
-  #     x_val, transform_batch_size=1024)
-  # test_outlier_matrix_scores = mdl.predict_matrix_score(
-  #     x_test[y_test == 0], transform_batch_size=1024)
-  # utils.save_pickle(train_matrix_scores, os.path.join(
-  #     mdl.main_model_path, 'train_matrix_scores_72.pkl'))
-  # utils.save_pickle(val_matrix_scores, os.path.join(
-  #     mdl.main_model_path, 'val_matrix_scores_72.pkl'))
-  # utils.save_pickle(test_outlier_matrix_scores, os.path.join(
-  #     mdl.main_model_path, 'test_matrix_scores_72.pkl'))
+  train_matrix_scores = mdl.predict_matrix_score(
+      x_train, transform_batch_size=1024)
+  val_matrix_scores = mdl.predict_matrix_score(
+      x_val, transform_batch_size=1024)
+  test_outlier_matrix_scores = mdl.predict_matrix_score(
+      x_test[y_test == 0], transform_batch_size=1024)
+  utils.save_pickle(train_matrix_scores, os.path.join(
+      mdl.main_model_path, 'train_matrix_scores_72.pkl'))
+  utils.save_pickle(val_matrix_scores, os.path.join(
+      mdl.main_model_path, 'val_matrix_scores_72.pkl'))
+  utils.save_pickle(test_outlier_matrix_scores, os.path.join(
+      mdl.main_model_path, 'test_matrix_scores_72.pkl'))
 
 
 def hits1c():
@@ -120,18 +120,18 @@ def hits1c():
       data_loader, transformer=transformer, input_shape=x_train.shape[1:],
       results_folder_name='transform_selection_3')
   mdl.fit(x_train, x_val, train_batch_size=1024, verbose=0)
-  # train_matrix_scores = mdl.predict_matrix_score(
-  #     x_train, transform_batch_size=1024)
-  # val_matrix_scores = mdl.predict_matrix_score(
-  #     x_val, transform_batch_size=1024)
-  # test_outlier_matrix_scores = mdl.predict_matrix_score(
-  #     x_test[y_test == 0], transform_batch_size=1024)
-  # utils.save_pickle(train_matrix_scores, os.path.join(
-  #     mdl.main_model_path, 'train_matrix_scores_72_1c.pkl'))
-  # utils.save_pickle(val_matrix_scores, os.path.join(
-  #     mdl.main_model_path, 'val_matrix_scores_72_1c.pkl'))
-  # utils.save_pickle(test_outlier_matrix_scores, os.path.join(
-  #     mdl.main_model_path, 'test_matrix_scores_72_1c.pkl'))
+  train_matrix_scores = mdl.predict_matrix_score(
+      x_train, transform_batch_size=1024)
+  val_matrix_scores = mdl.predict_matrix_score(
+      x_val, transform_batch_size=1024)
+  test_outlier_matrix_scores = mdl.predict_matrix_score(
+      x_test[y_test == 0], transform_batch_size=1024)
+  utils.save_pickle(train_matrix_scores, os.path.join(
+      mdl.main_model_path, 'train_matrix_scores_72_1c.pkl'))
+  utils.save_pickle(val_matrix_scores, os.path.join(
+      mdl.main_model_path, 'val_matrix_scores_72_1c.pkl'))
+  utils.save_pickle(test_outlier_matrix_scores, os.path.join(
+      mdl.main_model_path, 'test_matrix_scores_72_1c.pkl'))
 
 
 if __name__ == '__main__':
@@ -139,6 +139,7 @@ if __name__ == '__main__':
   for gpu in gpus:
     tf.config.experimental.set_memory_growth(gpu, True)
 
+  hits4c_tr18()
   hits1c()
   hits4c()
-  hits4c_tr18()
+

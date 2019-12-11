@@ -54,7 +54,8 @@ if __name__ == '__main__':
   import time
   weights_path = os.path.join(
       PROJECT_PATH,
-      'results/transform_selection_1/Ensemble_OVO_Transformer_OD_Simple_Model/Kernel_transformer/Ensemble_OVO_Transformer_OD_Simple_Model_20191209-213324',
+      # 'results/transform_selection_1/Ensemble_OVO_Transformer_OD_Simple_Model/Kernel_transformer/Ensemble_OVO_Transformer_OD_Simple_Model_20191210-184335',
+      'results/transform_selection_2/Ensemble_OVO_Transformer_OD_Simple_Model/72_transformer/Ensemble_OVO_Transformer_OD_Simple_Model_20191210-174727',
       # 'results/transform_selection_3/Ensemble_OVO_Transformer_OD_Simple_Model',
       # '72_transformer/Ensemble_OVO_Transformer_OD_Simple_Model_20191209-192752',
       'checkpoints'
@@ -77,16 +78,17 @@ if __name__ == '__main__':
   data_loader = HiTSOutlierLoader(hits_params)
   (x_train, y_train), (x_val, y_val), (
     x_test, y_test) = data_loader.get_outlier_detection_datasets()
-  # transformer = transformations_tf.Transformer()
-  transformer = transformations_tf.KernelTransformer(
-      flips=True, gauss=False, log=False)
+  transformer = transformations_tf.Transformer()
+  # transformer = transformations_tf.KernelTransformer(
+  #     flips=True, gauss=False, log=False)
   mdl = EnsembleOVOTransformODSimpleModel(
       data_loader=data_loader, transformer=transformer,
       input_shape=x_train.shape[1:])
-  mdl.build_models()
+  # mdl.build_models()
   mdl.load_model_weights(weights_path)
   train_matrix_scores = mdl.predict_matrix_score(
       x_train, transform_batch_size=1024)
+
   # test_outlier_matrix_scores = mdl.predict_matrix_score(
   #     x_test[y_test==0], transform_batch_size=1024)
 

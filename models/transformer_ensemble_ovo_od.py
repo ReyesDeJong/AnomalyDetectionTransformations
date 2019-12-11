@@ -106,6 +106,7 @@ class EnsembleOVOTransformODModel(TransformODModel):
           [general_keys.ACC])
 
   def build_models(self):
+    print('Building Models')
     for x_y_tuple in tqdm(self.models_index_tuples):
       model_ind_x = x_y_tuple[0]
       t_mdl_ind_y = x_y_tuple[1]
@@ -125,14 +126,13 @@ class EnsembleOVOTransformODModel(TransformODModel):
 
   def _large_model_fit(self, x_train, x_val, transform_batch_size,
       train_batch_size, epochs, **kwargs):
-    del self.models_list
+    print('Fit')
     x_train_transform, y_train_transform = \
       self.transformer.apply_all_transforms(
           x=x_train, batch_size=transform_batch_size)
     x_val_transform, y_val_transform = \
       self.transformer.apply_all_transforms(
           x=x_val, batch_size=transform_batch_size)
-    print('large Fit')
     for x_y_tuple in tqdm(self.models_index_tuples):
       model_ind_x = x_y_tuple[0]
       t_mdl_ind_y = x_y_tuple[1]
@@ -174,75 +174,78 @@ class EnsembleOVOTransformODModel(TransformODModel):
           batch_size=train_batch_size,
           epochs=epochs, callbacks=callbacks, **kwargs)
       weight_path = os.path.join(self.checkpoint_folder,
-                                 'final_weights_modelx%iy%i.h5' % (
+                                 'final_weights_modelx%iy%i.ckpt' % (
                                    model_ind_x, t_mdl_ind_y))
       # print(os.path.abspath(weight_path))
       # TODO: what happens if y do self.save_weights??
       model.save_weights(weight_path)
       del model, validation_data, val_x_binary, val_y_binary, train_y_binary, train_x_binary
+    self.load_model_weights(self.checkpoint_folder)
 
   def fit(self, x_train, x_val, transform_batch_size=512, train_batch_size=128,
       epochs=2, **kwargs):
+    """Large fit always happens"""
     self.create_specific_model_paths()
-    if len(self.models_index_tuples) > 500:
+    if len(self.models_index_tuples) > 0:
       return self._large_model_fit(
           x_train, x_val, transform_batch_size, train_batch_size, epochs,
           **kwargs)
-    # transforming data
-    x_train_transform, y_train_transform = \
-      self.transformer.apply_all_transforms(
-          x=x_train, batch_size=transform_batch_size)
-    x_val_transform, y_val_transform = \
-      self.transformer.apply_all_transforms(
-          x=x_val, batch_size=transform_batch_size)
-    for x_y_tuple in tqdm(self.models_index_tuples):
-      model_ind_x = x_y_tuple[0]
-      t_mdl_ind_y = x_y_tuple[1]
-      model_y = self.models_list[model_ind_x][t_mdl_ind_y]
-      # if model_ind_x >= t_mdl_ind_y:
-      #   raise ValueError('Condition not met!')
-      #   continue
-      # model_y.compile(
-      #     general_keys.ADAM, general_keys.CATEGORICAL_CROSSENTROPY,
-      #     [general_keys.ACC])
-      # separate inliers as an specific transform an the rest as outlier for an specific classifier, balance by replication
-      transform_x_ind_to_train = model_ind_x
-      # this to be class 1
-      transform_y_ind_to_train = t_mdl_ind_y
-      train_x_binary, train_y_binary = self._get_binary_data(
-          x_train_transform, y_train_transform, transform_x_ind_to_train,
-          transform_y_ind_to_train)
-      val_x_binary, val_y_binary = self._get_binary_data(
-          x_val_transform, y_val_transform, transform_x_ind_to_train,
-          transform_y_ind_to_train)
-      # print('Training Model x%i (0) y%i (1)' % (model_ind_x, t_mdl_ind_y))
-      # print('Train_size: ', np.unique(train_y_binary, return_counts=True))
-      # print('Val_size: ', np.unique(val_y_binary, return_counts=True))
-      es = tf.keras.callbacks.EarlyStopping(
-          monitor='val_loss', mode='min', patience=0,
-          restore_best_weights=True, **kwargs)
-      callbacks = [es]
-      validation_data = (
-        val_x_binary, tf.keras.utils.to_categorical(val_y_binary))
-      if epochs < 3:
-        callbacks = None
-        validation_data = None
-      model_y.fit_tf(
-          x=train_x_binary,
-          y=tf.keras.utils.to_categorical(train_y_binary),
-          validation_data=validation_data,
-          batch_size=train_batch_size,
-          epochs=epochs, callbacks=callbacks, **kwargs)
-      weight_path = os.path.join(self.checkpoint_folder,
-                                 'final_weights_modelx%iy%i.h5' % (
-                                   model_ind_x, t_mdl_ind_y))
-
-      # TODO: what happens if y do self.save_weights??
-      model_y.save_weights(weight_path)
-      # del model_y, validation_data, val_x_binary, val_y_binary, train_y_binary, train_x_binary
+    # # transforming data
+    # x_train_transform, y_train_transform = \
+    #   self.transformer.apply_all_transforms(
+    #       x=x_train, batch_size=transform_batch_size)
+    # x_val_transform, y_val_transform = \
+    #   self.transformer.apply_all_transforms(
+    #       x=x_val, batch_size=transform_batch_size)
+    # for x_y_tuple in tqdm(self.models_index_tuples):
+    #   model_ind_x = x_y_tuple[0]
+    #   t_mdl_ind_y = x_y_tuple[1]
+    #   model_y = self.models_list[model_ind_x][t_mdl_ind_y]
+    #   # if model_ind_x >= t_mdl_ind_y:
+    #   #   raise ValueError('Condition not met!')
+    #   #   continue
+    #   # model_y.compile(
+    #   #     general_keys.ADAM, general_keys.CATEGORICAL_CROSSENTROPY,
+    #   #     [general_keys.ACC])
+    #   # separate inliers as an specific transform an the rest as outlier for an specific classifier, balance by replication
+    #   transform_x_ind_to_train = model_ind_x
+    #   # this to be class 1
+    #   transform_y_ind_to_train = t_mdl_ind_y
+    #   train_x_binary, train_y_binary = self._get_binary_data(
+    #       x_train_transform, y_train_transform, transform_x_ind_to_train,
+    #       transform_y_ind_to_train)
+    #   val_x_binary, val_y_binary = self._get_binary_data(
+    #       x_val_transform, y_val_transform, transform_x_ind_to_train,
+    #       transform_y_ind_to_train)
+    #   # print('Training Model x%i (0) y%i (1)' % (model_ind_x, t_mdl_ind_y))
+    #   # print('Train_size: ', np.unique(train_y_binary, return_counts=True))
+    #   # print('Val_size: ', np.unique(val_y_binary, return_counts=True))
+    #   es = tf.keras.callbacks.EarlyStopping(
+    #       monitor='val_loss', mode='min', patience=0,
+    #       restore_best_weights=True, **kwargs)
+    #   callbacks = [es]
+    #   validation_data = (
+    #     val_x_binary, tf.keras.utils.to_categorical(val_y_binary))
+    #   if epochs < 3:
+    #     callbacks = None
+    #     validation_data = None
+    #   model_y.fit_tf(
+    #       x=train_x_binary,
+    #       y=tf.keras.utils.to_categorical(train_y_binary),
+    #       validation_data=validation_data,
+    #       batch_size=train_batch_size,
+    #       epochs=epochs, callbacks=callbacks, **kwargs)
+    #   weight_path = os.path.join(self.checkpoint_folder,
+    #                              'final_weights_modelx%iy%i.ckpt' % (
+    #                                model_ind_x, t_mdl_ind_y))
+    #
+    #   # TODO: what happens if y do self.save_weights??
+    #   model_y.save_weights(weight_path)
+    #   # del model_y, validation_data, val_x_binary, val_y_binary, train_y_binary, train_x_binary
 
   def predict_matrix_score(self, x, transform_batch_size=512,
       predict_batch_size=1024, **kwargs):
+    print('\nPredicting Matrix Score\n')
     n_transforms = self.transformer.n_transforms
     x_transformed, y_transformed = self.transformer.apply_all_transforms(
         x, transform_batch_size)
@@ -252,11 +255,12 @@ class EnsembleOVOTransformODModel(TransformODModel):
       t_mdl_ind_y = x_y_tuple[1]
       ind_x_pred_model_t_x_queal_to_t_ind = \
         np.where(y_transformed == t_mdl_ind_y)[0]
-      x_pred_model_x_t_ind = self.models_list[model_t_x][t_mdl_ind_y].predict_tf(
+      x_pred_model_x_t_ind = self.models_list[model_t_x][
+        t_mdl_ind_y].predict_tf(
           x_transformed[ind_x_pred_model_t_x_queal_to_t_ind],
           batch_size=predict_batch_size, **kwargs)
       matrix_scores[:, model_t_x, t_mdl_ind_y] += x_pred_model_x_t_ind[:, 0]
-    del x_transformed, y_transformed
+    # del x_transformed, y_transformed
     return self._post_process_matrix_score(matrix_scores)
 
   def _post_process_matrix_score(self, matrix_score):
@@ -295,14 +299,15 @@ class EnsembleOVOTransformODModel(TransformODModel):
     return matrix_scores_eval, diri_scores
 
   def load_model_weights(self, checkpoints_folder):
+    print('\nLoading Models\n')
     for x_y_tuple in tqdm(self.models_index_tuples):
       model_ind_x = x_y_tuple[0]
       t_mdl_ind_y = x_y_tuple[1]
-      weights_name = 'final_weights_modelx%iy%i.h5' % (model_ind_x, t_mdl_ind_y)
+      weights_name = 'final_weights_modelx%iy%i.ckpt' % (
+      model_ind_x, t_mdl_ind_y)
       weights_path = os.path.join(checkpoints_folder, weights_name)
-      self.models_list[model_ind_x][t_mdl_ind_y].load_weights(weights_path)
-
-
+      self.models_list[model_ind_x][t_mdl_ind_y].load_weights(
+        weights_path).expect_partial()
 
 
 if __name__ == '__main__':
