@@ -255,10 +255,13 @@ class EnsembleOVOTransformODModel(TransformODModel):
       t_mdl_ind_y = x_y_tuple[1]
       ind_x_pred_model_t_x_queal_to_t_ind = \
         np.where(y_transformed == t_mdl_ind_y)[0]
+      # x_pred_model_x_t_ind = self.models_list[model_t_x][
+      #   t_mdl_ind_y].predict_tf(
+      #     x_transformed[ind_x_pred_model_t_x_queal_to_t_ind],
+      #     batch_size=predict_batch_size, **kwargs)
       x_pred_model_x_t_ind = self.models_list[model_t_x][
-        t_mdl_ind_y].predict_tf(
-          x_transformed[ind_x_pred_model_t_x_queal_to_t_ind],
-          batch_size=predict_batch_size, **kwargs)
+        t_mdl_ind_y](
+          x_transformed[ind_x_pred_model_t_x_queal_to_t_ind])
       matrix_scores[:, model_t_x, t_mdl_ind_y] += x_pred_model_x_t_ind[:, 0]
     # del x_transformed, y_transformed
     return self._post_process_matrix_score(matrix_scores)
