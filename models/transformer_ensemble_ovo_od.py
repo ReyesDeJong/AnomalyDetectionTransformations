@@ -229,6 +229,8 @@ class EnsembleOVOTransformODModel(TransformODModel):
     #   model_y.save_weights(weight_path)
     #   # del model_y, validation_data, val_x_binary, val_y_binary, train_y_binary, train_x_binary
 
+  # TODO: make it not reflected, because data is not the same,
+  #  some transformation comparisons are being left out
   def predict_matrix_score(self, x, transform_batch_size=512,
       predict_batch_size=1024, **kwargs):
     print('\nPredicting Matrix Score\n')
@@ -270,7 +272,7 @@ class EnsembleOVOTransformODModel(TransformODModel):
         general_keys.ACCURACY]
       matrix_scores[model_t_x, t_mdl_ind_y] += acc_model_x_t_ind
     # del x_transformed, y_transformed
-    return self._post_process_matrix_score(matrix_scores)
+    return self._post_process_acc_matrix(matrix_scores)
 
   def _post_process_matrix_score(self, matrix_score):
     """fill diagonal with 1- mean of row, and triangle bottom with reflex of
@@ -282,6 +284,18 @@ class EnsembleOVOTransformODModel(TransformODModel):
                                                   axis=-1)
         elif i_x > i_y:
           matrix_score[:, i_x, i_y] = matrix_score[:, i_y, i_x]
+    return matrix_score
+
+  def _post_process_acc_matrix(self, matrix_score):
+    """fill diagonal with 1- mean of row, and triangle bottom with reflex of
+    up"""
+    for i_x in range(matrix_score.shape[-2]):
+      for i_y in range(matrix_score.shape[-1]):
+        if i_x == i_y:
+          matrix_score[i_x, i_y] = 1 - np.mean(matrix_score[i_x, :],
+                                               axis=-1)
+        elif i_x > i_y:
+          matrix_score[i_x, i_y] = matrix_score[i_y, i_x]
     return matrix_score
 
   # TODO: Dunno how to proceed with dirichlet in this case,
