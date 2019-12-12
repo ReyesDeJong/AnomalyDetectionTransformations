@@ -8,18 +8,18 @@ sys.path.append(PROJECT_PATH)
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.special import psi, polygamma
-from keras.utils import to_categorical
+from tensorflow.keras.utils import to_categorical
 from modules.data_loaders.base_line_loaders import load_hits
 
 from transformations import Transformer
 from models.wide_residual_network import create_wide_residual_network
 import time
 import datetime
-from keras.backend.tensorflow_backend import set_session
+# from tensorflow.train_step_tf2.backend.tensorflow_backend import set_session
 import tensorflow as tf
 from tqdm import tqdm
 from sklearn.metrics import auc
-from modules.utils import check_path
+from modules.utils import check_paths
 
 def calc_approx_alpha_sum(observations):
   N = len(observations)
@@ -158,7 +158,7 @@ if __name__ == "__main__":
   sess = tf.Session(config=config)
   set_session(sess)
   save_path = '../results/Transforms_hits'
-  check_path(save_path)
+  check_paths(save_path)
 
 
   single_class_ind = 1

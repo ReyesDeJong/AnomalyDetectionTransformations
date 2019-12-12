@@ -1,9 +1,9 @@
 import os
 import pickle as pkl
 import sys
-
 import matplotlib.pyplot as plt
 import numpy as np
+import tensorflow as tf
 
 PROJECT_PATH = os.path.abspath(
     os.path.join(os.path.dirname(__file__), '..'))
@@ -25,6 +25,7 @@ def createCircularMask(h, w, center=None, radius=None):
 
   mask = dist_from_center <= radius
   return mask * 1.0
+
 
 def plot_n_images(dataset, name, save_path, plot_show=False, n=100,
     set_to_plot=general_keys.TRAIN):
@@ -63,9 +64,15 @@ def generated_images_to_dataset(gen_imgs, label=1):
   return datasets_dict
 
 
+def check_paths(paths):
+  if not isinstance(paths, list):
+    paths = [paths]
+  for path in paths:
+    if not os.path.exists(path):
+      os.makedirs(path)
+
 def check_path(path):
-  if not os.path.exists(path):
-    os.makedirs(path)
+  check_paths(path)
 
 
 def merge_datasets_dict(datasets_dict1, datasets_dict2):
@@ -83,10 +90,29 @@ def save_pickle(data, path):
   with open(path, 'wb') as handle:
     pkl.dump(data, handle, protocol=pkl.HIGHEST_PROTOCOL)
 
+def add_text_to_beginning_of_file_path(file_path, added_text):
+  """add text to beginning of file name, without modifying the base path of the original file"""
+  folder_path = os.path.dirname(file_path)
+  data_file_name = os.path.basename(file_path)
+  converted_data_path = os.path.join(
+      folder_path, '%s_%s' % (added_text, data_file_name))
+  return converted_data_path
+
+
+def set_soft_gpu_memory_growth():
+  gpus = tf.config.experimental.list_physical_devices('GPU')
+  for gpu in gpus:
+    tf.config.experimental.set_memory_growth(gpu, True)
+
 def timer(start, end):
   hours, rem = divmod(end - start, 3600)
   minutes, seconds = divmod(rem, 60)
   return "{:0>2}:{:0>2}:{:05.2f}".format(int(hours), int(minutes), seconds)
+
+
+def normalize_sum1(array, axis=-1):
+  sums = np.sum(array, axis=axis)
+  return array / np.expand_dims(sums, axis)
 
 def delta_timer(delta_time):
   hours, rem = divmod(delta_time, 3600)

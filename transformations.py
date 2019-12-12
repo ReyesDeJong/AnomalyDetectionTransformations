@@ -4,8 +4,9 @@ import itertools
 import numpy as np
 import tensorflow as tf
 import torch
-from keras.preprocessing.image import apply_affine_transform
+from tensorflow.keras.preprocessing.image import apply_affine_transform
 from torch.nn import functional as F
+from tqdm import tqdm
 
 
 def convert_to_torch(image, filters):
@@ -148,6 +149,7 @@ class AbstractTransformer(abc.ABC):
   def __init__(self):
     self._transformation_list = None
     self._create_transformation_list()
+    self.name = 'Abstract_transformer'
 
   @property
   def n_transforms(self):
@@ -161,10 +163,21 @@ class AbstractTransformer(abc.ABC):
     assert len(x_batch) == len(t_inds)
 
     transformed_batch = x_batch.copy()
-    for i, t_ind in enumerate(t_inds):
-      transformed_batch[i] = self._transformation_list[t_ind](
+    for i in tqdm(range(len(t_inds))):
+      transformed_batch[i] = self._transformation_list[t_inds[i]](
           transformed_batch[i])
     return transformed_batch
+
+  def apply_all_transforms(self, x):
+    """generate transform inds, that are the labels of each transform and
+    its respective transformed data"""
+    print('Appliying all %i transforms to set of shape %s' % (
+      self.n_transforms, str(x.shape)))
+    transform_inds = np.tile(np.arange(self.n_transforms), len(x))
+    x_transformed = self.transform_batch(
+      np.repeat(x, self.n_transforms, axis=0),
+      transform_inds)
+    return x_transformed, transform_inds
 
 
 class Transformer(AbstractTransformer):
@@ -172,6 +185,7 @@ class Transformer(AbstractTransformer):
     self.max_tx = translation_x
     self.max_ty = translation_y
     super().__init__()
+    self.name = '72_transformer'
 
   def _create_transformation_list(self):
     transformation_list = []
@@ -188,6 +202,10 @@ class Transformer(AbstractTransformer):
 
 
 class SimpleTransformer(AbstractTransformer):
+  def __init__(self):
+    super().__init__()
+    self.name = 'Rotate_transformer'
+
   def _create_transformation_list(self):
     transformation_list = []
     for is_flip, k_rotate in itertools.product((False, True),
@@ -203,6 +221,7 @@ class TransTransformer(AbstractTransformer):
     self.max_tx = translation_x
     self.max_ty = translation_y
     super().__init__()
+    self.name = 'Trans_transformer'
 
   def _create_transformation_list(self):
     transformation_list = []
@@ -225,8 +244,8 @@ class KernelTransformer(AbstractTransformer):
     self.iterable_flips = self.get_bool_iterable(flips)
     self.iterable_gauss = self.get_bool_iterable(gauss)
     self.iterable_log = self.get_bool_iterable(log)
-
     super().__init__()
+    self.name = 'Kernel_transformer'
 
   def get_translation_iterable(self, translation):
     if translation:
@@ -323,14 +342,15 @@ class PlusKernelTransformer(KernelTransformer):
 
 
 if __name__ == "__main__":
+  # tf 1
   import matplotlib.pyplot as plt
-  from keras.backend.tensorflow_backend import set_session
+  # from train_step_tf2.backend.tensorflow_backend import set_session
   from modules.utils import createCircularMask
 
-  config = tf.ConfigProto()
-  config.gpu_options.allow_growth = True  # dynamically grow the memory used on the GPU
-  sess = tf.Session(config=config)
-  set_session(sess)
+  # config = tf.ConfigProto()
+  # config.gpu_options.allow_growth = True  # dynamically grow the memory used on the GPU
+  # sess = tf.Session(config=config)
+  # set_session(sess)
 
 
   def plot_image(image):

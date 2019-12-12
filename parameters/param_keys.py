@@ -4,6 +4,18 @@ default values."""
 from . import constants
 from . import general_keys
 
+# Input params for Neural Network
+"""
+"""
+INPUT_SHAPE = 'input_shape'
+N_CLASSES = 'n_classes'
+DEPTH = 'depth'
+WIDEN_FACTOR = 'widen_factor'
+DROPOUT_RATE = 'dropout_rate'
+FINAL_ACTIVATION = 'final_activation'
+WEIGHT_DECAY = 'weight_decay'
+
+
 # Input params
 """
 validation_random_seed: (int) Random seed to be used to split the validation
@@ -58,9 +70,9 @@ type_loss: ({CROSS_ENTROPY_LOSS, DICE_LOSS}) Type of loss to be minimized.
 learning_rate: (float) initial learning rate value
 type_optimizer: ({SGD_OPTIMIZER, MOMENTUM_SGD_OPTIMIZER, ADAM_OPTIMIZER}) Type
     of optimizer to be used.
-momentum: (float) Momentum to be used with MOMENTUM_SGD_OPTIMIZER. 
+momentum: (float) Momentum to be used with MOMENTUM_SGD_OPTIMIZER.
     If other optimizer is used, then this parameter has no effect.
-use_nesterov_momentum: (bool) If true, and if a momentum optimizer is used, 
+use_nesterov_momentum: (bool) If true, and if a momentum optimizer is used,
     Nesterov momentum is applied.
 """
 LEARNING_RATE = 'learning_rate'
@@ -79,7 +91,7 @@ train_iterations_horizon: (int) How many iterations to train.
 iterations_to_update_learning_rate: (int) How many iterations to wait before
     decreasing the learning rate
 iterations_to_validate: (int) How many iterations to wait before validating.
-criterion_percentage: (float between 0 and 1) Percentage to meet wrt the last 
+criterion_percentage: (float between 0 and 1) Percentage to meet wrt the last
     best loss, to verify that the loss is still improving and we have to
     increment the training iterations.
 train_horizon_increment: (int) How many iterations to be added if criterion
@@ -112,15 +124,15 @@ VAL_SIZE = 'val_size'
 """
 Usage:
     Import the default parameters dictionary as:
-    
+
         from parameters import param_keys
         my_dict = param_keys.default_params
-    
+
     Then, if you want to overwrite some values that are inside a dictionary
     named "my_custom_parameters", you can simply do:
-    
+
         my_dict.update(my_custom_parameters)  # Overwrite defaults
-        
+
 """
 default_params = {
     DATA_PATH_TRAIN: None,

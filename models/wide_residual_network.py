@@ -1,41 +1,41 @@
-from keras.initializers import _compute_fans
-from keras.layers import *
-from keras.models import Model
-from keras.optimizers import SGD
-from keras.regularizers import l2
+# from tensorflow.train_step_tf2.initializers import _compute_fans
+from tensorflow.keras.layers import *
+from tensorflow.keras.models import Model
+from tensorflow.keras.optimizers import SGD
+from tensorflow.keras.regularizers import l2
 
 WEIGHT_DECAY = 0.5 * 0.0005
-
-
-class SGDTorch(SGD):
-  @interfaces.legacy_get_updates_support
-  def get_updates(self, loss, params):
-    grads = self.get_gradients(loss, params)
-    self.updates = [K.update_add(self.iterations, 1)]
-
-    lr = self.lr
-    if self.initial_decay > 0:
-      lr *= (1. / (1. + self.decay * K.cast(self.iterations,
-                                            K.dtype(self.decay))))
-    # momentum
-    shapes = [K.int_shape(p) for p in params]
-    moments = [K.zeros(shape) for shape in shapes]
-    self.weights = [self.iterations] + moments
-    for p, g, m in zip(params, grads, moments):
-      v = self.momentum * m + g  # velocity
-      self.updates.append(K.update(m, v))
-
-      if self.nesterov:
-        new_p = p - lr * (self.momentum * v + g)
-      else:
-        new_p = p - lr * v
-
-      # Apply constraints.
-      if getattr(p, 'constraint', None) is not None:
-        new_p = p.constraint(new_p)
-
-      self.updates.append(K.update(p, new_p))
-    return self.updates
+#
+#
+# class SGDTorch(SGD):
+#   @interfaces.legacy_get_updates_support
+#   def get_updates(self, loss, params):
+#     grads = self.get_gradients(loss, params)
+#     self.updates = [K.update_add(self.iterations, 1)]
+#
+#     lr = self.lr
+#     if self.initial_decay > 0:
+#       lr *= (1. / (1. + self.decay * K.cast(self.iterations,
+#                                             K.dtype(self.decay))))
+#     # momentum
+#     shapes = [K.int_shape(p) for p in params]
+#     moments = [K.zeros(shape) for shape in shapes]
+#     self.weights = [self.iterations] + moments
+#     for p, g, m in zip(params, grads, moments):
+#       v = self.momentum * m + g  # velocity
+#       self.updates.append(K.update(m, v))
+#
+#       if self.nesterov:
+#         new_p = p - lr * (self.momentum * v + g)
+#       else:
+#         new_p = p - lr * v
+#
+#       # Apply constraints.
+#       if getattr(p, 'constraint', None) is not None:
+#         new_p = p.constraint(new_p)
+#
+#       self.updates.append(K.update(p, new_p))
+#     return self.updates
 
 
 def _get_channels_axis():

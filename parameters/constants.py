@@ -10,8 +10,8 @@ GENERATOR = 'Generator'
 DISCRIMINATOR = 'Discriminator'
 
 # Type of padding
-PAD_SAME = 'same'
-PAD_VALID = 'valid'
+SAME = 'same'
+VALID = 'valid'
 
 # Type of batch normalization
 BN = 'bn'
@@ -22,9 +22,14 @@ MAXPOOL = 'maxpool'
 AVGPOOL = 'avgpool'
 
 # Type of connections management for initializers
-FAN_IN = 'FAN_IN'
-FAN_OUT = 'FAN_OUT'
-FAN_AVG = 'FAN_AVG'
+FAN_IN = 'fan_in'
+FAN_OUT = 'fan_out'
+FAN_AVG = 'fan_avg'
+
+# Type of distributions for initializers
+TRUNCATED_NORMAL = "truncated_normal"
+UNTRUNCATED_NORMAL = "untruncated_normal"
+UNIFORM = "uniform"
 
 # Types of loss
 CROSS_ENTROPY_LOSS = 'cross_entropy_loss'

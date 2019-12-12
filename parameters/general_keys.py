@@ -6,13 +6,18 @@ LOSS = 'loss'
 DISC_LOSS = 'disc_loss'
 
 # Names of metrics
+ACC = 'acc'
 ACCURACY = 'accuracy'
-IOU_ENDO = 'iou_endo'
-IOU_EPI = 'iou_epi'
-IOU_MYO = 'iou_myo'
-DICE_ENDO = 'dice_endo'
-DICE_EPI = 'dice_epi'
-DICE_MYO = 'dice_myo'
+
+# Names of scores
+DIRI_OVA_MDL = 'diri_ova_mdl'
+DIRI_OVA_TRANS = 'diri_ova_trans'
+DIRICHLET = 'dirichlet'
+MATRIX_TRACE = 'matrix_trace'
+ENTROPY = 'entropy'
+CROSS_ENTROPY = 'cross_entropy'
+MUTUAL_INFORMATION = 'mutual_information'
+
 
 # To evaluate the metrics
 BATCHES_MEAN = 'batch_mean'
@@ -47,3 +52,12 @@ LABELS = 'labels'
 #noise vector names
 IN_NORMAL_RADIUS = 'in_normal_radius'
 OUT_NORMAL_RADIUS = 'out_normal_radius'
+
+# random things
+RANDOM_SEED = 'random_seed'
+
+# optimizer names
+ADAM = 'adam'
+
+# losses names
+CATEGORICAL_CROSSENTROPY = 'categorical_crossentropy'
