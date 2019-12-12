@@ -29,9 +29,10 @@ from modules import utils
 # Todo: Do some refactoring to include kwargs
 class HiTSOutlierLoader(object):
 
-  def __init__(self, params: dict):
+  def __init__(self, params: dict, dataset_name='hits'):
     # n_samples_by_class = 10000, test_size = 0.20, val_size = 0.10,
     # return_val = False, channels_to_get = [0, 1, 2, 3]
+    self.name = dataset_name
     self.n_samples_by_class = params[loader_keys.N_SAMPLES_BY_CLASS]
     self.test_percentage_all_data = params[loader_keys.TEST_PERCENTAGE]
     self.data_path = params[loader_keys.DATA_PATH]

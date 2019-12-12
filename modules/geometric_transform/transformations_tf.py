@@ -150,7 +150,8 @@ class AffineTransformation(object):
 
 
 class AbstractTransformer(abc.ABC):
-  def __init__(self, transform_batch_size=512):
+  def __init__(self, transform_batch_size=512, name='Abstract_Transformer'):
+    self.name = name
     self._transform_batch_size = transform_batch_size
     self._transformation_list = None
     self._create_transformation_list()
@@ -212,14 +213,14 @@ class AbstractTransformer(abc.ABC):
     train_ds = tf.data.Dataset.from_tensor_slices((x)).batch(
         self._transform_batch_size)
     # Todo: check which case is faste, if same, keep second way, it uses less memory
-    #if x.shape[1] != 63:  # or self.n_transforms>90:
+    # if x.shape[1] != 63:  # or self.n_transforms>90:
     #  x_transform = []
     #  for images in train_ds:
     #    transformed_batch = self.transform_batch(images, transformations_inds)
     #    x_transform.append(transformed_batch)
     #  x_transform = np.concatenate(
     #      [tensor.numpy() for tensor in x_transform])
-    #else:
+    # else:
     x_transform = np.empty(
         (x.shape[0] * len(transformations_inds), x.shape[1], x.shape[2],
          x.shape[3]),
@@ -246,11 +247,10 @@ class AbstractTransformer(abc.ABC):
 # ToDO: be more consistent on the usage of transform_batch_size
 class Transformer(AbstractTransformer):
   def __init__(self, translation_x=8, translation_y=8,
-      transform_batch_size=512):
+      transform_batch_size=512, name='Transformer'):
     self.max_tx = translation_x
     self.max_ty = translation_y
-    super().__init__(transform_batch_size)
-    self.name = '72_transformer'
+    super().__init__(transform_batch_size, name)
 
   def _create_transformation_list(self):
     transformation_list = []
@@ -268,14 +268,13 @@ class Transformer(AbstractTransformer):
 
 
 class SimpleTransformer(AbstractTransformer):
-  def __init__(self, transform_batch_size=512):
-    super().__init__(transform_batch_size)
-    self.name = 'Rotate_transformer'
+  def __init__(self, transform_batch_size=512, name='Simple_Transformer'):
+    super().__init__(transform_batch_size, name)
 
   def _create_transformation_list(self):
     transformation_list = []
     self.tranformation_to_perform = list(itertools.product((False, True),
-                                               range(4)))
+                                                           range(4)))
     for is_flip, k_rotate in self.tranformation_to_perform:
       transformation = AffineTransformation(is_flip, 0, 0, k_rotate)
       transformation_list.append(transformation)
@@ -285,11 +284,10 @@ class SimpleTransformer(AbstractTransformer):
 
 class TransTransformer(AbstractTransformer):
   def __init__(self, translation_x=8, translation_y=8,
-      transform_batch_size=512):
+      transform_batch_size=512, name='Trans_Transformer'):
     self.max_tx = translation_x
     self.max_ty = translation_y
-    super().__init__(transform_batch_size)
-    self.name = 'Trans_transformer'
+    super().__init__(transform_batch_size, name)
 
   def _create_transformation_list(self):
     transformation_list = []
@@ -306,15 +304,15 @@ class TransTransformer(AbstractTransformer):
 
 class KernelTransformer(AbstractTransformer):
   def __init__(self, translation_x=8, translation_y=8, rotations=False,
-      flips=False, gauss=True, log=True, transform_batch_size=512):
+      flips=False, gauss=True, log=True, transform_batch_size=512,
+      name='Kernel_Transformer'):
     self.iterable_tx = self.get_translation_iterable(translation_x)
     self.iterable_ty = self.get_translation_iterable(translation_y)
     self.iterable_rot = self.get_rotation_iterable(rotations)
     self.iterable_flips = self.get_bool_iterable(flips)
     self.iterable_gauss = self.get_bool_iterable(gauss)
     self.iterable_log = self.get_bool_iterable(log)
-    super().__init__(transform_batch_size)
-    self.name = 'Kernel_transformer'
+    super().__init__(transform_batch_size, name)
 
   def get_translation_iterable(self, translation):
     if translation:
@@ -351,10 +349,10 @@ class KernelTransformer(AbstractTransformer):
 # TODO: see if can do some refactoring here
 class PlusKernelTransformer(KernelTransformer):
   def __init__(self, translation_x=8, translation_y=8, rotations=True,
-      flips=True, gauss=True, log=True, transform_batch_size=512):
+      flips=True, gauss=True, log=True, transform_batch_size=512,
+      name='PlusKernel_Transformer'):
     super().__init__(translation_x, translation_y, rotations,
-                     flips, gauss, log, transform_batch_size)
-    self.name = 'PlusKernel_transformer'
+                     flips, gauss, log, transform_batch_size, name)
 
   def _create_transformation_list(self):
     transformation_list = []
