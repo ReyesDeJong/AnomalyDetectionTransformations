@@ -18,6 +18,12 @@ ENTROPY = 'entropy'
 CROSS_ENTROPY = 'cross_entropy'
 MUTUAL_INFORMATION = 'mutual_information'
 
+# Name of metrics
+ROC_AUC = 'roc_auc'
+ACC_AT_PERCENTIL = 'acc_at_percentil'
+MAX_ACCURACY = 'max_accuracy'
+PR_AUC_NORM = 'pr_auc_norm'
+
 
 # To evaluate the metrics
 BATCHES_MEAN = 'batch_mean'
@@ -32,6 +38,7 @@ TEST = 'test'
 
 #Types of data
 REAL = 'real'
+BOGUS = 'bogus'
 GENERATED = 'generated'
 FAKE_IMAGE = 'fake_image'
 REAL_IMAGE = 'real_image'

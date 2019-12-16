@@ -24,10 +24,6 @@ from models.transformer_ensemble_ovo_od import EnsembleOVOTransformODModel
 # Todo: do a checking between validation and train accuracy checking,
 # because if model is overfitted they may return different results
 class TransformSelectorByOVO(tf.keras.Model):
-  def __init__(self, dataset: HiTSOutlierLoader,
-      transformer: AbstractTransformer):
-    self.dataset = dataset
-    self.transformer = transformer
 
   def get_transformer_with_selected_transforms(self,
       model: EnsembleOVOTransformODModel, accuracy_matrix: np.ndarray,
@@ -44,10 +40,10 @@ class TransformSelectorByOVO(tf.keras.Model):
     if verbose:
       print('Conflicting transformations')
       for conflicting_tuple in redundant_transforms_tuples:
-        print('(i%,%i): s ; %s' % (
+        print('(%i,%i): %s ; %s' % (
           conflicting_tuple[0], conflicting_tuple[1],
           str(transformer.tranformation_to_perform[conflicting_tuple[0]]),
-          (str(transformer.tranformation_to_perform[conflicting_tuple[1]]))))
+          str(transformer.tranformation_to_perform[conflicting_tuple[1]])))
     # TODO: do a random selection and a most repeated based. THIS is first
     #  chosen
     transforms_to_delete = [x_y_tuple[1] for x_y_tuple in

@@ -20,6 +20,7 @@ from tqdm import tqdm
 from tensorflow.keras.utils import to_categorical
 from models.transformer_od import TransformODModel
 import itertools
+import matplotlib.pyplot as plt
 
 """In situ transformation perform"""
 
@@ -92,7 +93,7 @@ class EnsembleOVOTransformODModel(TransformODModel):
           [general_keys.ACC])
 
   def build_models(self):
-    print('Building Models')
+    print('\nBuilding Models\n')
     for x_y_tuple in tqdm(self.models_index_tuples):
       model_ind_x = x_y_tuple[0]
       t_mdl_ind_y = x_y_tuple[1]
@@ -332,6 +333,14 @@ class EnsembleOVOTransformODModel(TransformODModel):
       self.models_list[model_ind_x][t_mdl_ind_y].load_weights(
           weights_path).expect_partial()
 
+  def plot_score_acc_matrices(self, matrices, N_to_plot=1):
+    if len(matrices.shape)==2:
+      matrices = matrices[None]
+    for i in range(N_to_plot):
+      index = np.random.randint(len(matrices))
+      plt.imshow(matrices[index])
+      plt.show()
+
 
 if __name__ == '__main__':
   from parameters import loader_keys
@@ -371,64 +380,3 @@ if __name__ == '__main__':
       "Time model.evaluate_od %s" % utils.timer(
           start_time, time.time()),
       flush=True)
-
-  # start_time = time.time()
-  # pred = model.network.predict(x_test, batch_size=1024)
-  # print("Time model.pred %s" % utils.timer(start_time, time.time()), flush=True)
-  # print(pred.shape)
-  #
-  # start_time = time.time()
-  # pred = model.predict_dirichlet_score(x_train, x_test)
-  # print("Time model.predict_dirichlet_score %s" % utils.timer(start_time,
-  #                                                             time.time()),
-  #       flush=True)
-  # print(pred.shape)
-  #
-  # start_time = time.time()
-  # pred = model.predict_matrix_score(x_test)
-  # print("Time model.predict_matrix_score %s" % utils.timer(start_time,
-  #                                                          time.time()),
-  #       flush=True)
-  # print(pred.shape)
-  #
-  # start_time = time.time()
-  # pred_mat, pred_score = model.predict_matrix_and_dirichlet_score(x_train, x_test)
-  # print(
-  #     "Time model.predict_matrix_and_dirichlet_score %s" % utils.timer(
-  #         start_time, time.time()),
-  #     flush=True)
-  # print(pred_mat.shape, pred_score.shape)
-  """
-  Time model.pred 00:00:04.92
-  (4302, 72)
-  Time model.predict_dirichlet_score 00:01:13.92
-  (4302,)
-  Appliying all transforms to set of shape (4302, 21, 21, 3)
-  Time model.predict_matrix_score 00:00:08.38
-  (4302, 72, 72)
-  Time model.predict_matrix_and_dirichlet_score 00:01:14.36
-  """
-
-  # start_time = time.time()
-  # dict = model.get_scores_dict(x_train, x_test)
-  # print(
-  #     "Time model.get_scores_dict %s" % utils.timer(
-  #         start_time, time.time()),
-  #     flush=True)
-
-  # #
-  # # # pprint.pprint(met_dict)
-  # print('\nroc_auc')
-  # for key in met_dict.keys():
-  #   print(key, met_dict[key]['roc_auc'])
-  # print('\nacc_at_percentil')
-  # for key in met_dict.keys():
-  #   print(key, met_dict[key]['acc_at_percentil'])
-  # print('\nmax_accuracy')
-  # for key in met_dict.keys():
-  #   print(key, met_dict[key]['max_accuracy'])
-  #
-  #
-
-  # model.save_weights(
-  #   os.path.join(PROJECT_PATH, 'results', model.name, 'my_checkpoint.h5'))

@@ -44,3 +44,6 @@ MOMENTUM_SGD_OPTIMIZER = 'momentum_sgd_optimizer'
 ERROR_INVALID = 'Expected %s for %s, but %s was provided.'
 # Error message, metric value is nan
 ERROR_NAN_METRIC = "Metric %s has NaN values; munsn't be calculated with batch means"
+
+#Folder Names
+RESULTS = 'results'

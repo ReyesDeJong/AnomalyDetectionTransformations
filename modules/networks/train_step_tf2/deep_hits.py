@@ -92,7 +92,7 @@ class DeepHits(tf.keras.Model):
     self.eval_accuracy(labels, predictions)
 
   def fit_tf(self, x, y, validation_data=None, batch_size=128, epochs=1,
-      verbose=0):
+      verbose=0, **kwargs):
 
     train_ds = tf.data.Dataset.from_tensor_slices(
         (x, y)).shuffle(10000).batch(batch_size)
