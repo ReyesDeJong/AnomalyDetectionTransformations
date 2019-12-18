@@ -1,7 +1,3 @@
-Learn
-more or give
-us
-feedback
 import os
 import sys
 
@@ -37,9 +33,9 @@ class Trainer(object):
             metric_dicts[key][essential_metrics_keys])
 
   def get_metrics_message(self, all_it_metrics, n_models_trained, model_name):
-    message = '\n %i %s models Test\n' % (n_models_trained, model_name)
+    message = '\n\n %i %s models Test' % (n_models_trained, model_name)
     for essential_metrics_key in all_it_metrics:
-      message += '\n  %s' % essential_metrics_key
+      message += '\n\n  %s' % essential_metrics_key
       score_names = all_it_metrics[essential_metrics_key].keys()
       for score_key in score_names:
         mean = np.mean(
@@ -56,33 +52,33 @@ class Trainer(object):
     all_it_metrics = {
       general_keys.ROC_AUC: {}, general_keys.ACC_AT_PERCENTIL: {},
       general_keys.MAX_ACCURACY: {}, general_keys.PR_AUC_NORM: {}}
+    (x_train, y_train), (x_val, y_val), (
+      x_test, y_test) = data_loader.get_outlier_detection_datasets()
+    if model_name is None:
+      aux_model = ModelClass(data_loader=data_loader, transformer=transformer,
+                             input_shape=x_train.shape[1:])
+      model_name = aux_model.name
+      del aux_model
     for i in range(len(seed_array)):
-      if model_name is None:
-        aux_model = ModelClass(params)
-        model_name = aux_model.model_name
-        del aux_model
-      model = ModelClass(**params, name=model_name + '_%i' % i)
-      data_loader = HiTSOutlierLoader(
-          data_loader=data_loader, transformer=transformer,
-          input_shape=x_train.shape[1:], **params)
-      (x_train, y_train), (x_val, y_val), (
-        x_test, y_test) = data_loader.get_outlier_detection_datasets()
-      model.fit(x_train, x_val, **params)
+      model = ModelClass(data_loader=data_loader, transformer=transformer,
+                         input_shape=x_train.shape[1:],
+                         name=model_name, results_folder_name=self.model_path)
+      model.fit(x_train, x_val, epochs=params['epochs'])
       metrics_dict = model.evaluate_od(
           x_train, x_test, y_test, data_loader.name, general_keys.REAL, x_val)
       self.append_model_metrics_to_all_it_models_metrics(all_it_metrics,
                                                          metrics_dict)
       printing_message = self.get_metrics_message(all_it_metrics, i + 1,
                                                   model_name)
-      self.print_to_log(printing_message, model_name)
-      self.all_models_acc[model_name] = {printing_message}
+    self.print_to_log(printing_message, model_name)
+    self.all_models_metrics_dict[model_name] = printing_message
     return all_it_metrics
 
   def print_all_accuracies(self):
     msg = ''
-    for model_name in self.all_models_acc.keys():
-      msg += self.all_models_acc[model_name]
-    model_names = list(self.all_models_acc.keys())
+    for model_name in self.all_models_metrics_dict.keys():
+      msg += self.all_models_metrics_dict[model_name]
+    model_names = list(self.all_models_metrics_dict.keys())
     self.print_to_log(msg, '_'.join(model_names))
 
   def print_to_log(self, msg, log_name):
@@ -93,3 +89,40 @@ class Trainer(object):
     print(msg)
     self.print_manager.close()
     file.close()
+
+
+if __name__ == '__main__':
+  from parameters import loader_keys
+  from models.transformer_od import TransformODModel
+  from models.transformer_od_simple_net import TransformODSimpleModel
+  from modules.geometric_transform.transformations_tf import TransTransformer
+  import tensorflow as tf
+
+  gpus = tf.config.experimental.list_physical_devices('GPU')
+  for gpu in gpus:
+    tf.config.experimental.set_memory_growth(gpu, True)
+
+  hits_params = {
+    loader_keys.DATA_PATH: os.path.join(
+        PROJECT_PATH, '../datasets/HiTS2013_300k_samples.pkl'),
+    loader_keys.N_SAMPLES_BY_CLASS: 10000,
+    loader_keys.TEST_PERCENTAGE: 0.2,
+    loader_keys.VAL_SET_INLIER_PERCENTAGE: 0.1,
+    loader_keys.USED_CHANNELS: [0, 1, 2, 3],  # [2],#
+    loader_keys.CROP_SIZE: 21,
+    general_keys.RANDOM_SEED: 42,
+    loader_keys.TRANSFORMATION_INLIER_CLASS_VALUE: 1
+  }
+  data_loader = HiTSOutlierLoader(hits_params)
+  transformer = TransTransformer()
+  params = {
+    param_keys.RESULTS_FOLDER_NAME: 'trainer_test',
+    'epochs': 1,
+  }
+  trainer = Trainer(params)
+  trainer.train_model_n_times(TransformODModel, data_loader, transformer,
+                              params, train_times=3)
+  trainer.train_model_n_times(TransformODSimpleModel, data_loader, transformer,
+                              params, train_times=3)
+
+  trainer.print_all_accuracies()

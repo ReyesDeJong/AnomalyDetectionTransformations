@@ -155,7 +155,7 @@ class AbstractTransformer(abc.ABC):
     self._transform_batch_size = transform_batch_size
     self._transformation_list = None
     self._create_transformation_list()
-    self.name = 'Abstract_transformer'
+    self.verbose = 0
 
   @property
   def n_transforms(self):
@@ -164,6 +164,9 @@ class AbstractTransformer(abc.ABC):
   @abc.abstractmethod
   def _create_transformation_list(self):
     return
+
+  def set_verbose(self, verbose_value):
+    self.verbose=verbose_value
 
   # This must be included within preprocessing mapping(?)
   # TODO: refactor transform batch to avoid appending
@@ -200,7 +203,8 @@ class AbstractTransformer(abc.ABC):
   def apply_all_transforms(self, x, batch_size=None):
     """generate transform inds, that are the labels of each transform and
     its respective transformed data. It generates labels after images"""
-    print('Appliying all %i transforms to set of shape %s' % (
+    if self.verbose:
+      print('Appliying all %i transforms to set of shape %s' % (
       self.n_transforms, str(x.shape)))
     transformations_inds = np.arange(self.n_transforms)
     return self.apply_transforms(x, transformations_inds, batch_size)
