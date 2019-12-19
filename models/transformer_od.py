@@ -86,6 +86,8 @@ class TransformODModel(tf.keras.Model):
 
   def fit(self, x_train, x_val, transform_batch_size=512, train_batch_size=128,
       epochs=2, **kwargs):
+    if epochs is None:
+      epochs = int(np.ceil(200 / self.transformer.n_transforms))
     self.create_specific_model_paths()
     # ToDo: must be network? or just self.compile???
     self.network.compile(
@@ -100,9 +102,9 @@ class TransformODModel(tf.keras.Model):
     es = tf.keras.callbacks.EarlyStopping(
         monitor='val_loss', mode='min', verbose=1, patience=0,
         restore_best_weights=True)
-    if epochs == 2:
+    if epochs < 3 or epochs==int(np.ceil(200 / self.transformer.n_transforms)):
       es = tf.keras.callbacks.EarlyStopping(
-        monitor='val_loss', mode='min', verbose=1, patience=0,
+        monitor='val_loss', mode='min', verbose=1, patience=1e100,
         restore_best_weights=False)
     # print(x_train_transform.shape)
     # print(np.unique(y_train_transform, return_counts=True))

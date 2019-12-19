@@ -17,18 +17,14 @@ from modules.geometric_transform import transformations_tf
 import tensorflow as tf
 from modules.data_loaders.hits_outlier_loader import HiTSOutlierLoader
 from modules.data_loaders.ztf_outlier_loader import ZTFOutlierLoader
-from modules import utils
 
-TRAIN_TIME = 3
+TRAIN_TIME = 10
 
-if __name__ == '__main__':
-  gpus = tf.config.experimental.list_physical_devices('GPU')
-  for gpu in gpus:
-    tf.config.experimental.set_memory_growth(gpu, True)
 
+def best_score_evaluation(result_folder_name, epochs):
   trainer_params = {
-    param_keys.RESULTS_FOLDER_NAME: 'best_scores_resnet_1_epochs',
-    'epochs': 1,
+    param_keys.RESULTS_FOLDER_NAME: result_folder_name,
+    'epochs': epochs,
   }
   # data loaders
   hits_params = {
@@ -63,12 +59,12 @@ if __name__ == '__main__':
   ztf_trainer = Trainer(ztf_loader, trainer_params)
 
   model_constructors_list = (TransformODModel,)
-  transformers_list = (trans_transformer, kernel_transformer)#, transformer_72,
-                       #plus_kernel_transformer)
+  transformers_list = (trans_transformer, kernel_transformer, transformer_72,
+                       plus_kernel_transformer)
   trainers_list = (hits_trainer, ztf_trainer)
   trainer_model_transformer_tuples = list(
-      itertools.product(trainers_list, model_constructors_list, transformers_list))
-
+      itertools.product(trainers_list, model_constructors_list,
+                        transformers_list))
 
   for trainer, model_constructor, transformer in trainer_model_transformer_tuples:
     trainer.train_model_n_times(model_constructor, transformer,
@@ -77,3 +73,16 @@ if __name__ == '__main__':
   hits_trainer.create_tables_of_results_folders()
 
 
+if __name__ == '__main__':
+  gpus = tf.config.experimental.list_physical_devices('GPU')
+  for gpu in gpus:
+    tf.config.experimental.set_memory_growth(gpu, True)
+
+  best_score_evaluation(
+      result_folder_name='best_scores/best_scores_resnet_2_epochs', epochs=2)
+  best_score_evaluation(
+      result_folder_name='best_scores/best_scores_resnet_VAL_epochs',
+      epochs=1234)
+  best_score_evaluation(
+      result_folder_name='best_scores/best_scores_resnet_SOTA_epochs',
+      epochs=None)
