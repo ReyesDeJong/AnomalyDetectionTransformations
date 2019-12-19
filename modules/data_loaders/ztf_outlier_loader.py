@@ -29,7 +29,7 @@ from modules import utils
 # TODO see if data can be stored as 32 float
 class ZTFOutlierLoader(object):
 
-  def __init__(self, params: dict):
+  def __init__(self, params: dict, dataset_name='ztf'):
     self.data_path = params[loader_keys.DATA_PATH]
     self.val_inlier_percentage = params[loader_keys.VAL_SET_INLIER_PERCENTAGE]
     self.used_channels = params[loader_keys.USED_CHANNELS]
@@ -38,6 +38,7 @@ class ZTFOutlierLoader(object):
     self.transform_inlier_class_value = params[
       loader_keys.TRANSFORMATION_INLIER_CLASS_VALUE]
     self.template_save_path = self._get_template_save_path()
+    self.name = dataset_name
 
   def _get_template_save_path(self) -> str:
     """get name of final saved file to check if it's been already generated"""

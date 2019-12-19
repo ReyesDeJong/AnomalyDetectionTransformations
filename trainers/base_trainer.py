@@ -10,6 +10,7 @@ from modules.data_loaders.hits_outlier_loader import HiTSOutlierLoader
 from modules.geometric_transform.transformations_tf import AbstractTransformer
 from parameters import param_keys, general_keys, constants
 from modules.print_manager import PrintManager
+from modules.utils import create_auc_table
 
 
 class Trainer(object):
@@ -17,11 +18,18 @@ class Trainer(object):
   Constructor
   """
 
-  def __init__(self, params={param_keys.RESULTS_FOLDER_NAME: ''}):
+  def __init__(self, data_loader: HiTSOutlierLoader,
+      params={param_keys.RESULTS_FOLDER_NAME: '',
+              param_keys.SCORES_TO_USE: None}):
+    self.data_loader = data_loader
+    self.all_models_metrics_message_dict = {}
     self.all_models_metrics_dict = {}
     self.print_manager = PrintManager()
-    self.model_path = os.path.join(PROJECT_PATH, constants.RESULTS,
-                                   params[param_keys.RESULTS_FOLDER_NAME])
+    self.models_path = os.path.join(PROJECT_PATH, constants.RESULTS,
+                                    params[param_keys.RESULTS_FOLDER_NAME])
+    self.metrics_dict_template = {
+      general_keys.ROC_AUC: {}, general_keys.ACC_AT_PERCENTIL: {},
+      general_keys.MAX_ACCURACY: {}, general_keys.PR_AUC_NORM: {}}
 
   def append_model_metrics_to_all_it_models_metrics(self, it_metrics_dict,
       metric_dicts):
@@ -32,8 +40,10 @@ class Trainer(object):
         it_metrics_dict[essential_metrics_keys][key].append(
             metric_dicts[key][essential_metrics_keys])
 
-  def get_metrics_message(self, all_it_metrics, n_models_trained, model_name):
-    message = '\n\n %i %s models Test' % (n_models_trained, model_name)
+  def get_metrics_message(self, all_it_metrics, n_models_trained, model_name,
+      transformer):
+    message = '\n\n %i %s %s models %s Test' % (
+      n_models_trained, transformer.name, model_name, self.data_loader.name)
     for essential_metrics_key in all_it_metrics:
       message += '\n\n  %s' % essential_metrics_key
       score_names = all_it_metrics[essential_metrics_key].keys()
@@ -45,50 +55,63 @@ class Trainer(object):
         message += '\n  %s : %.4f +/- %.4f' % (score_key, mean, std)
     return message
 
-  def train_model_n_times(self, ModelClass, data_loader: HiTSOutlierLoader,
+  def train_model_n_times(self, ModelClass,
       transformer: AbstractTransformer, params, train_times,
       model_name=None):
     seed_array = np.arange(train_times).tolist()
-    all_it_metrics = {
-      general_keys.ROC_AUC: {}, general_keys.ACC_AT_PERCENTIL: {},
-      general_keys.MAX_ACCURACY: {}, general_keys.PR_AUC_NORM: {}}
+    all_it_metrics = self.metrics_dict_template.copy()
     (x_train, y_train), (x_val, y_val), (
-      x_test, y_test) = data_loader.get_outlier_detection_datasets()
+      x_test, y_test) = self.data_loader.get_outlier_detection_datasets()
     if model_name is None:
-      aux_model = ModelClass(data_loader=data_loader, transformer=transformer,
+      aux_model = ModelClass(data_loader=self.data_loader,
+                             transformer=transformer,
                              input_shape=x_train.shape[1:])
       model_name = aux_model.name
       del aux_model
     for i in range(len(seed_array)):
-      model = ModelClass(data_loader=data_loader, transformer=transformer,
+      model = ModelClass(data_loader=self.data_loader, transformer=transformer,
                          input_shape=x_train.shape[1:],
-                         name=model_name, results_folder_name=self.model_path)
+                         name=model_name, results_folder_name=self.models_path)
       model.fit(x_train, x_val, epochs=params['epochs'])
       metrics_dict = model.evaluate_od(
-          x_train, x_test, y_test, data_loader.name, general_keys.REAL, x_val)
+          x_train, x_test, y_test, self.data_loader.name, general_keys.REAL,
+          x_val)
       self.append_model_metrics_to_all_it_models_metrics(all_it_metrics,
                                                          metrics_dict)
       printing_message = self.get_metrics_message(all_it_metrics, i + 1,
-                                                  model_name)
-    self.print_to_log(printing_message, model_name)
-    self.all_models_metrics_dict[model_name] = printing_message
+                                                  model_name, transformer)
+    self.print_to_log(printing_message,
+                      '%s_%s' % (self.data_loader.name, model_name))
+    self.all_models_metrics_dict[model_name] = all_it_metrics
+    self.all_models_metrics_message_dict[model_name] = printing_message
     return all_it_metrics
 
-  def print_all_accuracies(self):
+  def print_all_models_metrics(self):
     msg = ''
-    for model_name in self.all_models_metrics_dict.keys():
-      msg += self.all_models_metrics_dict[model_name]
-    model_names = list(self.all_models_metrics_dict.keys())
-    self.print_to_log(msg, '_'.join(model_names))
+    for model_name in self.all_models_metrics_message_dict.keys():
+      msg += self.all_models_metrics_message_dict[model_name]
+    model_names = list(self.all_models_metrics_message_dict.keys())
+    self.print_to_log(msg, self.data_loader.name + '_'.join(model_names))
 
   def print_to_log(self, msg, log_name):
     log_file = log_name + '.log'
     print = self.print_manager.verbose_printing(True)
-    file = open(os.path.join(self.model_path, log_file), 'a')
+    file = open(os.path.join(self.models_path, log_file), 'a')
     self.print_manager.file_printing(file)
     print(msg)
     self.print_manager.close()
     file.close()
+
+  # TODO: remove hardcoding of folder name
+  def create_tables_of_results_folders(self):
+    models_folder_names = [dI for dI in os.listdir(self.models_path) if
+                           os.path.isdir(os.path.join(self.models_path, dI))]
+    for model_folder_name in models_folder_names:
+      all_metric_files_paths = os.path.join(self.models_path, model_folder_name,
+                                            'all_metric_files')
+      metrics_names = self.metrics_dict_template.keys()
+      for single_metric_name in metrics_names:
+        create_auc_table(all_metric_files_paths, single_metric_name)
 
 
 if __name__ == '__main__':
@@ -125,4 +148,4 @@ if __name__ == '__main__':
   trainer.train_model_n_times(TransformODSimpleModel, data_loader, transformer,
                               params, train_times=3)
 
-  trainer.print_all_accuracies()
+  trainer.print_all_models_metrics()

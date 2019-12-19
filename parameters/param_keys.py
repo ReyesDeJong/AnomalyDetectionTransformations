@@ -195,3 +195,6 @@ def update_paths_dict(params):
             general_keys.TEST: params[DATA_PATH_TEST]
         }
     })
+
+
+SCORES_TO_USE = 'scores_to_use'

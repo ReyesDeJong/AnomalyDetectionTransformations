@@ -4,6 +4,10 @@ import sys
 import matplotlib.pyplot as plt
 import numpy as np
 import tensorflow as tf
+from glob import glob
+from collections import defaultdict
+import csv
+
 
 PROJECT_PATH = os.path.abspath(
     os.path.join(os.path.dirname(__file__), '..'))
@@ -118,3 +122,41 @@ def delta_timer(delta_time):
   hours, rem = divmod(delta_time, 3600)
   minutes, seconds = divmod(rem, 60)
   return "{:0>2}:{:0>2}:{:05.2f}".format(int(hours), int(minutes), seconds)
+
+
+def create_auc_table(path, metric='roc_auc'):
+  file_path = glob(os.path.join(path, '*', '*.npz'))
+  results = defaultdict(lambda: defaultdict(lambda: defaultdict(list)))
+  methods = set()
+  for p in file_path:
+    _, f_name = os.path.split(p)
+    dataset_name, method, single_class_name = f_name.split(sep='_')[:3]
+    methods.add(method)
+    npz = np.load(p)
+    roc_auc = npz[metric]
+    results[dataset_name][single_class_name][method].append(roc_auc)
+
+  for ds_name in results:
+    for sc_name in results[ds_name]:
+      for method_name in results[ds_name][sc_name]:
+        roc_aucs = results[ds_name][sc_name][method_name]
+        print(method_name, ' ', roc_aucs)
+        results[ds_name][sc_name][method_name] = [np.mean(roc_aucs),
+                                                  0 if len(
+                                                    roc_aucs) == 1 else np.std(
+                                                    np.array(roc_aucs))
+                                                  ]
+
+  with open(os.path.join(path, 'results-{}.csv'.format(metric)),
+            'w') as csvfile:
+    fieldnames = ['dataset', 'single class name'] + sorted(list(methods))
+    writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+
+    writer.writeheader()
+    for ds_name in sorted(results.keys()):
+      for sc_name in sorted(results[ds_name].keys()):
+        row_dict = {'dataset': ds_name, 'single class name': sc_name}
+        row_dict.update({method_name: '{:.5f} ({:.5f})'.format(
+          *results[ds_name][sc_name][method_name])
+                         for method_name in results[ds_name][sc_name]})
+        writer.writerow(row_dict)
