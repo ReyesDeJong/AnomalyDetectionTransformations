@@ -18,7 +18,7 @@ import tensorflow as tf
 from modules.data_loaders.hits_outlier_loader import HiTSOutlierLoader
 from modules.data_loaders.ztf_outlier_loader import ZTFOutlierLoader
 
-TRAIN_TIME = 10
+TRAIN_TIME = 6
 
 
 def best_score_evaluation(result_folder_name, epochs):
@@ -59,16 +59,17 @@ def best_score_evaluation(result_folder_name, epochs):
   ztf_trainer = Trainer(ztf_loader, trainer_params)
 
   model_constructors_list = (TransformODModel,)
-  transformers_list = (trans_transformer, kernel_transformer, transformer_72,
-                       plus_kernel_transformer)
-  trainers_list = (hits_trainer, ztf_trainer)
+  transformers_list = (plus_kernel_transformer,)
+                       #plus_kernel_transformer)#(trans_transformer, kernel_transformer, transformer_72,
+                       #plus_kernel_transformer)
+  trainers_list = (ztf_trainer,)#(hits_trainer, ztf_trainer)
   trainer_model_transformer_tuples = list(
       itertools.product(trainers_list, model_constructors_list,
                         transformers_list))
 
-  for trainer, model_constructor, transformer in trainer_model_transformer_tuples:
-    trainer.train_model_n_times(model_constructor, transformer,
-                                trainer_params, train_times=TRAIN_TIME)
+  # for trainer, model_constructor, transformer in trainer_model_transformer_tuples:
+  #   trainer.train_model_n_times(model_constructor, transformer,
+  #                               trainer_params, train_times=TRAIN_TIME)
 
   hits_trainer.create_tables_of_results_folders()
 
@@ -79,10 +80,12 @@ if __name__ == '__main__':
     tf.config.experimental.set_memory_growth(gpu, True)
 
   best_score_evaluation(
-      result_folder_name='best_scores/best_scores_resnet_2_epochs', epochs=2)
-  best_score_evaluation(
-      result_folder_name='best_scores/best_scores_resnet_VAL_epochs',
-      epochs=1234)
-  best_score_evaluation(
-      result_folder_name='best_scores/best_scores_resnet_SOTA_epochs',
-      epochs=None)
+      result_folder_name='best_scores/best_scores_resnet_1_epochs', epochs=1)
+  # best_score_evaluation(
+  #     result_folder_name='best_scores/best_scores_resnet_2_epochs', epochs=2)
+  # best_score_evaluation(
+  #     result_folder_name='best_scores/best_scores_resnet_VAL_epochs',
+  #     epochs=1234)
+  # best_score_evaluation(
+  #     result_folder_name='best_scores/best_scores_resnet_SOTA_epochs',
+  #     epochs=None)

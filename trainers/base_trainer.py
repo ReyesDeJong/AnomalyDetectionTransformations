@@ -80,6 +80,7 @@ class Trainer(object):
                                                          metrics_dict)
       printing_message = self.get_metrics_message(all_it_metrics, i + 1,
                                                   model_name, transformer)
+      del model
     self.print_to_log(printing_message,
                       '%s_%s' % (self.data_loader.name, model_name))
     self.all_models_metrics_dict[model_name] = all_it_metrics

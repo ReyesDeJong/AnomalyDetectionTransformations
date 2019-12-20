@@ -68,3 +68,5 @@ ADAM = 'adam'
 
 # losses names
 CATEGORICAL_CROSSENTROPY = 'categorical_crossentropy'
+
+NOT_IMPROVED_COUNTER = 'not_improved_counter'

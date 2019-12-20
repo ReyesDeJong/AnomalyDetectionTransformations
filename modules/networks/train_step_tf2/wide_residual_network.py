@@ -2,9 +2,17 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import os
+import sys
+
 import tensorflow as tf
 
+PROJECT_PATH = os.path.abspath(
+    os.path.join(os.path.dirname(__file__), '..', '..', '..'))
+
 from parameters import constants
+from modules.networks.train_step_tf2.deep_hits import DeepHits
+
 
 WEIGHT_DECAY = 0.5 * 0.0005
 
@@ -14,12 +22,12 @@ def _get_channels_axis(data_format):
 
 
 # TODO: data_format to constructors of layers
-class WideResidualNetwork(tf.keras.Model):
+class WideResidualNetwork(DeepHits):
   def __init__(self, input_shape, n_classes, depth,
       widen_factor=1, dropout_rate=0.0, final_activation='softmax',
       name='wide_resnet', data_format='channels_last',
       weight_decay=WEIGHT_DECAY):
-    super().__init__(name=name)
+    super(DeepHits).__init__(name=name)
     self.inp_shape = input_shape
     self.input_channels = input_shape[_get_channels_axis(data_format)]
     self.data_format = data_format
@@ -63,10 +71,6 @@ class WideResidualNetwork(tf.keras.Model):
     x = self.fc_1(x)
     x = self.act_out(x)
     return x
-
-  def model(self):
-    x = tf.keras.layers.Input(shape=self.inp_shape)
-    return tf.keras.Model(inputs=x, outputs=self.call(x))
 
   def conv_group(self, in_channels, out_channels, n_res_blocks, strides,
       dropout_rate=0.0):
