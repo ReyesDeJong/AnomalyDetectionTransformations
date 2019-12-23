@@ -9,7 +9,7 @@ PROJECT_PATH = os.path.abspath(
     os.path.join(os.path.dirname(__file__), '..'))
 sys.path.append(PROJECT_PATH)
 import tensorflow as tf
-from modules.networks.wide_residual_network import WideResidualNetwork
+from modules.networks.train_step_tf2.wide_residual_network import WideResidualNetwork
 from modules.geometric_transform.transformations_tf import AbstractTransformer
 from modules.data_loaders.ztf_outlier_loader import ZTFOutlierLoader
 from parameters import general_keys
@@ -85,7 +85,7 @@ class TransformODModel(tf.keras.Model):
         [self.specific_model_folder, self.checkpoint_folder])
 
   def fit(self, x_train, x_val, transform_batch_size=512, train_batch_size=128,
-      epochs=2, **kwargs):
+      epochs=2, patience=0, **kwargs):
     if epochs is None:
       epochs = int(np.ceil(200 / self.transformer.n_transforms))
     self.create_specific_model_paths()
@@ -100,24 +100,21 @@ class TransformODModel(tf.keras.Model):
       self.transformer.apply_all_transforms(
           x=x_val, batch_size=transform_batch_size)
     es = tf.keras.callbacks.EarlyStopping(
-        monitor='val_loss', mode='min', verbose=1, patience=0,
+        monitor='val_loss', mode='min', verbose=1, patience=patience,
         restore_best_weights=True)
     if epochs < 3 or epochs==int(np.ceil(200 / self.transformer.n_transforms)):
       es = tf.keras.callbacks.EarlyStopping(
         monitor='val_loss', mode='min', verbose=1, patience=1e100,
         restore_best_weights=False)
-    # print(x_train_transform.shape)
-    # print(np.unique(y_train_transform, return_counts=True))
-    # print(x_val_transform.shape)
-    # print(np.unique(y_val_transform, return_counts=True))
+      patience = epochs
     self.network.fit(
         x=x_train_transform, y=tf.keras.utils.to_categorical(y_train_transform),
         validation_data=(
           x_val_transform, tf.keras.utils.to_categorical(y_val_transform)),
         batch_size=train_batch_size,
-        epochs=epochs, callbacks=[es], **kwargs)
+        epochs=epochs, patience=patience, callbacks=[es], **kwargs)
     weight_path = os.path.join(self.checkpoint_folder,
-                               'final_weights.h5')
+                               'final_weights.ckpt')
     del x_train, x_val, x_train_transform, x_val_transform, y_train_transform, y_val_transform
     self.save_weights(weight_path)
 

@@ -27,7 +27,7 @@ class WideResidualNetwork(DeepHits):
       widen_factor=1, dropout_rate=0.0, final_activation='softmax',
       name='wide_resnet', data_format='channels_last',
       weight_decay=WEIGHT_DECAY):
-    super(DeepHits).__init__(name=name)
+    super(DeepHits, self).__init__(name=name)
     self.inp_shape = input_shape
     self.input_channels = input_shape[_get_channels_axis(data_format)]
     self.data_format = data_format
@@ -58,6 +58,7 @@ class WideResidualNetwork(DeepHits):
     self.gap_1 = tf.keras.layers.GlobalAveragePooling2D()
     self.fc_1 = self.dense(n_classes)
     self.act_out = tf.keras.layers.Activation(final_activation)
+    self._init_builds()
 
   def call(self, input_tensor, training=False):
     # x = self.input_layer(input_tensor)

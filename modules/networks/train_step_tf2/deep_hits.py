@@ -22,6 +22,7 @@ class DeepHits(tf.keras.Model):
   def __init__(self, input_shape, n_classes, drop_rate=0.0,
       final_activation='softmax', name='deep_hits', **kwargs):
     super().__init__(name=name)
+    # TODO: relgate this to method in order to make a unified init
     self.inp_shape = input_shape
     self.zp = tf.keras.layers.ZeroPadding2D(padding=(3, 3))
     self.conv_1 = tf.keras.layers.Conv2D(
@@ -43,6 +44,9 @@ class DeepHits(tf.keras.Model):
     self.do_2 = tf.keras.layers.Dropout(drop_rate)
     self.dense_3 = tf.keras.layers.Dense(n_classes)
     self.act_out = tf.keras.layers.Activation(final_activation)
+    self._init_builds()
+
+  def _init_builds(self):
     # builds
     self.loss_object = tf.keras.losses.CategoricalCrossentropy()
     self.optimizer = tf.keras.optimizers.Adam()
@@ -94,7 +98,8 @@ class DeepHits(tf.keras.Model):
     self.eval_accuracy(labels, predictions)
 
   def fit(self, x, y, validation_data=None, batch_size=128, epochs=1,
-      iterations_to_validate=None, patience=0, verbose=0, **kwargs):
+      iterations_to_validate=None, patience=0, verbose=1, **kwargs):
+    print('\nTraining Model')
     if validation_data is not None:
       return self.fit_tf_val(
           x, y, validation_data, batch_size, epochs,
@@ -201,6 +206,8 @@ class DeepHits(tf.keras.Model):
     return np.concatenate(predictions, axis=0)
 
   def eval_tf(self, x, y, batch_size=1024, verbose=0):
+    self.eval_loss.reset_states()
+    self.eval_accuracy.reset_states()
     dataset = tf.data.Dataset.from_tensor_slices(
         (x, y)).batch(batch_size)
     start_time = time.time()

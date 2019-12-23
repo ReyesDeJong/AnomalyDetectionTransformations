@@ -155,7 +155,7 @@ class AbstractTransformer(abc.ABC):
     self._transform_batch_size = transform_batch_size
     self._transformation_list = None
     self._create_transformation_list()
-    self.verbose = 0
+    self.verbose = 1
 
   @property
   def n_transforms(self):

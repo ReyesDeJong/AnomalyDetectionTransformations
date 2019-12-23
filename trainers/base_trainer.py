@@ -72,7 +72,7 @@ class Trainer(object):
       model = ModelClass(data_loader=self.data_loader, transformer=transformer,
                          input_shape=x_train.shape[1:],
                          name=model_name, results_folder_name=self.models_path)
-      model.fit(x_train, x_val, epochs=params['epochs'])
+      model.fit(x_train, x_val, epochs=params['epochs'], patience=params['patience'])
       metrics_dict = model.evaluate_od(
           x_train, x_test, y_test, self.data_loader.name, general_keys.REAL,
           x_val)
