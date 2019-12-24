@@ -100,6 +100,7 @@ class DeepHits(tf.keras.Model):
   def fit(self, x, y, validation_data=None, batch_size=128, epochs=1,
       iterations_to_validate=None, patience=0, verbose=1, **kwargs):
     print('\nTraining Model')
+    self.verbose = verbose
     if validation_data is not None:
       return self.fit_tf_val(
           x, y, validation_data, batch_size, epochs,
@@ -110,7 +111,7 @@ class DeepHits(tf.keras.Model):
       start_time = time.time()
       for images, labels in train_ds:
         self.train_step(images, labels)
-      if verbose:
+      if self.verbose:
         self.eval_step(images, labels)
         template = 'Epoch {}, Loss: {}, Acc: {}, Time: {}'
         print(template.format(epoch + 1,
@@ -123,7 +124,7 @@ class DeepHits(tf.keras.Model):
         self.eval_tf(x, y, verbose=verbose)
 
   def fit_tf_val(self, x, y, validation_data=None, batch_size=128, epochs=1,
-      iterations_to_validate=None, patience=0, verbose=0):
+      iterations_to_validate=None, patience=0, verbose=1):
     self.verbose = verbose
     n_iterations_in_epoch = len(y) // batch_size
     # check if validate at end of epoch
@@ -163,6 +164,8 @@ class DeepHits(tf.keras.Model):
           self.eval_accuracy.reset_states()
           self.train_loss.reset_states()
           self.train_accuracy.reset_states()
+    self.load_weights(
+        self.best_model_weights_path).expect_partial()
 
 
   def check_early_stopping(self, patience):
@@ -205,7 +208,8 @@ class DeepHits(tf.keras.Model):
       predictions.append(self.call(images))
     return np.concatenate(predictions, axis=0)
 
-  def eval_tf(self, x, y, batch_size=1024, verbose=0):
+  def eval_tf(self, x, y, batch_size=1024, verbose=1):
+    self.verbose = verbose
     self.eval_loss.reset_states()
     self.eval_accuracy.reset_states()
     dataset = tf.data.Dataset.from_tensor_slices(
@@ -213,7 +217,7 @@ class DeepHits(tf.keras.Model):
     start_time = time.time()
     for images, labels in dataset:
       self.eval_step(images, labels)
-    if verbose:
+    if self.verbose:
       template = 'Loss: {}, Acc: {}, Time: {}'
       print(template.format(
           self.eval_loss.result(),

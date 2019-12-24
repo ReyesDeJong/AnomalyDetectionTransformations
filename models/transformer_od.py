@@ -113,6 +113,7 @@ class TransformODModel(tf.keras.Model):
           x_val_transform, tf.keras.utils.to_categorical(y_val_transform)),
         batch_size=train_batch_size,
         epochs=epochs, patience=patience, callbacks=[es], **kwargs)
+    # self.network.eval_tf(x_val_transform, tf.keras.utils.to_categorical(y_val_transform))
     weight_path = os.path.join(self.checkpoint_folder,
                                'final_weights.ckpt')
     del x_train, x_val, x_train_transform, x_val_transform, y_train_transform, y_val_transform
@@ -131,7 +132,8 @@ class TransformODModel(tf.keras.Model):
     n_transforms = self.transformer.n_transforms
     x_transformed, y_transformed = self.transformer.apply_all_transforms(
         x, transform_batch_size)
-    x_pred = self.predict(x_transformed, batch_size=predict_batch_size)
+    # self.network.eval_tf(x_transformed, tf.keras.utils.to_categorical(y_transformed))
+    x_pred = self.network.predict(x_transformed, batch_size=predict_batch_size)
     matrix_scores = np.zeros((len(x), n_transforms, n_transforms))
     # TODO: paralelice this
     for t_ind in range(n_transforms):

@@ -23,6 +23,8 @@ def calc_approx_alpha_sum(observations):
 
 def inv_psi(y, iters=5):
   # initial estimate
+  # if not np.isfinite(y).any():
+  #   print('')
   cond = y >= -2.22
   # if not np.isfinite(y).all():
   #   print('problem y')
@@ -44,7 +46,10 @@ def fixed_point_dirichlet_mle(alpha_init, log_p_hat, max_iter=1000):
   for i in range(max_iter):
     # if not np.isfinite(alpha_old).all():
     #   print('problem alpha_old')
-    alpha_new = inv_psi(psi(np.sum(alpha_old)) + log_p_hat)
+    alpha_old_sum=np.sum(alpha_old)
+    # if alpha_old_sum%1==0 and alpha_old_sum<0:
+    #   alpha_old_sum=+0.5
+    alpha_new = inv_psi(psi(alpha_old_sum) + log_p_hat)
     if np.sqrt(np.sum((alpha_old - alpha_new) ** 2)) < 1e-9:
       break
     # if not np.isfinite(alpha_new).all():

@@ -76,6 +76,15 @@ class Trainer(object):
       metrics_dict = model.evaluate_od(
           x_train, x_test, y_test, self.data_loader.name, general_keys.REAL,
           x_val)
+      # print('\nroc_auc')
+      # for key in metrics_dict.keys():
+      #   print(key, metrics_dict[key]['roc_auc'])
+      # print('\nacc_at_percentil')
+      # for key in metrics_dict.keys():
+      #   print(key, metrics_dict[key]['acc_at_percentil'])
+      # print('\nmax_accuracy')
+      # for key in metrics_dict.keys():
+      #   print(key, metrics_dict[key]['max_accuracy'])
       self.append_model_metrics_to_all_it_models_metrics(all_it_metrics,
                                                          metrics_dict)
       printing_message = self.get_metrics_message(all_it_metrics, i + 1,

@@ -61,10 +61,10 @@ def best_score_evaluation(result_folder_name, epochs, patience=0):
 
   model_constructors_list = (TransformODModel,)
   transformers_list = (
-  plus_kernel_transformer, trans_transformer, kernel_transformer,
-  transformer_72,
+  plus_kernel_transformer, kernel_transformer,
+  transformer_72, trans_transformer,
   )
-  trainers_list = (ztf_trainer, hits_trainer,)
+  trainers_list = (ztf_trainer, hits_trainer, )
   trainer_model_transformer_tuples = list(
       itertools.product(trainers_list, model_constructors_list,
                         transformers_list))

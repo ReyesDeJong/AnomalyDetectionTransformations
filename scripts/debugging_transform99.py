@@ -38,7 +38,18 @@ if __name__ == '__main__':
       data_loader=ztf_loader, transformer=plus_kernel_transformer,
       input_shape=x_train.shape[1:])
   weight_path = os.path.join(
-      PROJECT_PATH, 'results/best_scores_refact/best_scores_resnet_1_epochs/Transformer_OD_Model/PlusKernel_Transformer/Transformer_OD_Model_20191223-193141/checkpoints/final_weights.ckpt')
-  model.load_weights(weight_path)
+      PROJECT_PATH, 'results/best_scores_refact/best_scores_resnet_1_epochs/Transformer_OD_Model/PlusKernel_Transformer',
+      'Transformer_OD_Model_20191223-192249/checkpoints/final_weights.ckpt')
+      # 'Transformer_OD_Model_20191223-193141/checkpoints/final_weights.ckpt')
+  model.load_weights(weight_path).expect_partial()
   met_dict = model.evaluate_od(
       x_train, x_test, y_test, ztf_loader.name, general_keys.REAL, x_val)
+  print('\nroc_auc')
+  for key in met_dict.keys():
+    print(key, met_dict[key]['roc_auc'])
+  print('\nacc_at_percentil')
+  for key in met_dict.keys():
+    print(key, met_dict[key]['acc_at_percentil'])
+  print('\nmax_accuracy')
+  for key in met_dict.keys():
+    print(key, met_dict[key]['max_accuracy'])
