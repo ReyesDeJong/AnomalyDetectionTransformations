@@ -33,9 +33,9 @@ if __name__ == '__main__':
   ztf_loader = ZTFOutlierLoader(ztf_params)
   (x_train, y_train), (x_val, y_val), (
     x_test, y_test) = ztf_loader.get_outlier_detection_datasets()
-  kernel_transformer = transformations_tf.KernelTransformer()
+  plus_kernel_transformer = transformations_tf.PlusKernelTransformer()
   model = TransformODModel(
-      data_loader=ztf_loader, transformer=kernel_transformer,
+      data_loader=ztf_loader, transformer=plus_kernel_transformer,
       input_shape=x_train.shape[1:])
   weight_path = os.path.join(
       PROJECT_PATH, 'results/best_scores_refact/best_scores_resnet_1_epochs/Transformer_OD_Model/PlusKernel_Transformer/Transformer_OD_Model_20191223-193141/checkpoints/final_weights.ckpt')
