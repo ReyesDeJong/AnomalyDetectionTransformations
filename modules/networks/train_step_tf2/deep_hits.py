@@ -89,7 +89,6 @@ class DeepHits(tf.keras.Model):
     self.train_accuracy(labels, predictions)
     self.optimizer.apply_gradients(zip(gradients, self.trainable_variables))
 
-
   @tf.function
   def eval_step(self, images, labels):
     predictions = self.call(images, training=False)
@@ -100,6 +99,7 @@ class DeepHits(tf.keras.Model):
   def fit(self, x, y, validation_data=None, batch_size=128, epochs=1,
       iterations_to_validate=None, patience=0, verbose=1, **kwargs):
     print('\nTraining Model')
+    self.training_star_time = time.time()
     self.verbose = verbose
     if validation_data is not None:
       return self.fit_tf_val(
@@ -108,7 +108,7 @@ class DeepHits(tf.keras.Model):
     train_ds = tf.data.Dataset.from_tensor_slices(
         (x, y)).shuffle(10000).batch(batch_size)
     for epoch in range(epochs):
-      start_time = time.time()
+      epoch_start_time = time.time()
       for images, labels in train_ds:
         self.train_step(images, labels)
       if self.verbose:
@@ -117,11 +117,13 @@ class DeepHits(tf.keras.Model):
         print(template.format(epoch + 1,
                               self.eval_loss.result(),
                               self.eval_accuracy.result() * 100,
-                              delta_timer(time.time() - start_time)
+                              delta_timer(time.time() - epoch_start_time)
                               ))
         self.eval_loss.reset_states()
         self.eval_accuracy.reset_states()
         self.eval_tf(x, y, verbose=verbose)
+    print('Total Training Time: {}'.format(
+      delta_timer(time.time() - self.training_star_time)))
 
   def fit_tf_val(self, x, y, validation_data=None, batch_size=128, epochs=1,
       iterations_to_validate=None, patience=0, verbose=1):
@@ -152,21 +154,23 @@ class DeepHits(tf.keras.Model):
           # TODO: check train printer
           if self.verbose:
             template = 'Epoch {}, Loss: {}, Acc: {}, Val loss: {}, Val acc: {}, Time: {}'
-            print(template.format(epoch+1,
+            print(template.format(epoch + 1,
                                   self.train_loss.result(),
                                   self.train_accuracy.result() * 100,
                                   self.eval_loss.result(),
                                   self.eval_accuracy.result() * 100,
                                   delta_timer(time.time() - start_time)
                                   ))
-          self.check_best_model_save(it_i + ((epoch+1)*n_iterations_in_epoch))
+          self.check_best_model_save(
+            it_i + ((epoch + 1) * n_iterations_in_epoch))
           self.eval_loss.reset_states()
           self.eval_accuracy.reset_states()
           self.train_loss.reset_states()
           self.train_accuracy.reset_states()
     self.load_weights(
         self.best_model_weights_path).expect_partial()
-
+    print('Total Training Time: {}'.format(
+      delta_timer(time.time() - self.training_star_time)))
 
   def check_early_stopping(self, patience):
     if self.best_model_so_far[
@@ -177,6 +181,8 @@ class DeepHits(tf.keras.Model):
       self.eval_accuracy.reset_states()
       self.train_loss.reset_states()
       self.train_accuracy.reset_states()
+      print('Total Training Time: {}'.format(
+          delta_timer(time.time() - self.training_star_time)))
       return True
     return False
 
@@ -264,8 +270,8 @@ if __name__ == '__main__':
   mdl = DeepHits(input_shape=x_train.shape[1:],
                  n_classes=transformer.n_transforms)
   mdl.fit(x_train_transformed, to_categorical(transformations_inds),
-             verbose=1,
-             epochs=100, batch_size=128, validation_data=(
+          verbose=1,
+          epochs=100, batch_size=128, validation_data=(
       x_val_transformed, to_categorical(transformations_inds_val)), patience=1)
   mdl.eval_tf(x_train_transformed, to_categorical(transformations_inds),
               verbose=1)
@@ -282,6 +288,6 @@ if __name__ == '__main__':
   #             verbose=1)
   mdl.load_weights('dummy.ckpt').expect_partial()
   mdl.eval_tf(x_train_transformed, to_categorical(transformations_inds),
-             verbose=1)
+              verbose=1)
   mdl.eval_tf(x_val_transformed, to_categorical(transformations_inds_val),
               verbose=1)

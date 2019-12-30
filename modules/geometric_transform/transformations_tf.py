@@ -156,6 +156,7 @@ class AbstractTransformer(abc.ABC):
     self._transformation_list = None
     self._create_transformation_list()
     self.verbose = 1
+    self.return_data_not_transformed = False
 
   @property
   def n_transforms(self):
@@ -166,7 +167,10 @@ class AbstractTransformer(abc.ABC):
     return
 
   def set_verbose(self, verbose_value):
-    self.verbose=verbose_value
+    self.verbose = verbose_value
+
+  def set_return_data_not_transformed(self, return_data_not_transformed):
+    self.return_data_not_transformed = return_data_not_transformed
 
   # This must be included within preprocessing mapping(?)
   # TODO: refactor transform batch to avoid appending
@@ -178,34 +182,36 @@ class AbstractTransformer(abc.ABC):
       concatenated_transformations = tf.concat(transformed_batch, axis=0)
     return tf.identity(concatenated_transformations, 'concat_transforms')
 
-  def apply_all_transformsv0(self, x, batch_size=None):
-    """generate transform inds, that are the labels of each transform and
-    its respective transformed data. It generates labels along with images"""
-    if batch_size is not None:
-      self._transform_batch_size = batch_size
-    train_ds = tf.data.Dataset.from_tensor_slices((x)).batch(
-        self._transform_batch_size)
-    transformations_inds = np.arange(self.n_transforms)
-    x_transform = []
-    y_transform = []
-    for images in train_ds:
-      transformed_batch = transformer.transform_batch(images,
-                                                      transformations_inds)
-      y_transform_batch = np.repeat(
-          transformations_inds, transformed_batch.shape[0] // self.n_transforms)
-      x_transform.append(transformed_batch)
-      y_transform.append(y_transform_batch)
-    x_transform = np.concatenate(
-        [tensor.numpy() for tensor in x_transform])
-    y_transform = np.concatenate(y_transform)
-    return x_transform, y_transform
+  # def apply_all_transformsv0(self, x, batch_size=None):
+  #   """generate transform inds, that are the labels of each transform and
+  #   its respective transformed data. It generates labels along with images"""
+  #   if batch_size is not None:
+  #     self._transform_batch_size = batch_size
+  #   train_ds = tf.data.Dataset.from_tensor_slices((x)).batch(
+  #       self._transform_batch_size)
+  #   transformations_inds = np.arange(self.n_transforms)
+  #   x_transform = []
+  #   y_transform = []
+  #   for images in train_ds:
+  #     transformed_batch = transformer.transform_batch(images,
+  #                                                     transformations_inds)
+  #     y_transform_batch = np.repeat(
+  #         transformations_inds, transformed_batch.shape[0] // self.n_transforms)
+  #     x_transform.append(transformed_batch)
+  #     y_transform.append(y_transform_batch)
+  #   x_transform = np.concatenate(
+  #       [tensor.numpy() for tensor in x_transform])
+  #   y_transform = np.concatenate(y_transform)
+  #   return x_transform, y_transform
 
   def apply_all_transforms(self, x, batch_size=None):
     """generate transform inds, that are the labels of each transform and
     its respective transformed data. It generates labels after images"""
     if self.verbose:
+      if self.return_data_not_transformed:
+        print('Not')
       print('Appliying all %i transforms to set of shape %s' % (
-      self.n_transforms, str(x.shape)))
+        self.n_transforms, str(x.shape)))
     transformations_inds = np.arange(self.n_transforms)
     return self.apply_transforms(x, transformations_inds, batch_size)
 
@@ -214,8 +220,15 @@ class AbstractTransformer(abc.ABC):
     its respective transformed data. It generates labels after images"""
     if batch_size is not None:
       self._transform_batch_size = batch_size
+    if self.return_data_not_transformed:
+      self.original_x_len = int(len(x) / self.n_transforms)
+      y_transformed = self.get_y_transform(self.original_x_len,
+                                           transformations_inds)
+      return x, y_transformed
+
     train_ds = tf.data.Dataset.from_tensor_slices((x)).batch(
         self._transform_batch_size)
+
     # Todo: check which case is faste, if same, keep second way, it uses less memory
     # if x.shape[1] != 63:  # or self.n_transforms>90:
     #  x_transform = []
@@ -236,16 +249,21 @@ class AbstractTransformer(abc.ABC):
       i:i + self._transform_batch_size * len(transformations_inds)] = \
         transformed_batch.numpy()
       i += self._transform_batch_size * len(transformations_inds)
+    self.original_x_len = len(x)
+    y_transform = self.get_y_transform(self.original_x_len, transformations_inds)
+    del train_ds
+    return x_transform, y_transform
+
+  def get_y_transform(self, len_x, transformations_inds):
     y_transform_fixed_batch_size = np.repeat(transformations_inds,
                                              self._transform_batch_size)
     y_transform_fixed_batch_size = np.tile(y_transform_fixed_batch_size,
-                                           len(x) // self._transform_batch_size)
+                                           len_x // self._transform_batch_size)
     y_transform_leftover_batch_size = np.repeat(
-        transformations_inds, len(x) % self._transform_batch_size)
+        transformations_inds, len_x % self._transform_batch_size)
     y_transform = np.concatenate(
         [y_transform_fixed_batch_size, y_transform_leftover_batch_size])
-    del train_ds
-    return x_transform, y_transform
+    return y_transform
 
 
 # ToDO: be more consistent on the usage of transform_batch_size

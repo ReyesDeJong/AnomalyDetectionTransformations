@@ -10,6 +10,7 @@ PROJECT_PATH = os.path.abspath(
 sys.path.append(PROJECT_PATH)
 import tensorflow as tf
 from modules.networks.train_step_tf2.wide_residual_network import WideResidualNetwork
+# from modules.networks.wide_residual_network import WideResidualNetwork
 from modules.geometric_transform.transformations_tf import AbstractTransformer
 from modules.data_loaders.ztf_outlier_loader import ZTFOutlierLoader
 from parameters import general_keys
@@ -134,7 +135,7 @@ class TransformODModel(tf.keras.Model):
         x, transform_batch_size)
     # self.network.eval_tf(x_transformed, tf.keras.utils.to_categorical(y_transformed))
     x_pred = self.network.predict(x_transformed, batch_size=predict_batch_size)
-    matrix_scores = np.zeros((len(x), n_transforms, n_transforms))
+    matrix_scores = np.zeros((self.transformer.original_x_len, n_transforms, n_transforms))
     # TODO: paralelice this
     for t_ind in range(n_transforms):
       ind_x_pred_queal_to_t_ind = np.where(y_transformed == t_ind)[0]
@@ -195,12 +196,13 @@ class TransformODModel(tf.keras.Model):
       transform_batch_size=512, predict_batch_size=1024,
       **kwargs):
     n_transforms = self.transformer.n_transforms
-    diri_scores = np.zeros(len(x_eval))
     matrix_scores_train = self.predict_matrix_score(
         x_train, transform_batch_size, predict_batch_size, **kwargs)
     del x_train
     matrix_scores_eval = self.predict_matrix_score(
         x_eval, transform_batch_size, predict_batch_size, **kwargs)
+    #TODO:!!! make method to get actual lenght from data, otherwise it just te latest run
+    diri_scores = np.zeros(self.transformer.original_x_len)
     del x_eval
     for t_ind in tqdm(range(n_transforms)):
       observed_dirichlet = matrix_scores_train[:, :, t_ind]
@@ -217,12 +219,12 @@ class TransformODModel(tf.keras.Model):
     matrix_scores = matrix_scores / self.transformer.n_transforms
     scores_dict = {
       general_keys.DIRICHLET: diri_scores,
-      general_keys.MATRIX_TRACE: np.trace(matrix_scores, axis1=1, axis2=2),
-      general_keys.ENTROPY: -1 * score_functions.get_entropy(matrix_scores),
-      general_keys.CROSS_ENTROPY: -1 * score_functions.get_xH(self.transformer,
-                                                              matrix_scores),
-      general_keys.MUTUAL_INFORMATION: score_functions.get_xy_mutual_info(
-          matrix_scores)
+      # general_keys.MATRIX_TRACE: np.trace(matrix_scores, axis1=1, axis2=2),
+      # general_keys.ENTROPY: -1 * score_functions.get_entropy(matrix_scores),
+      # general_keys.CROSS_ENTROPY: -1 * score_functions.get_xH(self.transformer,
+      #                                                         matrix_scores),
+      # general_keys.MUTUAL_INFORMATION: score_functions.get_xy_mutual_info(
+      #     matrix_scores)
     }
     return scores_dict
 
@@ -231,6 +233,7 @@ class TransformODModel(tf.keras.Model):
       sub_sample_train_size=5000, raw_matrices=False, n_jobs=15,
       additional_score_save_path_list=None, save_hist_folder_path=None,
       **kwargs):
+    #TODO fix len(x)
     subsample_inds = np.random.choice(len(x_train), sub_sample_train_size,
                                       replace=False)
     x_train = x_train[subsample_inds]

@@ -12,9 +12,6 @@ import tensorflow as tf
 from modules.geometric_transform.transformations_tf import AbstractTransformer
 from parameters import general_keys
 import numpy as np
-from modules import dirichlet_utils
-from modules import score_functions
-from tqdm import tqdm
 from sklearn.svm import OneClassSVM
 from models.transformer_od import TransformODModel
 
@@ -36,119 +33,7 @@ class AlreadyTransformODModel(TransformODModel):
                      transformer, input_shape, depth,
                      widen_factor, results_folder_name,
                      name, **kwargs)
-
-  def fit(self, train_data, val_data, transform_batch_size=512,
-      train_batch_size=128,
-      epochs=2, **kwargs):
-    self.create_specific_model_paths()
-    # ToDo: must be network? or just self.compile???
-    self.network.compile(
-        general_keys.ADAM, general_keys.CATEGORICAL_CROSSENTROPY,
-        [general_keys.ACC])
-    es = tf.keras.callbacks.EarlyStopping(
-        monitor='val_loss', mode='min', verbose=1, patience=0,
-        restore_best_weights=True)
-    self.network.fit(
-        x=train_data[0], y=tf.keras.utils.to_categorical(train_data[1]),
-        validation_data=(
-          val_data[0], tf.keras.utils.to_categorical(val_data[1])),
-        batch_size=train_batch_size,
-        epochs=epochs, callbacks=[es], **kwargs)
-    weight_path = os.path.join(self.checkpoint_folder,
-                               'final_weights.h5')
-    self.save_weights(weight_path)
-    # del train_data, val_data
-
-  def predict_dirichlet_score(self, train_data, eval_data,
-      transform_batch_size=512, predict_batch_size=1024,
-      **kwargs):
-    _, diri_scores = self.predict_matrix_and_dirichlet_score(
-        train_data, eval_data, transform_batch_size, predict_batch_size,
-        **kwargs)
-    return diri_scores
-
-  # TODO: implement pre-transofrmed, in-situ-all, efficient transforming
-  def predict_matrix_score(self, x_data, transform_batch_size=512,
-      predict_batch_size=1024, **kwargs):
-    n_transforms = self.transformer.n_transforms
-    matrix_scores = np.zeros(
-        (int(len(x_data[0]) / n_transforms), n_transforms, n_transforms))
-    x_pred = self.predict(x_data[0], batch_size=predict_batch_size)
-    # TODO: paralelice this
-    for t_ind in range(n_transforms):
-      ind_x_pred_queal_to_t_ind = np.where(x_data[1] == t_ind)[0]
-      matrix_scores[:, :, t_ind] += x_pred[ind_x_pred_queal_to_t_ind]
-    return matrix_scores
-
-  # TODO: implement pre-transofrmed, in-situ-all, efficient transforming
-  def predict_matrix_and_dirichlet_score(self, x_train, x_eval,
-      transform_batch_size=512, predict_batch_size=1024,
-      **kwargs):
-    n_transforms = self.transformer.n_transforms
-    diri_scores = np.zeros(int(len(x_eval[0]) / n_transforms))
-    matrix_scores_train = self.predict_matrix_score(
-        x_train, transform_batch_size, predict_batch_size, **kwargs)
-    del x_train
-    matrix_scores_eval = self.predict_matrix_score(
-        x_eval, transform_batch_size, predict_batch_size, **kwargs)
-    del x_eval
-    for t_ind in tqdm(range(n_transforms)):
-      observed_dirichlet = matrix_scores_train[:, :, t_ind]
-      x_eval_p = matrix_scores_eval[:, :, t_ind]
-      diri_scores += dirichlet_utils.dirichlet_score(
-          observed_dirichlet, x_eval_p)
-    diri_scores /= n_transforms
-    return matrix_scores_eval, diri_scores
-
-  def get_scores_dict(self, train_data, eval_data,
-      transform_batch_size=512, predict_batch_size=1024, **kwargs):
-    matrix_scores, diri_scores = self.predict_matrix_and_dirichlet_score(
-        train_data, eval_data, transform_batch_size, predict_batch_size,
-        **kwargs)
-    matrix_scores = matrix_scores / self.transformer.n_transforms
-    scores_dict = {
-      general_keys.DIRICHLET: diri_scores,
-      general_keys.MATRIX_TRACE: np.trace(matrix_scores, axis1=1, axis2=2),
-      general_keys.ENTROPY: -1 * score_functions.get_entropy(matrix_scores),
-      general_keys.CROSS_ENTROPY: -1 * score_functions.get_xH(self.transformer,
-                                                              matrix_scores),
-      general_keys.MUTUAL_INFORMATION: score_functions.get_xy_mutual_info(
-          matrix_scores)
-    }
-    return scores_dict
-
-  # TODO: refactor, too long
-  def evaluate_od(self, train_data, eval_data, y_eval, dataset_name, class_name,
-      validation_data=None, transform_batch_size=512, predict_batch_size=1024,
-      additional_score_save_path_list=None, save_hist_folder_path=None,
-      **kwargs):
-    print('evaluating')
-    if validation_data is None:
-      validation_data = eval_data
-    # print('start eval')
-    eval_scores_dict = self.get_scores_dict(
-        train_data, eval_data, transform_batch_size, predict_batch_size,
-        **kwargs)
-    del eval_data
-    # print('start val')
-    validation_scores_dict = self.get_scores_dict(
-        train_data, validation_data, transform_batch_size, predict_batch_size,
-        **kwargs)
-    del train_data, validation_data
-    # print('start metric')
-    metrics_of_each_score = {}
-    for score_name, scores_value in eval_scores_dict.items():
-      metrics_save_path = self.get_metrics_save_path(score_name, dataset_name,
-                                                     class_name)
-      metrics_of_each_score[score_name] = self.get_metrics_dict(
-          scores_value, validation_scores_dict[score_name], y_eval,
-          metrics_save_path)
-      self._save_on_additional_paths(
-          additional_score_save_path_list, metrics_save_path,
-          metrics_of_each_score[score_name])
-      self._save_histogram(metrics_of_each_score[score_name], score_name,
-                           dataset_name, class_name, save_hist_folder_path)
-    return metrics_of_each_score
+    self.transformer.set_return_data_not_transformed(True)
 
 
 if __name__ == '__main__':
@@ -185,18 +70,16 @@ if __name__ == '__main__':
       x=x_test)
   time.sleep(10)
   mdl = AlreadyTransformODModel(transformer=transformer,
-      input_shape=x_train.shape[1:])
+                                input_shape=x_train.shape[1:])
 
   batch_size = 128
   mdl.fit(
-      (x_train_transform, y_train_transform),
-      (x_val_transform, y_val_transform), train_batch_size=batch_size,
+      x_train_transform, x_val_transform, train_batch_size=batch_size,
       epochs=2  # int(np.ceil(200 / transformer.n_transforms))
   )
   met_dict = mdl.evaluate_od(
-      (x_train_transform, y_train_transform),
-      (x_test_transform, y_test_transform), y_test, 'hits-4-c', 'real',
-      (x_val_transform, y_val_transform))
+      x_train_transform,  x_test_transform, y_test, 'hits-4-c', 'real',
+      x_val_transform)
 
   print('\nroc_auc')
   for key in met_dict.keys():
