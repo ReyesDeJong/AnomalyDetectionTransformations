@@ -40,13 +40,14 @@ class AlreadyTransformODModel(TransformODModel):
 if __name__ == '__main__':
   from parameters import loader_keys
   from modules.data_loaders.hits_outlier_loader import HiTSOutlierLoader
-  from modules.geometric_transform.transformations_tf import TransTransformer
+  from modules.geometric_transform import transformations_tf
   import time
+  from modules import utils
 
   gpus = tf.config.experimental.list_physical_devices('GPU')
   for gpu in gpus:
     tf.config.experimental.set_memory_growth(gpu, True)
-
+  start_time = time.time()
   hits_params = {
     loader_keys.DATA_PATH: os.path.join(
         PROJECT_PATH, '../datasets/HiTS2013_300k_samples.pkl'),
@@ -62,7 +63,7 @@ if __name__ == '__main__':
   (x_train, y_train), (x_val, y_val), (
     x_test, y_test) = hits_outlier_dataset.get_outlier_detection_datasets()
 
-  transformer = TransTransformer()
+  transformer = transformations_tf.Transformer()
   x_train_transform, y_train_transform = transformer.apply_all_transforms(
       x=x_train)
   x_val_transform, y_val_transform = transformer.apply_all_transforms(
@@ -73,11 +74,11 @@ if __name__ == '__main__':
   mdl = AlreadyTransformODModel(transformer=transformer,
                                 input_shape=x_train.shape[1:])
 
-  batch_size = 128
-  mdl.fit(
-      x_train_transform, x_val_transform, train_batch_size=batch_size,
-      epochs=2  # int(np.ceil(200 / transformer.n_transforms))
-  )
+  # batch_size = 128
+  # mdl.fit(
+  #     x_train_transform, x_val_transform, train_batch_size=batch_size,
+  #     epochs=1  # int(np.ceil(200 / transformer.n_transforms))
+  # )
   met_dict = mdl.evaluate_od(
       x_train_transform,  x_test_transform, y_test, 'hits-4-c', 'real',
       x_val_transform)
@@ -85,7 +86,9 @@ if __name__ == '__main__':
   print('\nroc_auc')
   for key in met_dict.keys():
     print(key, met_dict[key]['roc_auc'])
-
+  print(
+      "Train and evaluate %s" % utils.timer(
+          start_time, time.time()))
   """
   roc_auc
   dirichlet 0.9896582500000001
@@ -93,4 +96,41 @@ if __name__ == '__main__':
   entropy 0.9820515000000001
   cross_entropy 0.9614397499999999
   mutual_information 0.9889197499999999
+  
+  with tf2 00:04:26.97
+  train 00:01:28.39
+  Matrix_score_Time 00:00:12.85
+  Not
+  Appliying all 72 transforms to set of shape (288000, 21, 21, 4)
+  (288768, 21, 21, 4)
+  Matrix_score_Time 00:00:06.06
+  100%|███████████████████████████████████████████| 72/72 [00:23<00:00,  3.07it/s]
+  Not
+  Appliying all 72 transforms to set of shape (72000, 21, 21, 4)
+  (72704, 21, 21, 4)
+  Matrix_score_Time 00:00:01.55
+  100%|███████████████████████████████████████████| 72/72 [00:22<00:00,  3.15it/s]
+  roc_auc
+  dirichlet 0.76338925
+  Train and evaluate 00:01:14.88
+
+
+
+  
+  with keras 00:02:48.30
+  train 00:01:37.39
+  Matrix_score_Time 00:00:11.44
+  Not
+  Appliying all 72 transforms to set of shape (288000, 21, 21, 4)
+  Matrix_score_Time 00:00:05.20
+  100%|███████████████████████████████████████████| 72/72 [00:05<00:00, 12.66it/s]
+  Not
+  Appliying all 72 transforms to set of shape (72000, 21, 21, 4)
+  Matrix_score_Time 00:00:01.33
+  100%|███████████████████████████████████████████| 72/72 [00:05<00:00, 13.92it/s]
+  roc_auc
+  dirichlet 0.7630552500000001
+  Train and evaluate 00:00:36.91
+
+
   """

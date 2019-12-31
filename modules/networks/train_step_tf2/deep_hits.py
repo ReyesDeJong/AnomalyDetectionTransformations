@@ -9,7 +9,10 @@ import tensorflow as tf
 
 PROJECT_PATH = os.path.abspath(
     os.path.join(os.path.dirname(__file__), '..', '..', '..'))
+# PROJECT_PATH = os.path.join(PROJECT_PATH, os.path.abspath('../../../../../home/ereyes/Projects/Thesis/AnomalyDetectionTransformations'))
+# print(os.path.abspath(PROJECT_PATH))
 sys.path.append(PROJECT_PATH)
+
 
 from modules.utils import delta_timer
 import time
@@ -45,6 +48,7 @@ class DeepHits(tf.keras.Model):
     self.dense_3 = tf.keras.layers.Dense(n_classes)
     self.act_out = tf.keras.layers.Activation(final_activation)
     self._init_builds()
+    self._keras_compile()
 
   def _init_builds(self):
     # builds
@@ -56,6 +60,11 @@ class DeepHits(tf.keras.Model):
     self.eval_loss = tf.keras.metrics.Mean(name='eval_loss')
     self.eval_accuracy = tf.keras.metrics.CategoricalAccuracy(
         name='eval_accuracy')
+
+  def _keras_compile(self):
+    self.compile(
+          general_keys.ADAM, general_keys.CATEGORICAL_CROSSENTROPY,
+          [general_keys.ACC])
 
   def call(self, input_tensor, training=False):
     x = self.zp(input_tensor)
@@ -97,7 +106,12 @@ class DeepHits(tf.keras.Model):
     self.eval_accuracy(labels, predictions)
 
   def fit(self, x, y, validation_data=None, batch_size=128, epochs=1,
-      iterations_to_validate=None, patience=0, verbose=1, **kwargs):
+      iterations_to_validate=None, verbose=1, patience=None, callbacks=None,
+      **kwargs):
+    if patience is None and callbacks is None:
+      patience=0
+    if callbacks and patience is None:
+      patience=callbacks[0].patience
     print('\nTraining Model')
     self.training_star_time = time.time()
     self.verbose = verbose
@@ -123,7 +137,7 @@ class DeepHits(tf.keras.Model):
         self.eval_accuracy.reset_states()
         self.eval_tf(x, y, verbose=verbose)
     print('Total Training Time: {}'.format(
-      delta_timer(time.time() - self.training_star_time)))
+        delta_timer(time.time() - self.training_star_time)))
 
   def fit_tf_val(self, x, y, validation_data=None, batch_size=128, epochs=1,
       iterations_to_validate=None, patience=0, verbose=1):
@@ -162,7 +176,7 @@ class DeepHits(tf.keras.Model):
                                   delta_timer(time.time() - start_time)
                                   ))
           self.check_best_model_save(
-            it_i + ((epoch + 1) * n_iterations_in_epoch))
+              it_i + ((epoch + 1) * n_iterations_in_epoch))
           self.eval_loss.reset_states()
           self.eval_accuracy.reset_states()
           self.train_loss.reset_states()
@@ -170,7 +184,7 @@ class DeepHits(tf.keras.Model):
     self.load_weights(
         self.best_model_weights_path).expect_partial()
     print('Total Training Time: {}'.format(
-      delta_timer(time.time() - self.training_star_time)))
+        delta_timer(time.time() - self.training_star_time)))
 
   def check_early_stopping(self, patience):
     if self.best_model_so_far[
@@ -207,12 +221,20 @@ class DeepHits(tf.keras.Model):
           self.best_model_so_far[general_keys.LOSS],
           self.best_model_so_far[general_keys.ITERATION]), flush=True)
 
-  def predict(self, x, batch_size=1024):
-    eval_ds = tf.data.Dataset.from_tensor_slices((x)).batch(batch_size)
-    predictions = []
-    for images in eval_ds:
-      predictions.append(self.call(images))
-    return np.concatenate(predictions, axis=0)
+  def predict(self, x, batch_size=1000):
+    if len(x)%batch_size!=0:
+      #TODO: check memory leakage of appen, if it creates copy of array or not
+      extras_x = np.zeros(((batch_size-(len(x)%batch_size),)+ x.shape[1:]))
+      extras_x = np.append(x, extras_x, 0)
+      extras_pred = super().predict(extras_x, batch_size)
+      return extras_pred[:len(x)]
+    return super().predict(x, batch_size)
+    # eval_ds = tf.data.Dataset.from_tensor_slices((x)).batch(batch_size)
+    # predictions = []
+    # for images in eval_ds:
+    #   predictions.append(self.call(images))
+    # return np.concatenate(predictions, axis=0)
+
 
   def eval_tf(self, x, y, batch_size=1024, verbose=1):
     self.verbose = verbose
@@ -262,7 +284,7 @@ if __name__ == '__main__':
     x_test, y_test) = data_loader.get_outlier_detection_datasets()
   # transformer = transformations_tf.KernelTransformer(
   #     flips=True, gauss=False, log=False)
-  transformer = transformations_tf.Transformer()
+  transformer = transformations_tf.TransTransformer()
   x_train_transformed, transformations_inds = transformer.apply_all_transforms(
       x_train)
   x_val_transformed, transformations_inds_val = transformer.apply_all_transforms(
