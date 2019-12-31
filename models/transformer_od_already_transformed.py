@@ -5,8 +5,9 @@ Model that recives as input transformed data
 import os
 import sys
 
-PROJECT_PATH = os.path.abspath(
-    os.path.join(os.path.dirname(__file__), '..'))
+PROJECT_PATH = \
+  os.path.abspath('./../../../home/ereyes/Projects/Thesis/AnomalyDetectionTransformations')
+  #os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 sys.path.append(PROJECT_PATH)
 import tensorflow as tf
 from modules.geometric_transform.transformations_tf import AbstractTransformer
@@ -68,7 +69,7 @@ if __name__ == '__main__':
       x=x_val)
   x_test_transform, y_test_transform = transformer.apply_all_transforms(
       x=x_test)
-  time.sleep(10)
+
   mdl = AlreadyTransformODModel(transformer=transformer,
                                 input_shape=x_train.shape[1:])
 

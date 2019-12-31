@@ -197,8 +197,9 @@ class TransformODModel(tf.keras.Model):
       transform_batch_size=512, predict_batch_size=1024,
       **kwargs):
     n_transforms = self.transformer.n_transforms
-    matrix_scores_train = self.predict_matrix_score(
-        x_train, transform_batch_size, predict_batch_size, **kwargs)
+    if self.matrix_scores_train is None:
+      self.matrix_scores_train = self.predict_matrix_score(
+          x_train, transform_batch_size, predict_batch_size, **kwargs)
     del x_train
     matrix_scores_eval = self.predict_matrix_score(
         x_eval, transform_batch_size, predict_batch_size, **kwargs)
@@ -207,7 +208,7 @@ class TransformODModel(tf.keras.Model):
     diri_scores = np.zeros(len_x_eval)
     del x_eval
     for t_ind in tqdm(range(n_transforms)):
-      observed_dirichlet = matrix_scores_train[:, :, t_ind]
+      observed_dirichlet = self.matrix_scores_train[:, :, t_ind]
       x_eval_p = matrix_scores_eval[:, :, t_ind]
       diri_scores += dirichlet_utils.dirichlet_score(
           observed_dirichlet, x_eval_p)
@@ -302,6 +303,8 @@ class TransformODModel(tf.keras.Model):
       x_validation=None, transform_batch_size=512, predict_batch_size=1024,
       additional_score_save_path_list=None, save_hist_folder_path=None,
       **kwargs):
+    #TODO: avoid doing this!! need refctoring, but avoid repreedict of training
+    self.matrix_scores_train = None
     print('evaluating')
     if x_validation is None:
       x_validation = x_eval
@@ -312,6 +315,7 @@ class TransformODModel(tf.keras.Model):
     validation_scores_dict = self.get_scores_dict(
         x_train, x_validation, transform_batch_size, predict_batch_size,
         **kwargs)
+    del self.matrix_scores_train
     # print('start metric')
     metrics_of_each_score = {}
     for score_name, scores_value in eval_scores_dict.items():

@@ -173,8 +173,9 @@ class AbstractTransformer(abc.ABC):
     self.return_data_not_transformed = return_data_not_transformed
 
   def get_not_transformed_data_len(self, data_len):
+    #TODO: NOT optimal because it requires correct transform batch size
     if self.return_data_not_transformed:
-      return data_len/self.n_transforms
+      return int(data_len/self.n_transforms)
     return data_len
 
   # This must be included within preprocessing mapping(?)
