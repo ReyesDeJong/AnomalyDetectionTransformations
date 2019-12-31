@@ -6,8 +6,8 @@ import os
 import sys
 
 PROJECT_PATH = \
-  os.path.abspath('./../../../home/ereyes/Projects/Thesis/AnomalyDetectionTransformations')
-  #os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+  os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+# os.path.abspath('./../../../home/ereyes/Projects/Thesis/AnomalyDetectionTransformations')
 sys.path.append(PROJECT_PATH)
 import tensorflow as tf
 from modules.geometric_transform.transformations_tf import AbstractTransformer
@@ -97,8 +97,9 @@ if __name__ == '__main__':
   cross_entropy 0.9614397499999999
   mutual_information 0.9889197499999999
   
-  with tf2 00:04:26.97
-  train 00:01:28.39
+  tf2
+  dirichlet 0.9871679999999999
+  Train and evaluate 00:02:40.02
   Matrix_score_Time 00:00:12.85
   Not
   Appliying all 72 transforms to set of shape (288000, 21, 21, 4)
@@ -116,8 +117,9 @@ if __name__ == '__main__':
 
 
 
-  
-  with keras 00:02:48.30
+  keras
+  dirichlet 0.9830505
+  Train and evaluate 00:02:46.41
   train 00:01:37.39
   Matrix_score_Time 00:00:11.44
   Not
