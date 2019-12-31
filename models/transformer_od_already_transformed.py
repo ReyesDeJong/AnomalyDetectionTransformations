@@ -74,11 +74,11 @@ if __name__ == '__main__':
   mdl = AlreadyTransformODModel(transformer=transformer,
                                 input_shape=x_train.shape[1:])
 
-  # batch_size = 128
-  # mdl.fit(
-  #     x_train_transform, x_val_transform, train_batch_size=batch_size,
-  #     epochs=1  # int(np.ceil(200 / transformer.n_transforms))
-  # )
+  batch_size = 128
+  mdl.fit(
+      x_train_transform, x_val_transform, train_batch_size=batch_size,
+      epochs=2  # int(np.ceil(200 / transformer.n_transforms))
+  )
   met_dict = mdl.evaluate_od(
       x_train_transform,  x_test_transform, y_test, 'hits-4-c', 'real',
       x_val_transform)

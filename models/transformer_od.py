@@ -108,7 +108,6 @@ class TransformODModel(tf.keras.Model):
       es = tf.keras.callbacks.EarlyStopping(
         monitor='val_loss', mode='min', verbose=1, patience=1e100,
         restore_best_weights=False)
-      patience = epochs
     self.network.fit(
         x=x_train_transform, y=tf.keras.utils.to_categorical(y_train_transform),
         validation_data=(
