@@ -135,7 +135,8 @@ class TransformODModel(tf.keras.Model):
         x, transform_batch_size)
     # self.network.eval_tf(x_transformed, tf.keras.utils.to_categorical(y_transformed))
     x_pred = self.network.predict(x_transformed, batch_size=predict_batch_size)
-    matrix_scores = np.zeros((self.transformer.original_x_len, n_transforms, n_transforms))
+    len_x = self.transformer.get_not_transformed_data_len(len(x))
+    matrix_scores = np.zeros((len_x, n_transforms, n_transforms))
     # TODO: paralelice this
     for t_ind in range(n_transforms):
       ind_x_pred_queal_to_t_ind = np.where(y_transformed == t_ind)[0]
@@ -202,7 +203,8 @@ class TransformODModel(tf.keras.Model):
     matrix_scores_eval = self.predict_matrix_score(
         x_eval, transform_batch_size, predict_batch_size, **kwargs)
     #TODO:!!! make method to get actual lenght from data, otherwise it just te latest run
-    diri_scores = np.zeros(self.transformer.original_x_len)
+    len_x_eval = self.transformer.get_not_transformed_data_len(len(x_eval))
+    diri_scores = np.zeros(len_x_eval)
     del x_eval
     for t_ind in tqdm(range(n_transforms)):
       observed_dirichlet = matrix_scores_train[:, :, t_ind]
