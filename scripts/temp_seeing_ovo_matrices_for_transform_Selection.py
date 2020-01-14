@@ -7,6 +7,8 @@ import sys
 
 PROJECT_PATH = os.path.abspath(
     os.path.join(os.path.dirname(__file__), '..'))
+PROJECT_PATH = os.path.join(PROJECT_PATH, os.path.abspath('../../../../../home/ereyes/Projects/Thesis/AnomalyDetectionTransformations'))
+print(os.path.abspath(PROJECT_PATH))
 sys.path.append(PROJECT_PATH)
 import tensorflow as tf
 
@@ -33,10 +35,10 @@ if __name__ == '__main__':
 
   weights_path = os.path.join(
       PROJECT_PATH,
-      'results/transform_selection_1/Ensemble_OVO_Transformer_OD_Simple_Model/Kernel_transformer/Ensemble_OVO_Transformer_OD_Simple_Model_20191211-112609',
+      # 'results/transform_selection_1/Ensemble_OVO_Transformer_OD_Simple_Model/Kernel_transformer/Ensemble_OVO_Transformer_OD_Simple_Model_20191211-112609',
       # 'results/transform_selection_2/Ensemble_OVO_Transformer_OD_Simple_Model/72_transformer/Ensemble_OVO_Transformer_OD_Simple_Model_20191210-174727',
-      # 'results/transform_selection_3/Ensemble_OVO_Transformer_OD_Simple_Model',
-      # '72_transformer/Ensemble_OVO_Transformer_OD_Simple_Model_20191211-113030',
+      'results/transform_selection_3/Ensemble_OVO_Transformer_OD_Simple_Model',
+      '72_transformer/Ensemble_OVO_Transformer_OD_Simple_Model_20191211-113030',
       'checkpoints'
   )
 
@@ -49,7 +51,7 @@ if __name__ == '__main__':
     loader_keys.N_SAMPLES_BY_CLASS: 10000,
     loader_keys.TEST_PERCENTAGE: 0.2,
     loader_keys.VAL_SET_INLIER_PERCENTAGE: 0.1,
-    loader_keys.USED_CHANNELS: [0, 1, 2, 3],#[2],#
+    loader_keys.USED_CHANNELS: [2], #[0, 1, 2, 3],#
     loader_keys.CROP_SIZE: 21,
     general_keys.RANDOM_SEED: 42,
     loader_keys.TRANSFORMATION_INLIER_CLASS_VALUE: 1
@@ -57,9 +59,9 @@ if __name__ == '__main__':
   data_loader = HiTSOutlierLoader(hits_params)
   (x_train, y_train), (x_val, y_val), (
     x_test, y_test) = data_loader.get_outlier_detection_datasets()
-  # transformer = transformations_tf.Transformer()
-  transformer = transformations_tf.KernelTransformer(
-      flips=True, gauss=False, log=False)
+  transformer = transformations_tf.Transformer()
+  # transformer = transformations_tf.KernelTransformer(
+  #     flips=True, gauss=False, log=False)
   #model
   evaluation_model = TransformODSimpleModel(
       data_loader=data_loader, transformer=transformer,
@@ -86,7 +88,7 @@ if __name__ == '__main__':
       data_loader=data_loader, transformer=transformer,
       input_shape=x_train.shape[1:])
   mdl.load_model_weights(weights_path)
-  mdl.build_models()
+  # mdl.build_models()
   train_acc_matrix = mdl.get_acc_matrix(
       x_train, transform_batch_size=1024, predict_batch_size=2048)
   mdl.plot_score_acc_matrices(train_acc_matrix)

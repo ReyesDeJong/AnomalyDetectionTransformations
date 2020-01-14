@@ -21,6 +21,7 @@ from sklearn.metrics import roc_curve, precision_recall_curve, auc
 from modules.metrics import accuracies_by_threshold, accuracy_at_thr
 import pprint
 import datetime
+import time
 from tqdm import tqdm
 import matplotlib.pyplot as plt
 from sklearn.model_selection import ParameterGrid
@@ -107,13 +108,12 @@ class TransformODModel(tf.keras.Model):
       es = tf.keras.callbacks.EarlyStopping(
         monitor='val_loss', mode='min', verbose=1, patience=1e100,
         restore_best_weights=False)
-      patience = epochs
     self.network.fit(
         x=x_train_transform, y=tf.keras.utils.to_categorical(y_train_transform),
         validation_data=(
           x_val_transform, tf.keras.utils.to_categorical(y_val_transform)),
         batch_size=train_batch_size,
-        epochs=epochs, patience=patience, callbacks=[es], **kwargs)
+        epochs=epochs, callbacks=[es], **kwargs)
     # self.network.eval_tf(x_val_transform, tf.keras.utils.to_categorical(y_val_transform))
     weight_path = os.path.join(self.checkpoint_folder,
                                'final_weights.ckpt')
@@ -134,6 +134,7 @@ class TransformODModel(tf.keras.Model):
     x_transformed, y_transformed = self.transformer.apply_all_transforms(
         x, transform_batch_size)
     # self.network.eval_tf(x_transformed, tf.keras.utils.to_categorical(y_transformed))
+    start_time = time.time()
     x_pred = self.network.predict(x_transformed, batch_size=predict_batch_size)
     len_x = self.transformer.get_not_transformed_data_len(len(x))
     matrix_scores = np.zeros((len_x, n_transforms, n_transforms))
@@ -141,6 +142,9 @@ class TransformODModel(tf.keras.Model):
     for t_ind in range(n_transforms):
       ind_x_pred_queal_to_t_ind = np.where(y_transformed == t_ind)[0]
       matrix_scores[:, :, t_ind] += x_pred[ind_x_pred_queal_to_t_ind]
+    print(
+        "Matrix_score_Time %s" % utils.timer(
+            start_time, time.time()))
     return matrix_scores
 
   # # TODO: implement pre-transofrmed, in-situ-all, efficient transforming
@@ -197,8 +201,9 @@ class TransformODModel(tf.keras.Model):
       transform_batch_size=512, predict_batch_size=1024,
       **kwargs):
     n_transforms = self.transformer.n_transforms
-    matrix_scores_train = self.predict_matrix_score(
-        x_train, transform_batch_size, predict_batch_size, **kwargs)
+    if self.matrix_scores_train is None:
+      self.matrix_scores_train = self.predict_matrix_score(
+          x_train, transform_batch_size, predict_batch_size, **kwargs)
     del x_train
     matrix_scores_eval = self.predict_matrix_score(
         x_eval, transform_batch_size, predict_batch_size, **kwargs)
@@ -207,7 +212,7 @@ class TransformODModel(tf.keras.Model):
     diri_scores = np.zeros(len_x_eval)
     del x_eval
     for t_ind in tqdm(range(n_transforms)):
-      observed_dirichlet = matrix_scores_train[:, :, t_ind]
+      observed_dirichlet = self.matrix_scores_train[:, :, t_ind]
       x_eval_p = matrix_scores_eval[:, :, t_ind]
       diri_scores += dirichlet_utils.dirichlet_score(
           observed_dirichlet, x_eval_p)
@@ -299,9 +304,11 @@ class TransformODModel(tf.keras.Model):
 
   # TODO: refactor, too long
   def evaluate_od(self, x_train, x_eval, y_eval, dataset_name, class_name,
-      x_validation=None, transform_batch_size=512, predict_batch_size=1024,
+      x_validation=None, transform_batch_size=512, predict_batch_size=1000,
       additional_score_save_path_list=None, save_hist_folder_path=None,
       **kwargs):
+    #TODO: avoid doing this!! need refctoring, but avoid repreedict of training
+    self.matrix_scores_train = None
     print('evaluating')
     if x_validation is None:
       x_validation = x_eval
@@ -312,6 +319,7 @@ class TransformODModel(tf.keras.Model):
     validation_scores_dict = self.get_scores_dict(
         x_train, x_validation, transform_batch_size, predict_batch_size,
         **kwargs)
+    del self.matrix_scores_train
     # print('start metric')
     metrics_of_each_score = {}
     for score_name, scores_value in eval_scores_dict.items():

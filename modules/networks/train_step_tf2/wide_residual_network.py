@@ -59,6 +59,7 @@ class WideResidualNetwork(DeepHits):
     self.fc_1 = self.dense(n_classes)
     self.act_out = tf.keras.layers.Activation(final_activation)
     self._init_builds()
+    self._keras_compile()
 
   def call(self, input_tensor, training=False):
     # x = self.input_layer(input_tensor)
