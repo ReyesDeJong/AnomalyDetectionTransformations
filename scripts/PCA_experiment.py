@@ -8,7 +8,6 @@ import sys
 PROJECT_PATH = os.path.abspath(
     os.path.join(os.path.dirname(__file__), '..'))
 sys.path.append(PROJECT_PATH)
-from parameters import general_keys
 import numpy as np
 from sklearn.preprocessing import StandardScaler
 from sklearn.decomposition import PCA
@@ -64,37 +63,40 @@ def plot_image(images, labels, n_images=1):
       ax = [ax]
     for channel in range(n_channels):
       ax[channel].imshow(images[index, :, :, channel])
-    plt.title(CLASSES_NAMES[int(labels[index])]+' '+str(labels[index]))
+    plt.title(CLASSES_NAMES[int(labels[index])] + ' ' + str(labels[index]))
     plt.show()
+
 
 def pca_experiment_inverse_error(n_data=200):
   """see inverse transform efect of proyection in original space"""
   import numpy as np
   from sklearn.decomposition import PCA
   pca = PCA(1)
-  X_orig = np.random.multivariate_normal((0,0), ((10,2),(2,2)), n_data)#np.random.rand(n_data, 2)#np.stack([np.random.normal(0, 10, n_data), np.random.normal(0, 2, n_data)], axis=-1)
+  X_orig = np.random.multivariate_normal((0, 0), ((10, 2), (2, 2)),
+                                         n_data)  # np.random.rand(n_data, 2)#np.stack([np.random.normal(0, 10, n_data), np.random.normal(0, 2, n_data)], axis=-1)
   X_re_orig = pca.inverse_transform(pca.fit_transform(X_orig))
 
-  [plt.plot([X_re_orig[i, 0], X_re_orig[i+1, 0]], [X_re_orig[i, 1], X_re_orig[i+1, 1]], c='black')
-   for i in range(n_data-1)]
+  [plt.plot([X_re_orig[i, 0], X_re_orig[i + 1, 0]],
+            [X_re_orig[i, 1], X_re_orig[i + 1, 1]], c='black')
+   for i in range(n_data - 1)]
   plt.scatter(X_orig[:, 0], X_orig[:, 1], label='Original points')
   plt.scatter(X_re_orig[:, 0], X_re_orig[:, 1], label='InverseTransform')
   [plt.plot([X_orig[i, 0], X_re_orig[i, 0]], [X_orig[i, 1], X_re_orig[i, 1]])
    for i in range(n_data)]
-  plt.ylim((np.min([X_orig,X_re_orig])-1, np.max([X_orig,X_re_orig])+1))
-  plt.xlim((np.min([X_orig,X_re_orig])-1, np.max([X_orig,X_re_orig])+1))
+  plt.ylim((np.min([X_orig, X_re_orig]) - 1, np.max([X_orig, X_re_orig]) + 1))
+  plt.xlim((np.min([X_orig, X_re_orig]) - 1, np.max([X_orig, X_re_orig]) + 1))
   plt.legend()
   plt.show()
 
   distances_test = np.sqrt(np.sum((X_re_orig - X_orig) ** 2, axis=-1))
-  plt.hist(distances_test, bins=int(n_data/2), label='euclidean')
+  plt.hist(distances_test, bins=int(n_data / 2), label='euclidean')
   plt.legend()
   plt.show()
 
-  distances_0 = np.sqrt((X_re_orig[:,0] - X_orig[:,0]) ** 2)
-  distances_1 = np.sqrt((X_re_orig[:,1] - X_orig[:,1]) ** 2)
-  plt.hist(distances_0, bins=int(n_data/2), label='dim_0', alpha=0.5)
-  plt.hist(distances_1, bins=int(n_data/2), label='dim_1', alpha=0.5)
+  distances_0 = np.sqrt((X_re_orig[:, 0] - X_orig[:, 0]) ** 2)
+  distances_1 = np.sqrt((X_re_orig[:, 1] - X_orig[:, 1]) ** 2)
+  plt.hist(distances_0, bins=int(n_data / 2), label='dim_0', alpha=0.5)
+  plt.hist(distances_1, bins=int(n_data / 2), label='dim_1', alpha=0.5)
   plt.legend()
   plt.show()
 
@@ -112,7 +114,9 @@ def pca_experiment_keep_dims():
   plt.legend()
   plt.show()
 
-def get_every_dim_error_scores(n_pca_components, x_train_norm, x_test_norm, pca=None):
+
+def get_every_dim_error_scores(n_pca_components, x_train_norm, x_test_norm,
+    pca=None):
   if pca:
     pca = pca.fit_transform(x_train_norm)
   else:
@@ -124,7 +128,9 @@ def get_every_dim_error_scores(n_pca_components, x_train_norm, x_test_norm, pca=
     score += np.sqrt((x_test_back[:, dim_i] - x_test_norm[:, dim_i]) ** 2)
   return score
 
-def get_every_dim_error_scores(n_pca_components, x_train_norm, x_test_norm, pca=None):
+
+def get_every_dim_error_scores(n_pca_components, x_train_norm, x_test_norm,
+    pca=None):
   if pca:
     pca = pca.fit_transform(x_train_norm)
   else:
@@ -136,17 +142,21 @@ def get_every_dim_error_scores(n_pca_components, x_train_norm, x_test_norm, pca=
     score += np.sqrt((x_test_back[:, dim_i] - x_test_norm[:, dim_i]) ** 2)
   return score
 
-def get_proj_error_scores(n_pca_components, x_train_norm, x_test_norm, pca=None):
+
+def get_proj_error_scores(n_pca_components, x_train_norm, x_test_norm,
+    pca=None):
   if pca:
     pca = pca.fit_transform(x_train_norm)
   else:
     pca = PCA(n_components=n_pca_components).fit(x_train_norm)
   x_test_pca = pca.transform(x_test_norm)
   x_test_back = pca.inverse_transform(x_test_pca)
-  score = np.sqrt(np.sum((x_test_back - x_test_norm)**2, axis=-1))
+  score = np.sqrt(np.sum((x_test_back - x_test_norm) ** 2, axis=-1))
   return score
 
-def get_every_proj_stat_test_scores(n_pca_components, x_train_norm, x_test_norm, percentil=97.73, pca=None):
+
+def get_every_proj_stat_test_scores(n_pca_components, x_train_norm, x_test_norm,
+    percentil=97.73, pca=None, x_val_norm=None, return_train=False):
   if pca:
     pca = pca.fit_transform(x_train_norm)
   else:
@@ -154,49 +164,71 @@ def get_every_proj_stat_test_scores(n_pca_components, x_train_norm, x_test_norm,
   x_train_pca = pca.transform(x_train_norm)
   thresholds = []
   print(x_train_pca.shape[-1])
+  print("Suma acumulada de los primeros componentes principales: %f" % np.sum(
+      pca.explained_variance_ratio_))
   for dim_i in range(x_train_pca.shape[-1]):
     thr = np.percentile(x_train_pca[:, dim_i], percentil)
     thresholds.append(thr)
   x_test_pca = pca.transform(x_test_norm)
-  score = np.sum(x_test_pca - thresholds, axis=-1)
+  scores = x_test_pca - thresholds
+  sum_score = np.sum(scores, axis=-1)
   # score = np.zeros(x_test_norm.shape[0])
   # for dim_i in range(x_test_back.shape[-1]):
   #   score += np.sqrt((x_test_back[:, dim_i] - x_test_norm[:, dim_i]) ** 2)
-  return score
+  if x_val_norm is not None:
+    x_val_pca = pca.transform(x_val_norm)
+    scores_val = x_val_pca - thresholds
+    if return_train:
+      scores_train = x_train_pca - thresholds
+      return scores, scores_val, scores_train
+    return scores, scores_val
+  if return_train:
+    scores_train = x_train_pca - thresholds
+    return scores, scores_train
+  return sum_score, scores
+
 
 def pca(X):
   # Data matrix X, assumes 0-centered
   n, m = X.shape
   assert np.allclose(X.mean(axis=0), np.zeros(m))
   # Compute covariance matrix
-  C = np.dot(X.T, X) / (n-1)
+  C = np.dot(X.T, X) / (n - 1)
   # Eigen decomposition
   eigen_vals, eigen_vecs = np.linalg.eig(C)
   # Project X onto PC space
   X_pca = np.dot(X, eigen_vecs)
   return X_pca
 
+
 def svd(X):
   # Data matrix X, X doesn't need to be 0-centered
   n, m = X.shape
   # Compute full SVD
   U, Sigma, Vh = np.linalg.svd(X,
-      full_matrices=False, # It's not necessary to compute the full matrix of U or V
-      compute_uv=True)
+                               full_matrices=False,
+                               # It's not necessary to compute the full matrix of U or V
+                               compute_uv=True)
   # Transform X with SVD components
   X_svd = np.dot(U, np.diag(Sigma))
   return X_svd
 
-#https://stats.stackexchange.com/questions/134282/relationship-between-svd-and-pca-how-to-use-svd-to-perform-pca
-#https://towardsdatascience.com/pca-and-svd-explained-with-numpy-5d13b0d2a4d8
+
+# https://stats.stackexchange.com/questions/134282/relationship-between-svd-and-pca-how-to-use-svd-to-perform-pca
+# https://towardsdatascience.com/pca-and-svd-explained-with-numpy-5d13b0d2a4d8
+
+def _train_ocsvm_and_score(params, x_train, val_labels, x_val):
+  return np.mean(val_labels ==
+                 OneClassSVM(**params).fit(x_train).predict(
+                     x_val))
+
 
 if __name__ == '__main__':
-  from parameters import loader_keys
-  from modules.data_loaders.hits_outlier_loader import HiTSOutlierLoader
   import pandas as pd
   from scripts.detached_transformer_od_hits import \
     plot_histogram_disc_loss_acc_thr
-  pca_experiment_inverse_error()
+
+  # pca_experiment_inverse_error()
   # hits_params = {
   #   loader_keys.DATA_PATH: os.path.join(
   #       PROJECT_PATH, '../datasets/HiTS2013_300k_samples.pkl'),
@@ -211,7 +243,8 @@ if __name__ == '__main__':
   # hits_outlier_dataset = HiTSOutlierLoader(hits_params)
   (x_train, y_train), (x_val, y_val), (
     x_test, y_test) = pd.read_pickle(os.path.join(
-         PROJECT_PATH, '../datasets/outlier_seed42_crop21_nChannels4_HiTS2013_300k_samples.pkl'))#hits_outlier_dataset.get_outlier_detection_datasets()#
+      PROJECT_PATH,
+      '../datasets/outlier_seed42_crop21_nChannels4_HiTS2013_300k_samples.pkl'))  # hits_outlier_dataset.get_outlier_detection_datasets()#
   print(x_train.shape)
   print(np.unique(y_test, return_counts=True))
 
@@ -247,7 +280,6 @@ if __name__ == '__main__':
   # plot_image(x_test[y_test==0], y_test[y_test==0], n_images=3)
   # plot_image(x_test[y_test == 1], y_test[y_test == 1], n_images=3)
 
-
   # # Plotting errors This is incorrect, because inverse should be performed
   # x_train_pca = pca.transform(x_train_norm)
   # distances = np.sqrt(np.sum((x_train_norm - x_train_pca)**2, axis=-1))
@@ -260,8 +292,7 @@ if __name__ == '__main__':
   # plt.legend()
   # plt.show()
 
-
-  # # Plotting errors 90Var
+  # Plotting errors 90Var
   # pca_90 = PCA(n_components=thr_ind[0]).fit(x_train_norm)
   # print("Suma acumulada de los primeros componentes principales: %f" % np.sum(
   #     pca_90.explained_variance_ratio_))
@@ -283,24 +314,45 @@ if __name__ == '__main__':
   # pca_experiment_inverse_error()
   # pca_experiment_keep_dims()
 
-  dim_error_score = get_every_dim_error_scores(thr_ind[0], x_train_norm, x_test_norm)
-  plot_histogram_disc_loss_acc_thr(dim_error_score[y_test==1], dim_error_score[~(y_test==1)],
-                                   x_label_name='DimError')
+  # dim_error_score = get_every_dim_error_scores(thr_ind[0], x_train_norm, x_test_norm)
+  # plot_histogram_disc_loss_acc_thr(dim_error_score[y_test==1], dim_error_score[~(y_test==1)],
+  #                                  x_label_name='DimError')
+  #
+  # proj_error_score = get_proj_error_scores(thr_ind[0], x_train_norm,
+  #                                              x_test_norm)
+  # plot_histogram_disc_loss_acc_thr(proj_error_score[y_test == 1],
+  #                                  proj_error_score[~(y_test == 1)],
+  #                                  x_label_name='ProjError')
 
-  proj_error_score = get_proj_error_scores(thr_ind[0], x_train_norm,
-                                               x_test_norm)
-  plot_histogram_disc_loss_acc_thr(proj_error_score[y_test == 1],
-                                   proj_error_score[~(y_test == 1)],
-                                   x_label_name='ProjError')
+  stat_proj_sum_score_test, stat_proj_score_test = get_every_proj_stat_test_scores(
+    0.9, x_train_norm,
+    x_test_norm)
 
-  stat_proj_score = get_every_proj_stat_test_scores(thr_ind[0], x_train_norm,
-                                               x_test_norm)
-  plot_histogram_disc_loss_acc_thr(stat_proj_score[y_test == 1],
-                                   stat_proj_score[~(y_test == 1)],
+  plot_histogram_disc_loss_acc_thr(stat_proj_sum_score_test[y_test == 1],
+                                   stat_proj_sum_score_test[~(y_test == 1)],
                                    x_label_name='statProj')
 
+  from sklearn.model_selection import ParameterGrid
+  from sklearn.externals.joblib import Parallel, delayed
+  from sklearn.svm import OneClassSVM
 
+  x_val_flat = x_val.reshape([x_val.shape[0], -1])
+  x_val_norm = scaler.transform(x_val_flat)
+  stat_proj_score_test, stat_proj_score_val, stat_proj_score_train = get_every_proj_stat_test_scores(
+      0.9, x_train_norm, x_test_norm, return_train=True, x_val_norm=x_val_norm)
 
-
-
+  pg = ParameterGrid({'nu': np.linspace(0.1, 0.9, num=9),
+                      'gamma': np.logspace(-7, 2, num=10, base=2)})
+  results = Parallel(n_jobs=15)(
+      delayed(_train_ocsvm_and_score)(d, stat_proj_score_train,
+                                      np.ones((len(stat_proj_score_val))),
+                                      stat_proj_score_val)
+      for d in pg)
+  best_params, best_acc_score = max(zip(pg, results), key=lambda t: t[-1])
+  print(best_params, best_acc_score)
+  best_ocsvm = OneClassSVM(**best_params).fit(stat_proj_score_train)
+  od_scores_test = best_ocsvm.decision_function(stat_proj_score_test)
+  plot_histogram_disc_loss_acc_thr(od_scores_test[y_test == 1],
+                                   od_scores_test[~(y_test == 1)],
+                                   x_label_name='statProjAllDim-SVM')
 
