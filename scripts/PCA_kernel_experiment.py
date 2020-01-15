@@ -11,7 +11,7 @@ sys.path.append(PROJECT_PATH)
 from parameters import general_keys
 import numpy as np
 from sklearn.preprocessing import StandardScaler
-from sklearn.decomposition import PCA
+from sklearn.decomposition import KernelPCA as PCA
 import matplotlib.pyplot as plt
 from scipy.spatial import ConvexHull
 
@@ -69,9 +69,7 @@ def plot_image(images, labels, n_images=1):
 
 def pca_experiment_inverse_error(n_data=200):
   """see inverse transform efect of proyection in original space"""
-  import numpy as np
-  from sklearn.decomposition import PCA
-  pca = PCA(1)
+  pca = PCA(kernel='rbf', n_components=1)
   X_orig = np.random.multivariate_normal((0,0), ((10,2),(2,2)), n_data)#np.random.rand(n_data, 2)#np.stack([np.random.normal(0, 10, n_data), np.random.normal(0, 2, n_data)], axis=-1)
   X_re_orig = pca.inverse_transform(pca.fit_transform(X_orig))
 
@@ -103,7 +101,7 @@ def pca_experiment_keep_dims():
   """see inverse transform efect of proyection in original space"""
   import numpy as np
   from sklearn.decomposition import PCA
-  pca = PCA(2)
+  pca = PCA(kernel='rbf',n_components=2)
   X_orig = np.random.rand(10, 2)
   X_pca = pca.fit_transform(X_orig)
 
@@ -116,7 +114,7 @@ def get_every_dim_error_scores(n_pca_components, x_train_norm, x_test_norm, pca=
   if pca:
     pca = pca.fit_transform(x_train_norm)
   else:
-    pca = PCA(n_components=n_pca_components).fit(x_train_norm)
+    pca = PCA(kernel='rbf',n_components=n_pca_components).fit(x_train_norm)
   x_test_pca = pca.transform(x_test_norm)
   x_test_back = pca.inverse_transform(x_test_pca)
   score = np.zeros(x_test_norm.shape[0])
@@ -128,7 +126,7 @@ def get_every_dim_error_scores(n_pca_components, x_train_norm, x_test_norm, pca=
   if pca:
     pca = pca.fit_transform(x_train_norm)
   else:
-    pca = PCA(n_components=n_pca_components).fit(x_train_norm)
+    pca = PCA(kernel='rbf',n_components=n_pca_components).fit(x_train_norm)
   x_test_pca = pca.transform(x_test_norm)
   x_test_back = pca.inverse_transform(x_test_pca)
   score = np.zeros(x_test_norm.shape[0])
@@ -140,7 +138,7 @@ def get_proj_error_scores(n_pca_components, x_train_norm, x_test_norm, pca=None)
   if pca:
     pca = pca.fit_transform(x_train_norm)
   else:
-    pca = PCA(n_components=n_pca_components).fit(x_train_norm)
+    pca = PCA(kernel='rbf',n_components=n_pca_components).fit(x_train_norm)
   x_test_pca = pca.transform(x_test_norm)
   x_test_back = pca.inverse_transform(x_test_pca)
   score = np.sqrt(np.sum((x_test_back - x_test_norm)**2, axis=-1))
@@ -150,7 +148,7 @@ def get_every_proj_stat_test_scores(n_pca_components, x_train_norm, x_test_norm,
   if pca:
     pca = pca.fit_transform(x_train_norm)
   else:
-    pca = PCA(n_components=n_pca_components).fit(x_train_norm)
+    pca = PCA(kernel='rbf',n_components=n_pca_components).fit(x_train_norm)
   x_train_pca = pca.transform(x_train_norm)
   thresholds = []
   print(x_train_pca.shape[-1])
@@ -222,7 +220,7 @@ if __name__ == '__main__':
   scaler = StandardScaler().fit(x_train_flat)
   x_train_norm = scaler.transform(x_train_flat)
   print(x_train_norm[:, 0].mean(), x_train_norm[:, 0].std())
-  pca = PCA(n_components=x_train_norm.shape[-1]).fit(x_train_norm)
+  pca = PCA(kernel='rbf',n_components=x_train_norm.shape[-1]).fit(x_train_norm)
   print("Varianza explicada por los primeros componentes principales:")
   print(pca.explained_variance_ratio_)
   print("Suma acumulada de los primeros componentes principales: %f" % np.sum(
@@ -239,7 +237,7 @@ if __name__ == '__main__':
   x_test_norm = scaler.transform(x_test_flat)
 
   # # Toy example
-  # pca2 = PCA(n_components=2).fit(x_train_norm)
+  # pca2 = PCA(kernel='rbf',n_components=2).fit(x_train_norm)
   # # x_train_pca2 = pca2.transform(x_train_flat)
   # x_test_pca2 = pca2.transform(x_test_flat)
   # scatter_2d(x_test_pca2, y_test)
@@ -262,7 +260,7 @@ if __name__ == '__main__':
 
 
   # # Plotting errors 90Var
-  # pca_90 = PCA(n_components=thr_ind[0]).fit(x_train_norm)
+  # pca_90 = PCA(kernel='rbf',n_components=thr_ind[0]).fit(x_train_norm)
   # print("Suma acumulada de los primeros componentes principales: %f" % np.sum(
   #     pca_90.explained_variance_ratio_))
   # x_train_pca_90 = pca_90.transform(x_train_norm)
