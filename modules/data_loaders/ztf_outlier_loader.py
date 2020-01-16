@@ -37,14 +37,18 @@ class ZTFOutlierLoader(object):
     self.random_seed = params[general_keys.RANDOM_SEED]
     self.transform_inlier_class_value = params[
       loader_keys.TRANSFORMATION_INLIER_CLASS_VALUE]
+    self.name = dataset_name + '_%i_channels' % len(self.used_channels)
     self.template_save_path = self._get_template_save_path()
-    self.name = dataset_name
 
   def _get_template_save_path(self) -> str:
     """get name of final saved file to check if it's been already generated"""
-    text_to_add = 'seed%i_crop%s_nChannels%i' % (
-      self.random_seed, str(self.crop_size), len(self.used_channels))
-    return utils.add_text_to_beginning_of_file_path(self.data_path, text_to_add)
+    text_to_add = 'generated_%s/seed%i_crop%s_nChannels%i' % (self.name,
+                                                    self.random_seed,
+                                                    str(self.crop_size),
+                                                    len(self.used_channels))
+    save_path = utils.add_text_to_beginning_of_file_path(self.data_path, text_to_add)
+    utils.check_path(os.path.dirname(os.path.abspath(save_path)))
+    return save_path
 
   def get_unsplitted_dataset(self) -> Dataset:
     """get preprocessed dataset, prior to outlier-inlier splitting"""
@@ -113,13 +117,17 @@ class ZTFOutlierLoader(object):
       inlier_indexes = inlier_indexes[:8000]
       val_size_inliers = 1000
     # train-val indexes inlier indexes
-    train_inlier_idxs = inlier_indexes[val_size_inliers:]
+    split_one_inlier_idxs = inlier_indexes[val_size_inliers:]
     val_inlier_idxs = inlier_indexes[:val_size_inliers]
+    # print(split_one_inlier_idxs)
+    # print(val_inlier_idxs)
     # train-test inlier indexes
     n_outliers = np.sum(new_labels != inlier_task)
-    train_inlier_idxs = train_inlier_idxs[n_outliers:]
-    test_inlier_idxs = train_inlier_idxs[:n_outliers]
-
+    test_inlier_idxs = split_one_inlier_idxs[:n_outliers]
+    train_inlier_idxs = split_one_inlier_idxs[n_outliers:]
+    # print(n_outliers)
+    # print(train_inlier_idxs)
+    # print(test_inlier_idxs)
     X_train, y_train = dataset.data_array[train_inlier_idxs], new_labels[
       train_inlier_idxs]
     X_val, y_val = dataset.data_array[val_inlier_idxs], new_labels[

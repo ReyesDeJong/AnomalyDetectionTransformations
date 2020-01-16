@@ -53,7 +53,7 @@ if __name__ == '__main__':
   (x_train, y_train), (x_val, y_val), (
     x_test, y_test) = pd.read_pickle(os.path.join(
       PROJECT_PATH,
-      '../datasets/outlier_seed42_crop21_nChannels4_HiTS2013_300k_samples.pkl'))  # hits_outlier_dataset.get_outlier_detection_datasets()#
+      '../datasets/generated_hits_4_channels/outlier_seed42_crop21_nChannels4_HiTS2013_300k_samples.pkl'))  # hits_outlier_dataset.get_outlier_detection_datasets()#
 
   print(x_train.shape)
   print(np.unique(y_test, return_counts=True))
@@ -150,21 +150,19 @@ if __name__ == '__main__':
 
 
 
-  matches = 0
-  for train_i in range(x_val_flat.shape[0]):
-    train_sample = x_val_flat[train_i]
-    for test_i in range(x_test_flat.shape[0]):
-      test_sample = x_test_flat[test_i]
-      if np.mean(test_sample==train_sample)==1:
-        matches+=1
-        print(matches)
-
-
+  # matches = 0
+  # for train_i in range(x_val_flat.shape[0]):
+  #   train_sample = x_val_flat[train_i]
+  #   for test_i in range(x_test_flat.shape[0]):
+  #     test_sample = x_test_flat[test_i]
+  #     if np.mean(test_sample==train_sample)==1:
+  #       matches+=1
+  #       print(matches)
   # train_sample = x_train_flat[0]
   # for test_i in range(x_test_flat.shape[0]):
   #   test_sample = x_test_flat[test_i]
   #   if np.mean(test_sample==train_sample)==1:
   #     print(test_i)
 
-  plot_image(x_train[-1][None,...], labels=[1])
-  plot_image(x_test[-1][None, ...], labels=[1])
+  plot_image(x_train[0][None,...], labels=[1])
+  plot_image(x_test[0][None, ...], labels=[1])
