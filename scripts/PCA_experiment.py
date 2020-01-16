@@ -324,13 +324,13 @@ if __name__ == '__main__':
   #                                  proj_error_score[~(y_test == 1)],
   #                                  x_label_name='ProjError')
 
-  stat_proj_sum_score_test, stat_proj_score_test = get_every_proj_stat_test_scores(
-    0.9, x_train_norm,
-    x_test_norm)
-
-  plot_histogram_disc_loss_acc_thr(stat_proj_sum_score_test[y_test == 1],
-                                   stat_proj_sum_score_test[~(y_test == 1)],
-                                   x_label_name='statProj')
+  # stat_proj_sum_score_test, stat_proj_score_test = get_every_proj_stat_test_scores(
+  #   0.9, x_train_norm,
+  #   x_test_norm)
+  #
+  # plot_histogram_disc_loss_acc_thr(stat_proj_sum_score_test[y_test == 1],
+  #                                  stat_proj_sum_score_test[~(y_test == 1)],
+  #                                  x_label_name='statProj')
 
   from sklearn.model_selection import ParameterGrid
   from sklearn.externals.joblib import Parallel, delayed
@@ -352,7 +352,6 @@ if __name__ == '__main__':
   print(best_params, best_acc_score)
   best_ocsvm = OneClassSVM(**best_params).fit(stat_proj_score_train)
   od_scores_test = best_ocsvm.decision_function(stat_proj_score_test)
-  plot_histogram_disc_loss_acc_thr(od_scores_test[y_test == 1],
-                                   od_scores_test[~(y_test == 1)],
-                                   x_label_name='statProjAllDim-SVM')
-
+  plot_histogram_disc_loss_acc_thr(
+      od_scores_test[y_test == 1], od_scores_test[~(y_test == 1)],
+      x_label_name='statProjAllDim-SVM')
