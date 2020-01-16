@@ -97,9 +97,22 @@ if __name__ == '__main__':
 
   x_val_flat = x_val.reshape([x_val.shape[0], -1])
   x_val_norm = scaler.transform(x_val_flat)
+
+  print(x_train_norm[:, 0].mean(), x_train_norm[:, 0].std())
+  print(x_test_norm[y_test == 1, 0].mean(), x_test_norm[y_test == 1, 0].std())
+  print(x_val_norm[:, 0].mean(), x_val_norm[:, 0].std())
+  print(x_test_norm[~(y_test == 1), 0].mean(), x_test_norm[~(y_test == 1), 0].std())
   stat_proj_score_test, stat_proj_score_val, stat_proj_score_train = get_every_proj_stat_test_scores(
       0.9, x_train_norm, x_test_norm, return_train=True, x_val_norm=x_val_norm)
+
+  # score_scaler = StandardScaler().fit(stat_proj_score_train)
+  # stat_proj_score_test = score_scaler.transform(stat_proj_score_test)
+  # stat_proj_score_val = score_scaler.transform(stat_proj_score_val)
+  # stat_proj_score_train = score_scaler.transform(stat_proj_score_train)
+  # Non scaled
   best_params = {'gamma': 0.0078125, 'nu': 0.4}
+  # Scaled
+  # best_params = {'gamma': 0.0078125, 'nu': 0.1}
   best_ocsvm = OneClassSVM(**best_params).fit(stat_proj_score_train)
   od_scores_test = best_ocsvm.decision_function(stat_proj_score_test)
   plot_histogram_disc_loss_acc_thr(

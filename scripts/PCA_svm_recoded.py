@@ -12,13 +12,25 @@ import numpy as np
 from sklearn.preprocessing import StandardScaler
 from sklearn.decomposition import PCA
 import matplotlib.pyplot as plt
-from scipy.spatial import ConvexHull
+from sklearn import metrics
 from sklearn.svm import OneClassSVM
 
 CLASSES_NAMES = ['bogus', 'real']
 
 # https://stats.stackexchange.com/questions/134282/relationship-between-svd-and-pca-how-to-use-svd-to-perform-pca
 # https://towardsdatascience.com/pca-and-svd-explained-with-numpy-5d13b0d2a4d8
+def plot_image(images, labels, n_images=1):
+  for _ in range(n_images):
+    index = np.random.randint(images.shape[0])
+    n_channels = int(images.shape[-1])
+    fig, ax = plt.subplots(1, n_channels, figsize=(3 * n_channels, 3))
+    if type(ax) != np.ndarray:
+      ax = [ax]
+    for channel in range(n_channels):
+      ax[channel].imshow(images[index, :, :, channel])
+    plt.title(CLASSES_NAMES[int(labels[index])] + ' ' + str(labels[index]))
+    plt.show()
+
 
 if __name__ == '__main__':
   import pandas as pd
@@ -42,6 +54,7 @@ if __name__ == '__main__':
     x_test, y_test) = pd.read_pickle(os.path.join(
       PROJECT_PATH,
       '../datasets/outlier_seed42_crop21_nChannels4_HiTS2013_300k_samples.pkl'))  # hits_outlier_dataset.get_outlier_detection_datasets()#
+
   print(x_train.shape)
   print(np.unique(y_test, return_counts=True))
 
@@ -78,8 +91,80 @@ if __name__ == '__main__':
   scores_val = x_val_pca - thresholds
 
   best_params = {'gamma': 0.0078125, 'nu': 0.4}
-  best_ocsvm = OneClassSVM(**best_params).fit(stat_proj_score_train)
-  od_scores_test = best_ocsvm.decision_function(stat_proj_score_test)
+  # best_ocsvm = OneClassSVM(**best_params).fit(np.concatenate([scores_train, scores_val]))
+  best_ocsvm = OneClassSVM(**best_params).fit(scores_train)
+  od_scores_test = best_ocsvm.decision_function(scores_test)
+  od_scores_train = best_ocsvm.decision_function(scores_train)
+  od_scores_val = best_ocsvm.decision_function(scores_val)
+
+  plt.hist(od_scores_train, bins=100, label='train', alpha=0.5, density=True)
+  plt.hist(od_scores_val, bins=100, label='val', alpha=0.5, density=True)
+  plt.legend()
+  plt.show()
+  plt.hist(od_scores_test[y_test==0], bins=100, label='test_'+CLASSES_NAMES[0], alpha=0.5, density=True)
+  plt.hist(od_scores_test[y_test == 1], bins=100,
+           label='test_' + CLASSES_NAMES[1], alpha=0.5, density=True)
+  plt.legend()
+  plt.show()
   plot_histogram_disc_loss_acc_thr(
       od_scores_test[y_test == 1], od_scores_test[~(y_test == 1)],
       x_label_name='statProjAllDim-SVM')
+
+  X_test = np.concatenate([scores_test[y_test == 1], scores_test[~(y_test == 1)]], axis=0)
+
+  pred = best_ocsvm.decision_function(X_test)
+  y_true = np.array([1] * np.sum(y_test == 1) + [-1] * np.sum(~(y_test == 1)))
+  fpr, tpr, thresholds = metrics.roc_curve(y_true, pred)
+  roc_auc = metrics.auc(fpr, tpr)
+
+  plt.figure()
+  plt.plot(fpr, tpr, label='ROC curve (area = %0.5f)' % roc_auc)
+  plt.plot([0, 1], [0, 1], 'k--')
+  plt.xlim([0.0, 1.0])
+  plt.ylim([0.0, 1.05])
+  plt.xlabel('False Positive Rate')
+  plt.ylabel('True Positive Rate')
+  plt.title('Receiver operating characteristic')
+  plt.legend(loc="lower right")
+  plt.show()
+
+
+  pca2 = PCA(2).fit(scores_train)
+  x_train_pca2 = pca2.transform(scores_train)
+  x_test_pca2 = pca2.transform(scores_test)
+  x_val_pca2 = pca2.transform(scores_val)
+
+  plt.scatter(x_train_pca2[:,0], x_train_pca2[:, 1], label='train', alpha=0.5)
+  plt.scatter(x_test_pca2[y_test == 1, 0], x_test_pca2[y_test == 1, 1], label='test_in', alpha=0.5)
+  plt.scatter(x_val_pca2[:, 0], x_val_pca2[:, 1], label='val', alpha=0.5)
+  plt.legend()
+  plt.show()
+
+  # plt.scatter(x_train_pca2[:,0], x_train_pca2[:,1], label='train', alpha=0.5)
+  plt.scatter(x_test_pca2[y_test == 1, 0], x_test_pca2[y_test == 1, 1], label='test_in', alpha=0.5)
+  plt.scatter(x_test_pca2[y_test == 0, 0], x_test_pca2[y_test == 0, 1],
+              label='test_out', alpha=0.5)
+  # plt.scatter(x_val_pca2[:, 0], x_val_pca2[:, 1], label='val', alpha=0.5)
+  plt.legend()
+  plt.show()
+
+
+
+  matches = 0
+  for train_i in range(x_val_flat.shape[0]):
+    train_sample = x_val_flat[train_i]
+    for test_i in range(x_test_flat.shape[0]):
+      test_sample = x_test_flat[test_i]
+      if np.mean(test_sample==train_sample)==1:
+        matches+=1
+        print(matches)
+
+
+  # train_sample = x_train_flat[0]
+  # for test_i in range(x_test_flat.shape[0]):
+  #   test_sample = x_test_flat[test_i]
+  #   if np.mean(test_sample==train_sample)==1:
+  #     print(test_i)
+
+  plot_image(x_train[-1][None,...], labels=[1])
+  plot_image(x_test[-1][None, ...], labels=[1])
