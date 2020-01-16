@@ -14,7 +14,9 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.decomposition import KernelPCA as PCA
 import matplotlib.pyplot as plt
 from scipy.spatial import ConvexHull
-
+from sklearn.model_selection import ParameterGrid
+from sklearn.externals.joblib import Parallel, delayed
+from sklearn.svm import OneClassSVM
 CLASSES_NAMES = ['bogus', 'real']
 
 
@@ -69,7 +71,7 @@ def plot_image(images, labels, n_images=1):
 
 def pca_experiment_inverse_error(n_data=200):
   """see inverse transform efect of proyection in original space"""
-  pca = PCA(kernel='rbf', n_components=1)
+  pca = PCA(kernel='rbf', fit_inverse_transform=True, n_components=1)
   X_orig = np.random.multivariate_normal((0,0), ((10,2),(2,2)), n_data)#np.random.rand(n_data, 2)#np.stack([np.random.normal(0, 10, n_data), np.random.normal(0, 2, n_data)], axis=-1)
   X_re_orig = pca.inverse_transform(pca.fit_transform(X_orig))
 
@@ -101,7 +103,7 @@ def pca_experiment_keep_dims():
   """see inverse transform efect of proyection in original space"""
   import numpy as np
   from sklearn.decomposition import PCA
-  pca = PCA(kernel='rbf',n_components=2)
+  pca = PCA(kernel='rbf', fit_inverse_transform=True,n_components=2)
   X_orig = np.random.rand(10, 2)
   X_pca = pca.fit_transform(X_orig)
 
@@ -114,7 +116,7 @@ def get_every_dim_error_scores(n_pca_components, x_train_norm, x_test_norm, pca=
   if pca:
     pca = pca.fit_transform(x_train_norm)
   else:
-    pca = PCA(kernel='rbf',n_components=n_pca_components).fit(x_train_norm)
+    pca = PCA(kernel='rbf', fit_inverse_transform=True,n_components=n_pca_components).fit(x_train_norm)
   x_test_pca = pca.transform(x_test_norm)
   x_test_back = pca.inverse_transform(x_test_pca)
   score = np.zeros(x_test_norm.shape[0])
@@ -126,7 +128,7 @@ def get_every_dim_error_scores(n_pca_components, x_train_norm, x_test_norm, pca=
   if pca:
     pca = pca.fit_transform(x_train_norm)
   else:
-    pca = PCA(kernel='rbf',n_components=n_pca_components).fit(x_train_norm)
+    pca = PCA(kernel='rbf', fit_inverse_transform=True,n_components=n_pca_components).fit(x_train_norm)
   x_test_pca = pca.transform(x_test_norm)
   x_test_back = pca.inverse_transform(x_test_pca)
   score = np.zeros(x_test_norm.shape[0])
@@ -138,52 +140,80 @@ def get_proj_error_scores(n_pca_components, x_train_norm, x_test_norm, pca=None)
   if pca:
     pca = pca.fit_transform(x_train_norm)
   else:
-    pca = PCA(kernel='rbf',n_components=n_pca_components).fit(x_train_norm)
+    pca = PCA(kernel='rbf', fit_inverse_transform=True,n_components=n_pca_components).fit(x_train_norm)
   x_test_pca = pca.transform(x_test_norm)
   x_test_back = pca.inverse_transform(x_test_pca)
   score = np.sqrt(np.sum((x_test_back - x_test_norm)**2, axis=-1))
   return score
 
-def get_every_proj_stat_test_scores(n_pca_components, x_train_norm, x_test_norm, percentil=97.73, pca=None):
+def get_every_proj_stat_test_scores(n_pca_components, x_train_norm, x_test_norm,
+    percentil=97.73, pca=None, x_val_norm=None, return_train=False):
   if pca:
     pca = pca.fit_transform(x_train_norm)
   else:
-    pca = PCA(kernel='rbf',n_components=n_pca_components).fit(x_train_norm)
+    pca = PCA(n_components=n_pca_components).fit(x_train_norm)
   x_train_pca = pca.transform(x_train_norm)
   thresholds = []
   print(x_train_pca.shape[-1])
+  explained_variance = np.var(x_train_pca, axis=0)
+  explained_variance_ratio = explained_variance / np.sum(explained_variance)
+  print("Suma acumulada de los primeros componentes principales: %f" % np.sum(
+      explained_variance_ratio))
   for dim_i in range(x_train_pca.shape[-1]):
     thr = np.percentile(x_train_pca[:, dim_i], percentil)
     thresholds.append(thr)
   x_test_pca = pca.transform(x_test_norm)
-  score = np.sum(x_test_pca - thresholds, axis=-1)
+  scores = x_test_pca - thresholds
+  sum_score = np.sum(scores, axis=-1)
   # score = np.zeros(x_test_norm.shape[0])
   # for dim_i in range(x_test_back.shape[-1]):
   #   score += np.sqrt((x_test_back[:, dim_i] - x_test_norm[:, dim_i]) ** 2)
-  return score
+  if x_val_norm is not None:
+    x_val_pca = pca.transform(x_val_norm)
+    scores_val = x_val_pca - thresholds
+    if return_train:
+      scores_train = x_train_pca - thresholds
+      return scores, scores_val, scores_train
+    return scores, scores_val
+  if return_train:
+    scores_train = x_train_pca - thresholds
+    return scores, scores_train
+  return sum_score, scores
+
 
 def pca(X):
   # Data matrix X, assumes 0-centered
   n, m = X.shape
   assert np.allclose(X.mean(axis=0), np.zeros(m))
   # Compute covariance matrix
-  C = np.dot(X.T, X) / (n-1)
+  C = np.dot(X.T, X) / (n - 1)
   # Eigen decomposition
   eigen_vals, eigen_vecs = np.linalg.eig(C)
   # Project X onto PC space
   X_pca = np.dot(X, eigen_vecs)
   return X_pca
 
+
 def svd(X):
   # Data matrix X, X doesn't need to be 0-centered
   n, m = X.shape
   # Compute full SVD
   U, Sigma, Vh = np.linalg.svd(X,
-      full_matrices=False, # It's not necessary to compute the full matrix of U or V
-      compute_uv=True)
+                               full_matrices=False,
+                               # It's not necessary to compute the full matrix of U or V
+                               compute_uv=True)
   # Transform X with SVD components
   X_svd = np.dot(U, np.diag(Sigma))
   return X_svd
+
+
+# https://stats.stackexchange.com/questions/134282/relationship-between-svd-and-pca-how-to-use-svd-to-perform-pca
+# https://towardsdatascience.com/pca-and-svd-explained-with-numpy-5d13b0d2a4d8
+
+def _train_ocsvm_and_score(params, x_train, val_labels, x_val):
+  return np.mean(val_labels ==
+                 OneClassSVM(**params).fit(x_train).predict(
+                     x_val))
 
 #https://stats.stackexchange.com/questions/134282/relationship-between-svd-and-pca-how-to-use-svd-to-perform-pca
 #https://towardsdatascience.com/pca-and-svd-explained-with-numpy-5d13b0d2a4d8
@@ -195,21 +225,24 @@ if __name__ == '__main__':
   from scripts.detached_transformer_od_hits import \
     plot_histogram_disc_loss_acc_thr
   pca_experiment_inverse_error()
-  # hits_params = {
-  #   loader_keys.DATA_PATH: os.path.join(
-  #       PROJECT_PATH, '../datasets/HiTS2013_300k_samples.pkl'),
-  #   loader_keys.N_SAMPLES_BY_CLASS: 10000,
-  #   loader_keys.TEST_PERCENTAGE: 0.2,
-  #   loader_keys.VAL_SET_INLIER_PERCENTAGE: 0.1,
-  #   loader_keys.USED_CHANNELS: [0, 1, 2, 3],#[2],  #
-  #   loader_keys.CROP_SIZE: 21,
-  #   general_keys.RANDOM_SEED: 42,
-  #   loader_keys.TRANSFORMATION_INLIER_CLASS_VALUE: 1
-  # }
-  # hits_outlier_dataset = HiTSOutlierLoader(hits_params)
+  hits_params = {
+    loader_keys.DATA_PATH: os.path.join(
+        PROJECT_PATH, '../datasets/HiTS2013_300k_samples.pkl'),
+    loader_keys.N_SAMPLES_BY_CLASS: 10000,
+    loader_keys.TEST_PERCENTAGE: 0.2,
+    loader_keys.VAL_SET_INLIER_PERCENTAGE: 0.1,
+    loader_keys.USED_CHANNELS: [0, 1, 2, 3],  # [2],  #
+    loader_keys.CROP_SIZE: 21,
+    general_keys.RANDOM_SEED: 42,
+    loader_keys.TRANSFORMATION_INLIER_CLASS_VALUE: 1
+  }
+  hits_outlier_dataset = HiTSOutlierLoader(hits_params)
+  # (x_train, y_train), (x_val, y_val), (
+  #   x_test, y_test) = pd.read_pickle(os.path.join(
+  #     PROJECT_PATH,
+  #     '../datasets/outlier_seed42_crop21_nChannels4_HiTS2013_300k_samples.pkl'))  # hits_outlier_dataset.get_outlier_detection_datasets()#
   (x_train, y_train), (x_val, y_val), (
-    x_test, y_test) = pd.read_pickle(os.path.join(
-         PROJECT_PATH, '../datasets/outlier_seed42_crop21_nChannels4_HiTS2013_300k_samples.pkl'))#hits_outlier_dataset.get_outlier_detection_datasets()#
+    x_test, y_test) = hits_outlier_dataset.get_outlier_detection_datasets()  #
   print(x_train.shape)
   print(np.unique(y_test, return_counts=True))
 
@@ -220,15 +253,15 @@ if __name__ == '__main__':
   scaler = StandardScaler().fit(x_train_flat)
   x_train_norm = scaler.transform(x_train_flat)
   print(x_train_norm[:, 0].mean(), x_train_norm[:, 0].std())
-  pca = PCA(kernel='rbf',n_components=x_train_norm.shape[-1]).fit(x_train_norm)
-  print("Varianza explicada por los primeros componentes principales:")
-  print(pca.explained_variance_ratio_)
+  pca = PCA(kernel='rbf', fit_inverse_transform=True,n_components=x_train_norm.shape[-1]).fit(x_train_norm)
+  explained_variance = np.var(pca.transform(x_train_norm), axis=0)
+  explained_variance_ratio = explained_variance / np.sum(explained_variance)
   print("Suma acumulada de los primeros componentes principales: %f" % np.sum(
-      pca.explained_variance_ratio_))
+      explained_variance_ratio))
 
-  cum_sum_pca = np.cumsum(pca.explained_variance_ratio_)
+  cum_sum_pca = np.cumsum(explained_variance_ratio)
   print(list(zip(np.arange(cum_sum_pca.shape[0]) + 1, cum_sum_pca)))
-  thr_ind = np.argwhere(cum_sum_pca > 0.9)[0]
+  thr_ind = [291]#np.argwhere(cum_sum_pca > 0.9)[0]
   print(list(
       zip((np.arange(cum_sum_pca.shape[0]) + 1)[thr_ind],
           cum_sum_pca[thr_ind])))
@@ -237,7 +270,7 @@ if __name__ == '__main__':
   x_test_norm = scaler.transform(x_test_flat)
 
   # # Toy example
-  # pca2 = PCA(kernel='rbf',n_components=2).fit(x_train_norm)
+  # pca2 = PCA(kernel='rbf', fit_inverse_transform=True,n_components=2).fit(x_train_norm)
   # # x_train_pca2 = pca2.transform(x_train_flat)
   # x_test_pca2 = pca2.transform(x_test_flat)
   # scatter_2d(x_test_pca2, y_test)
@@ -260,7 +293,7 @@ if __name__ == '__main__':
 
 
   # # Plotting errors 90Var
-  # pca_90 = PCA(kernel='rbf',n_components=thr_ind[0]).fit(x_train_norm)
+  # pca_90 = PCA(kernel='rbf', fit_inverse_transform=True,n_components=thr_ind[0]).fit(x_train_norm)
   # print("Suma acumulada de los primeros componentes principales: %f" % np.sum(
   #     pca_90.explained_variance_ratio_))
   # x_train_pca_90 = pca_90.transform(x_train_norm)
@@ -291,14 +324,46 @@ if __name__ == '__main__':
                                    proj_error_score[~(y_test == 1)],
                                    x_label_name='ProjError')
 
-  stat_proj_score = get_every_proj_stat_test_scores(thr_ind[0], x_train_norm,
-                                               x_test_norm)
-  plot_histogram_disc_loss_acc_thr(stat_proj_score[y_test == 1],
-                                   stat_proj_score[~(y_test == 1)],
+  stat_proj_sum_score_test, stat_proj_score_test = get_every_proj_stat_test_scores(
+    thr_ind[0], x_train_norm,
+    x_test_norm)
+  plot_histogram_disc_loss_acc_thr(stat_proj_sum_score_test[y_test == 1],
+                                   stat_proj_sum_score_test[~(y_test == 1)],
                                    x_label_name='statProj')
 
 
 
 
 
+  x_val_flat = x_val.reshape([x_val.shape[0], -1])
+  x_val_norm = scaler.transform(x_val_flat)
+  stat_proj_score_test, stat_proj_score_val, stat_proj_score_train = get_every_proj_stat_test_scores(
+      thr_ind[0], x_train_norm, x_test_norm, return_train=True, x_val_norm=x_val_norm)
+
+  score_scaler = StandardScaler().fit(stat_proj_score_train)
+  stat_proj_score_test = score_scaler.transform(stat_proj_score_test)
+  stat_proj_score_val = score_scaler.transform(stat_proj_score_val)
+  stat_proj_score_train = score_scaler.transform(stat_proj_score_train)
+
+  pg = ParameterGrid({'nu': np.linspace(0.1, 0.9, num=9),
+                      'gamma': np.logspace(-7, 2, num=10, base=2)})
+  results = Parallel(n_jobs=15)(
+      delayed(_train_ocsvm_and_score)(d, stat_proj_score_train,
+                                      np.ones((len(stat_proj_score_val))),
+                                      stat_proj_score_val)
+      for d in pg)
+  best_params, best_acc_score = max(zip(pg, results), key=lambda t: t[-1])
+  print(best_params, best_acc_score)
+  #{'gamma': 0.0078125, 'nu': 0.6}0.195
+  # 291 {'gamma': 0.0078125, 'nu': 0.2} 0.754
+  best_ocsvm = OneClassSVM(**best_params).fit(stat_proj_score_train)
+  od_scores_test = best_ocsvm.decision_function(stat_proj_score_test)
+  plot_histogram_disc_loss_acc_thr(
+      od_scores_test[y_test == 1], od_scores_test[~(y_test == 1)],
+      x_label_name='statProjAllDim-SVM')
+
+  indx = 0
+  plot_image(x_train[indx][None, ...], labels=[1])
+  plot_image(x_test[indx][None, ...], labels=[1])
+  plot_image(x_val[indx][None, ...], labels=[1])
 

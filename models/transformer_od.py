@@ -13,6 +13,7 @@ from modules.networks.train_step_tf2.wide_residual_network import WideResidualNe
 # from modules.networks.wide_residual_network import WideResidualNetwork
 from modules.geometric_transform.transformations_tf import AbstractTransformer
 from modules.data_loaders.ztf_outlier_loader import ZTFOutlierLoader
+from modules.data_loaders.hits_outlier_loader import HiTSOutlierLoader
 from parameters import general_keys
 import numpy as np
 from modules import dirichlet_utils, utils
@@ -226,12 +227,12 @@ class TransformODModel(tf.keras.Model):
     matrix_scores = matrix_scores / self.transformer.n_transforms
     scores_dict = {
       general_keys.DIRICHLET: diri_scores,
-      # general_keys.MATRIX_TRACE: np.trace(matrix_scores, axis1=1, axis2=2),
-      # general_keys.ENTROPY: -1 * score_functions.get_entropy(matrix_scores),
-      # general_keys.CROSS_ENTROPY: -1 * score_functions.get_xH(self.transformer,
-      #                                                         matrix_scores),
-      # general_keys.MUTUAL_INFORMATION: score_functions.get_xy_mutual_info(
-      #     matrix_scores)
+      general_keys.MATRIX_TRACE: np.trace(matrix_scores, axis1=1, axis2=2),
+      general_keys.ENTROPY: -1 * score_functions.get_entropy(matrix_scores),
+      general_keys.CROSS_ENTROPY: -1 * score_functions.get_xH(self.transformer,
+                                                              matrix_scores),
+      general_keys.MUTUAL_INFORMATION: score_functions.get_xy_mutual_info(
+          matrix_scores)
     }
     return scores_dict
 
@@ -461,7 +462,7 @@ class TransformODModel(tf.keras.Model):
 
 if __name__ == '__main__':
   from parameters import loader_keys
-  from modules.geometric_transform.transformations_tf import Transformer
+  from modules.geometric_transform.transformations_tf import Transformer, TransTransformer
   import time
 
   gpus = tf.config.experimental.list_physical_devices('GPU')
@@ -477,21 +478,33 @@ if __name__ == '__main__':
     general_keys.RANDOM_SEED: 42,
     loader_keys.TRANSFORMATION_INLIER_CLASS_VALUE: 1
   }
-  ztf_od_loader = ZTFOutlierLoader(data_loader_params)
+  outlier_loader = ZTFOutlierLoader(data_loader_params)
+  # hits_params = {
+  #   loader_keys.DATA_PATH: os.path.join(
+  #       PROJECT_PATH, '../datasets/HiTS2013_300k_samples.pkl'),
+  #   loader_keys.N_SAMPLES_BY_CLASS: 10000,
+  #   loader_keys.TEST_PERCENTAGE: 0.2,
+  #   loader_keys.VAL_SET_INLIER_PERCENTAGE: 0.1,
+  #   loader_keys.USED_CHANNELS: [0, 1, 2, 3],#[2],  #
+  #   loader_keys.CROP_SIZE: 21,
+  #   general_keys.RANDOM_SEED: 42,
+  #   loader_keys.TRANSFORMATION_INLIER_CLASS_VALUE: 1
+  # }
+  # outlier_loader = HiTSOutlierLoader(hits_params)
   (x_train, y_train), (x_val, y_val), (
-    x_test, y_test) = ztf_od_loader.get_outlier_detection_datasets()
+    x_test, y_test) = outlier_loader.get_outlier_detection_datasets()
   transformer = Transformer()
   model = TransformODModel(
-      data_loader=ztf_od_loader, transformer=transformer,
+      data_loader=outlier_loader, transformer=transformer,
       input_shape=x_train.shape[1:])
   model.build(tuple([None] + list(x_train.shape[1:])))
   # print(model.network.model().summary())
-  weight_path = os.path.join(PROJECT_PATH, 'results', model.name,
-                             'my_checkpoint.h5')
-  if os.path.exists(weight_path):
-    model.load_weights(weight_path)
-  else:
-    model.fit(x_train, x_val)
+  # weight_path = os.path.join(PROJECT_PATH, 'results', model.name,
+  #                            'my_checkpoint.h5')
+  # if os.path.exists(weight_path):
+  #   model.load_weights(weight_path)
+  # else:
+  model.fit(x_train, x_val)
 
   start_time = time.time()
   met_dict = model.evaluate_od(
@@ -520,22 +533,219 @@ if __name__ == '__main__':
   for key in met_dict.keys():
     print(key, met_dict[key]['max_accuracy'])
 
-  model.save_weights(weight_path)
+  # model.save_weights(weight_path)
   """
-  100%|██████████| 72/72 [01:12<00:00,  1.01s/it]
-100%|██████████| 72/72 [01:07<00:00,  1.07it/s]
-Time model.evaluate_od 00:02:47.28
-Appliying all 72 transforms to set of shape (2000, 21, 21, 3)
-Appliying all 72 transforms to set of shape (3047, 21, 21, 3)
+ZTF
+Epoch 1, Loss: 0.6779887676239014, Acc: 75.87703704833984, Val loss: 0.7018905282020569, Val acc: 74.66725158691406, Time: 00:02:42.74
+
+New best validation model: loss 0.7019 @ it 28434
+
+2020-01-16 12:43:27.926978: W tensorflow/core/framework/cpu_allocator_impl.cc:81] Allocation of 9630762624 exceeds 10% of system memory.
+Epoch 2, Loss: 0.31195348501205444, Acc: 88.41336059570312, Val loss: 0.5972461104393005, Val acc: 79.21133422851562, Time: 00:02:34.59
+
+New best validation model: loss 0.5972 @ it 42651
+
+Total Training Time: 00:05:17.75
+evaluating
+Appliying all 72 transforms to set of shape (25276, 21, 21, 3)
+Matrix_score_Time 00:00:38.26
 Appliying all 72 transforms to set of shape (4302, 21, 21, 3)
-{'gamma': 0.0078125, 'nu': 0.1}
-Time model.oc_svm_score 00:00:27.00
+Matrix_score_Time 00:00:06.33
+100%|██████████| 72/72 [00:06<00:00, 11.11it/s]
+Appliying all 72 transforms to set of shape (3047, 21, 21, 3)
+Matrix_score_Time 00:00:04.47
+100%|██████████| 72/72 [00:06<00:00, 11.38it/s]
+Time model.evaluate_od 00:01:42.20
+Appliying all 72 transforms to set of shape (5000, 21, 21, 3)
+Matrix_score_Time 00:00:07.40
+Appliying all 72 transforms to set of shape (3047, 21, 21, 3)
+Matrix_score_Time 00:00:04.57
+Appliying all 72 transforms to set of shape (4302, 21, 21, 3)
+Matrix_score_Time 00:00:06.28
+{'gamma': 0.015625, 'nu': 0.1} 0.8907121759107318
+Time model.oc_svm_score 00:00:58.12
 
 roc_auc
-dirichlet 0.9677384006790004
-matrix_trace 0.9508392515692808
-entropy 0.9648059209808245
-cross_entropy 0.9523999411256285
-mutual_information 0.9644361190377542
-svm 0.931138166521534
+dirichlet 0.9685968771944159
+matrix_trace 0.9372510293829365
+entropy 0.9650935927436688
+cross_entropy 0.9269882149675338
+mutual_information 0.9643297820675667
+svm 0.892085914220214
+
+acc_at_percentil
+dirichlet 0.9351464435146444
+matrix_trace 0.8456531845653185
+entropy 0.9325894932589494
+cross_entropy 0.8205485820548583
+mutual_information 0.9295676429567643
+svm 0.7547652254765226
+
+max_accuracy
+dirichlet 0.9374709437470944
+matrix_trace 0.8847047884704788
+entropy 0.9351464435146444
+cross_entropy 0.8756392375639238
+mutual_information 0.9330543933054394
+svm 0.803579730357973
+
+Process finished with exit code 0
+
+
+1819872/1819872 [==============================] - 172s 94us/sample - loss: 1.1424 - acc: 0.6920 - val_loss: 0.8847 - val_acc: 0.7832
+Epoch 2/2
+1819872/1819872 [==============================] - 171s 94us/sample - loss: 0.7651 - acc: 0.8262 - val_loss: 0.7817 - val_acc: 0.8144
+evaluating
+Appliying all 72 transforms to set of shape (25276, 21, 21, 3)
+Matrix_score_Time 00:00:34.64
+Appliying all 72 transforms to set of shape (4302, 21, 21, 3)
+Matrix_score_Time 00:00:06.35
+100%|██████████| 72/72 [00:06<00:00, 10.43it/s]
+Appliying all 72 transforms to set of shape (3047, 21, 21, 3)
+Matrix_score_Time 00:00:04.21
+100%|██████████| 72/72 [00:06<00:00, 10.63it/s]
+Time model.evaluate_od 00:01:40.54
+Appliying all 72 transforms to set of shape (5000, 21, 21, 3)
+Matrix_score_Time 00:00:07.54
+Appliying all 72 transforms to set of shape (3047, 21, 21, 3)
+Matrix_score_Time 00:00:04.10
+Appliying all 72 transforms to set of shape (4302, 21, 21, 3)
+Matrix_score_Time 00:00:05.98
+{'gamma': 0.015625, 'nu': 0.1} 0.8982605841811618
+Time model.oc_svm_score 00:00:58.14
+
+roc_auc
+dirichlet 0.96527989857355
+matrix_trace 0.9373982153111837
+entropy 0.9624126907554486
+cross_entropy 0.9360545223362751
+mutual_information 0.9608816112903925
+svm 0.863897323442266
+
+acc_at_percentil
+dirichlet 0.9330543933054394
+matrix_trace 0.8619246861924686
+entropy 0.9267782426778243
+cross_entropy 0.8654114365411436
+mutual_information 0.9277080427708043
+svm 0.6720130172013017
+
+max_accuracy
+dirichlet 0.9339841933984193
+matrix_trace 0.8860994886099489
+entropy 0.9311947931194793
+cross_entropy 0.8844723384472338
+mutual_information 0.9291027429102743
+svm 0.7880055788005579
+
+Process finished with exit code 0
+
+
+
+
+
+
+HITS 9 transf
+63000/63000 [==============================] - 9s 147us/sample - loss: 0.6523 - acc: 0.9801 - val_loss: 0.5168 - val_acc: 0.9419
+Epoch 2/2
+63000/63000 [==============================] - 6s 93us/sample - loss: 0.2044 - acc: 0.9976 - val_loss: 0.1519 - val_acc: 0.9970
+evaluating
+Appliying all 9 transforms to set of shape (7000, 21, 21, 4)
+Matrix_score_Time 00:00:01.80
+Appliying all 9 transforms to set of shape (4000, 21, 21, 4)
+  0%|          | 0/9 [00:00<?, ?it/s]Matrix_score_Time 00:00:00.64
+100%|██████████| 9/9 [00:01<00:00,  8.68it/s]
+Appliying all 9 transforms to set of shape (1000, 21, 21, 4)
+  0%|          | 0/9 [00:00<?, ?it/s]Matrix_score_Time 00:00:00.18
+100%|██████████| 9/9 [00:01<00:00,  8.79it/s]
+Time model.evaluate_od 00:00:05.32
+Appliying all 9 transforms to set of shape (5000, 21, 21, 4)
+Matrix_score_Time 00:00:01.82
+Appliying all 9 transforms to set of shape (1000, 21, 21, 4)
+Matrix_score_Time 00:00:00.57
+Appliying all 9 transforms to set of shape (4000, 21, 21, 4)
+Matrix_score_Time 00:00:00.78
+{'gamma': 0.03125, 'nu': 0.2} 0.932
+Time model.oc_svm_score 00:00:11.59
+
+roc_auc
+dirichlet 0.9913135000000001
+matrix_trace 0.991398
+entropy 0.9899265000000002
+cross_entropy 0.99154075
+mutual_information 0.9901912500000002
+svm 0.9839154999999999
+
+acc_at_percentil
+dirichlet 0.97175
+matrix_trace 0.9715
+entropy 0.97425
+cross_entropy 0.9715
+mutual_information 0.97425
+svm 0.97
+
+max_accuracy
+dirichlet 0.97775
+matrix_trace 0.97625
+entropy 0.977
+cross_entropy 0.97575
+mutual_information 0.97675
+svm 0.97225
+
+Process finished with exit code 0
+
+
+Epoch 1, Loss: 0.08462952822446823, Acc: 98.4031753540039, Val loss: 0.01022778544574976, Val acc: 99.77777862548828, Time: 00:00:09.20
+
+New best validation model: loss 0.0102 @ it 984
+
+Epoch 2, Loss: 0.006510844919830561, Acc: 99.84285736083984, Val loss: 0.008571214973926544, Val acc: 99.73333740234375, Time: 00:00:05.18
+
+New best validation model: loss 0.0086 @ it 1476
+
+Total Training Time: 00:00:14.53
+evaluating
+Appliying all 9 transforms to set of shape (7000, 21, 21, 4)
+Matrix_score_Time 00:00:01.65
+Appliying all 9 transforms to set of shape (4000, 21, 21, 4)
+Matrix_score_Time 00:00:00.64
+100%|██████████| 9/9 [00:01<00:00,  8.24it/s]
+Appliying all 9 transforms to set of shape (1000, 21, 21, 4)
+Matrix_score_Time 00:00:00.19
+100%|██████████| 9/9 [00:01<00:00,  8.33it/s]
+Time model.evaluate_od 00:00:05.35
+Appliying all 9 transforms to set of shape (5000, 21, 21, 4)
+Matrix_score_Time 00:00:01.08
+Appliying all 9 transforms to set of shape (1000, 21, 21, 4)
+Matrix_score_Time 00:00:00.23
+Appliying all 9 transforms to set of shape (4000, 21, 21, 4)
+Matrix_score_Time 00:00:00.79
+{'gamma': 0.0078125, 'nu': 0.5} 0.977
+Time model.oc_svm_score 00:00:10.24
+
+roc_auc
+dirichlet 0.98976575
+matrix_trace 0.9905602500000001
+entropy 0.9837880000000001
+cross_entropy 0.9910853749999999
+mutual_information 0.9897432499999999
+svm 0.9861562500000002
+
+acc_at_percentil
+dirichlet 0.966
+matrix_trace 0.969
+entropy 0.95975
+cross_entropy 0.969
+mutual_information 0.96875
+svm 0.96525
+
+max_accuracy
+dirichlet 0.97575
+matrix_trace 0.97425
+entropy 0.96425
+cross_entropy 0.97425
+mutual_information 0.97475
+svm 0.9715
+
+Process finished with exit code 0
   """

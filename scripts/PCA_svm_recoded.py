@@ -112,10 +112,20 @@ if __name__ == '__main__':
 
   X_test = np.concatenate([scores_test[y_test == 1], scores_test[~(y_test == 1)]], axis=0)
 
+  scores_pos = scores_test[y_test == 1]
+  scores_neg = scores_test[y_test != 1]
+  X_test = np.concatenate((scores_neg, scores_pos))
   pred = best_ocsvm.decision_function(X_test)
-  y_true = np.array([1] * np.sum(y_test == 1) + [-1] * np.sum(~(y_test == 1)))
-  fpr, tpr, thresholds = metrics.roc_curve(y_true, pred)
+  truth = np.concatenate(
+      (np.zeros_like(pred[y_test != 1]), np.ones_like(pred[y_test == 1])))
+
+  fpr, tpr, roc_thresholds = metrics.roc_curve(truth, pred)
   roc_auc = metrics.auc(fpr, tpr)
+
+  # pred = best_ocsvm.decision_function(X_test)
+  # y_true = np.array([1] * np.sum(y_test == 1) + [-1] * np.sum(~(y_test == 1)))
+  # fpr, tpr, thresholds = metrics.roc_curve(y_true, pred)
+  # roc_auc = metrics.auc(fpr, tpr)
 
   plt.figure()
   plt.plot(fpr, tpr, label='ROC curve (area = %0.5f)' % roc_auc)
