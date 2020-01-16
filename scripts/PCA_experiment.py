@@ -341,6 +341,11 @@ if __name__ == '__main__':
   stat_proj_score_test, stat_proj_score_val, stat_proj_score_train = get_every_proj_stat_test_scores(
       0.9, x_train_norm, x_test_norm, return_train=True, x_val_norm=x_val_norm)
 
+  score_scaler = StandardScaler().fit(stat_proj_score_train)
+  stat_proj_score_test = score_scaler.transform(stat_proj_score_test)
+  stat_proj_score_val = score_scaler.transform(stat_proj_score_val)
+  stat_proj_score_train = score_scaler.transform(stat_proj_score_train)
+
   pg = ParameterGrid({'nu': np.linspace(0.1, 0.9, num=9),
                       'gamma': np.logspace(-7, 2, num=10, base=2)})
   results = Parallel(n_jobs=15)(
