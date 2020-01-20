@@ -9,11 +9,11 @@ PROJECT_PATH = os.path.abspath(
     os.path.join(os.path.dirname(__file__), '..'))
 sys.path.append(PROJECT_PATH)
 import tensorflow as tf
-from modules.networks.train_step_tf2.wide_residual_network import WideResidualNetwork
+from modules.networks.train_step_tf2.wide_residual_network import \
+  WideResidualNetwork
 # from modules.networks.wide_residual_network import WideResidualNetwork
 from modules.geometric_transform.transformations_tf import AbstractTransformer
 from modules.data_loaders.ztf_outlier_loader import ZTFOutlierLoader
-from modules.data_loaders.hits_outlier_loader import HiTSOutlierLoader
 from parameters import general_keys
 import numpy as np
 from modules import dirichlet_utils, utils
@@ -22,7 +22,6 @@ from sklearn.metrics import roc_curve, precision_recall_curve, auc
 from modules.metrics import accuracies_by_threshold, accuracy_at_thr
 import pprint
 import datetime
-import time
 from tqdm import tqdm
 import matplotlib.pyplot as plt
 from sklearn.model_selection import ParameterGrid
@@ -54,7 +53,6 @@ class TransformODModel(tf.keras.Model):
     self.network = self.get_network(
         input_shape=input_shape, n_classes=self.transformer.n_transforms,
         depth=depth, widen_factor=widen_factor, **kwargs)
-    self.percentile = 95.46
 
   # TODO: do a param dict
   def get_network(self, input_shape, n_classes,
@@ -106,16 +104,20 @@ class TransformODModel(tf.keras.Model):
     es = tf.keras.callbacks.EarlyStopping(
         monitor='val_loss', mode='min', verbose=1, patience=patience,
         restore_best_weights=True)
-    if epochs < 3 or epochs==int(np.ceil(200 / self.transformer.n_transforms)):
+    if epochs < 3 or epochs == int(
+        np.ceil(200 / self.transformer.n_transforms)):
       es = tf.keras.callbacks.EarlyStopping(
-        monitor='val_loss', mode='min', verbose=1, patience=1e100,
-        restore_best_weights=False)
+          monitor='val_loss', mode='min', verbose=1, patience=1e100,
+          restore_best_weights=False)
     self.network.fit(
         x=x_train_transform, y=tf.keras.utils.to_categorical(y_train_transform),
         validation_data=(
           x_val_transform, tf.keras.utils.to_categorical(y_val_transform)),
         batch_size=train_batch_size,
         epochs=epochs, callbacks=[es], **kwargs)
+
+    self.validation_scores_thresholds = self.get_validation_thresholds_dict(
+        x_train, x_val, transform_batch_size, transform_batch_size)
     # self.network.eval_tf(x_val_transform, tf.keras.utils.to_categorical(y_val_transform))
     weight_path = os.path.join(self.checkpoint_folder,
                                'final_weights.ckpt')
@@ -209,7 +211,7 @@ class TransformODModel(tf.keras.Model):
     del x_train
     matrix_scores_eval = self.predict_matrix_score(
         x_eval, transform_batch_size, predict_batch_size, **kwargs)
-    #TODO:!!! make method to get actual lenght from data, otherwise it just te latest run
+    # TODO:!!! make method to get actual lenght from data, otherwise it just te latest run
     len_x_eval = self.transformer.get_not_transformed_data_len(len(x_eval))
     diri_scores = np.zeros(len_x_eval)
     del x_eval
@@ -242,7 +244,7 @@ class TransformODModel(tf.keras.Model):
       sub_sample_train_size=5000, raw_matrices=False, n_jobs=15,
       additional_score_save_path_list=None, save_hist_folder_path=None,
       **kwargs):
-    #TODO fix len(x)
+    # TODO fix len(x)
     subsample_inds = np.random.choice(len(x_train), sub_sample_train_size,
                                       replace=False)
     x_train = x_train[subsample_inds]
@@ -304,23 +306,33 @@ class TransformODModel(tf.keras.Model):
     results_file_path = os.path.join(all_results_folder, results_file_name)
     return results_file_path
 
+  def get_validation_thresholds_dict(self, x_train, x_validation,
+      transform_batch_size, predict_batch_size, percentile=95.46):
+    validation_scores_dict = self.get_scores_dict(
+        x_train, x_validation, transform_batch_size, predict_batch_size)
+    thr_of_each_score = {}
+    for score_name, scores_value in validation_scores_dict.items():
+      thr_of_each_score[score_name] = np.percentile(scores_value,
+                                                    100 - percentile)
+    return thr_of_each_score
+
   # TODO: refactor, too long
   def evaluate_od(self, x_train, x_eval, y_eval, dataset_name, class_name,
       x_validation=None, transform_batch_size=512, predict_batch_size=1000,
       additional_score_save_path_list=None, save_hist_folder_path=None,
       **kwargs):
-    #TODO: avoid doing this!! need refctoring, but avoid repreedict of training
+    # TODO: avoid doing this!! need refctoring, but avoid repreedict of training
     self.matrix_scores_train = None
     print('evaluating')
-    if x_validation is None:
-      x_validation = x_eval
+    # if x_validation is None:
+    #   x_validation = x_eval
     # print('start eval')
     eval_scores_dict = self.get_scores_dict(
         x_train, x_eval, transform_batch_size, predict_batch_size, **kwargs)
     # print('start val')
-    validation_scores_dict = self.get_scores_dict(
-        x_train, x_validation, transform_batch_size, predict_batch_size,
-        **kwargs)
+    # validation_scores_dict = self.get_scores_dict(
+    #     x_train, x_validation, transform_batch_size, predict_batch_size,
+    #     **kwargs)
     del self.matrix_scores_train
     # print('start metric')
     metrics_of_each_score = {}
@@ -328,7 +340,7 @@ class TransformODModel(tf.keras.Model):
       metrics_save_path = self.get_metrics_save_path(score_name, dataset_name,
                                                      class_name)
       metrics_of_each_score[score_name] = self.get_metrics_dict(
-          scores_value, validation_scores_dict[score_name], y_eval,
+          scores_value, self.validation_scores_thresholds[score_name], y_eval,
           metrics_save_path)
       self._save_on_additional_paths(
           additional_score_save_path_list, metrics_save_path,
@@ -352,8 +364,8 @@ class TransformODModel(tf.keras.Model):
       return
     # TODO: refactor usage of percentile, include it in metrics and
     #  get it from key
-    #percentile = 95.46
-    scores_val = score_metric_dict['scores_val']
+    percentile = 95.46
+    # scores_val = score_metric_dict['scores_val']
     auc_roc = score_metric_dict['roc_auc']
     accuracies = score_metric_dict['accuracies']
     scores = score_metric_dict['scores']
@@ -364,7 +376,7 @@ class TransformODModel(tf.keras.Model):
     outliers_scores = scores[labels != 1]
     min_score = np.min(scores)
     max_score = np.max(scores)
-    thr_percentile = np.percentile(scores_val, 100 - self.percentile)
+    thr_percentile = self.validation_scores_thresholds[score_name]#np.percentile(scores_val, 100 - percentile)
     fig = plt.figure(figsize=(8, 6))
     ax_hist = fig.add_subplot(111)
     ax_hist.set_title(
@@ -388,7 +400,7 @@ class TransformODModel(tf.keras.Model):
     percentil_plot = ax_hist.plot([thr_percentile, thr_percentile], [0, max_],
                                   'k--',
                                   label='thr percentil %i on %s' % (
-                                    self.percentile, dataset_name))
+                                    percentile, dataset_name))
     ax_hist.text(thr_percentile,
                  max_ * 0.6,
                  'Acc: {:.2f}%'.format(accuracy_at_percentile * 100))
@@ -415,8 +427,8 @@ class TransformODModel(tf.keras.Model):
       additional_save_path = os.path.join(path, metric_file_name)
       np.savez_compressed(additional_save_path, **metrics_dict)
 
-  def get_metrics_dict(self, scores, scores_val, labels, save_file_path=None):#,
-     # percentile=95.46):
+  def get_metrics_dict(self, scores, val_thr, labels, save_file_path=None,
+      percentile=95.46):
     scores = scores.flatten()
     labels = labels.flatten()
     scores_pos = scores[labels == 1]
@@ -428,8 +440,8 @@ class TransformODModel(tf.keras.Model):
     roc_auc = auc(fpr, tpr)
     accuracies = accuracies_by_threshold(labels, scores, roc_thresholds)
     # 100-percentile is necesary because normal data is at the right of anormal
-    thr = np.percentile(scores_val, 100 - self.percentile)
-    acc_at_percentil = accuracy_at_thr(labels, scores, thr)
+    acc_at_percentil = accuracy_at_thr(
+        labels, scores, val_thr)
     # pr curve where "normal" is the positive class
     precision_norm, recall_norm, pr_thresholds_norm = precision_recall_curve(
         truth, preds)
@@ -439,8 +451,8 @@ class TransformODModel(tf.keras.Model):
         truth, -preds, pos_label=0)
     pr_auc_anom = auc(recall_anom, precision_anom)
     metrics_dict = {'scores': scores, 'labels': labels,
-                    'clf':   (scores > thr) * 1,
-                    'scores_val': scores_val, 'fpr': fpr,
+                    #'scores_val': val_thr,
+                    'fpr': fpr,
                     'tpr': tpr, 'roc_thresholds': roc_thresholds,
                     'roc_auc': roc_auc,
                     'precision_norm': precision_norm,
@@ -464,7 +476,7 @@ class TransformODModel(tf.keras.Model):
 
 if __name__ == '__main__':
   from parameters import loader_keys
-  from modules.geometric_transform.transformations_tf import Transformer, TransTransformer
+  from modules.geometric_transform.transformations_tf import Transformer
   import time
 
   gpus = tf.config.experimental.list_physical_devices('GPU')

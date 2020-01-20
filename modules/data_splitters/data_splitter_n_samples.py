@@ -27,7 +27,7 @@ class DatasetDividerInt(DatasetDividerPercentage):
                      val_random_seed)
 
   def check_size_type(self, value):
-    if type(value) != int:
+    if type(value) != int and value != None:
       raise ValueError('set size of value %s is not an int' % str(value))
 
   def _check_label_values_multiple_of_test_size(self, label_values, test_size):

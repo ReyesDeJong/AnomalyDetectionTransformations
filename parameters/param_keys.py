@@ -97,6 +97,8 @@ criterion_percentage: (float between 0 and 1) Percentage to meet wrt the last
 train_horizon_increment: (int) How many iterations to be added if criterion
     percentage is met.
 """
+BOGUS_LABEL_VALUE = 'bogus_label_value'
+
 PRINT_EVERY = 'print_every'
 TRAIN_ITERATIONS_HORIZON = 'train_iterations_horizon'
 ITERATIONS_TO_UPDATE_LEARNING_RATE = 'iterations_to_update_learning_rate'
