@@ -32,9 +32,12 @@ class ZTFLoader(HiTSLoader):
   def __init__(self, params: dict):
     self.path = params[param_keys.DATA_PATH_TRAIN]
     self.batch_size = params[param_keys.BATCH_SIZE]
+    # Todo: this should be feed with random states for train-val-test splitting
     self.data_splitter = DatasetDividerInt(
         test_size=params[param_keys.TEST_SIZE],
-        validation_size=params[param_keys.VAL_SIZE])
+        validation_size=params[param_keys.VAL_SIZE],
+        val_random_seed=params[param_keys.VALIDATION_RANDOM_SEED]
+    )
     self.channel_to_get = params[param_keys.CHANNELS_TO_USE]
     self.dataset_preprocessor = self._create_dataset_preprocessor(params)
 
