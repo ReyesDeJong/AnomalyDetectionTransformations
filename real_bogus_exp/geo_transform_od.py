@@ -40,7 +40,7 @@ if __name__ == "__main__":
   data_folder = "/home/ereyes/Projects/Thesis/datasets/ALeRCE_data"
   data_path = os.path.join(data_folder, data_name)
 
-  n_classes=2
+  n_classes = 2
   params = {
     param_keys.DATA_PATH_TRAIN: data_path,
     param_keys.BATCH_SIZE: None,
@@ -48,7 +48,7 @@ if __name__ == "__main__":
     param_keys.CHANNELS_TO_USE: [0, 1, 2],
     param_keys.NANS_TO: 0,
     param_keys.CROP_SIZE: 21,
-    param_keys.TEST_SIZE: n_classes * 300,
+    param_keys.TEST_SIZE: n_classes * 390,
     param_keys.VAL_SIZE: n_classes * 200,
     param_keys.VALIDATION_RANDOM_SEED: 42,
     param_keys.CONVERTED_DATA_SAVEPATH: None,
@@ -66,35 +66,55 @@ if __name__ == "__main__":
        frame_to_input.dataset_preprocessor.crop_at_center,
        frame_to_input.dataset_preprocessor.labels_to_real_bogus
        ])
-  darasets_dict = frame_to_input.get_datasets()
-  data_concat = np.concatenate([darasets_dict[general_keys.TRAIN].data_array,
-                                darasets_dict[
+  datasets_dict = frame_to_input.get_datasets()
+  save_folder = '/home/ereyes/Projects/Thesis/datasets/ALeRCE_data/OD_retieved_1'
+  utils.check_path(save_folder)
+  # saving Mayor_Test_set_(8)
+  utils.save_pickle(datasets_dict[general_keys.TEST],
+                    os.path.join(save_folder, 'Mayor_Test_set_(8)_dataset.pkl'))
+
+  data_concat = np.concatenate([datasets_dict[general_keys.TRAIN].data_array,
+                                datasets_dict[
                                   general_keys.VALIDATION].data_array])
-  label_concat = np.concatenate([darasets_dict[general_keys.TRAIN].data_label,
-                                 darasets_dict[
+  label_concat = np.concatenate([datasets_dict[general_keys.TRAIN].data_label,
+                                 datasets_dict[
                                    general_keys.VALIDATION].data_label])
   normal_data = Dataset(data_array=data_concat, data_label=label_concat,
                         batch_size=None)
+  print('\nCross_Match and Ashish_Bogus Counts:')
+  print('Mayor_Test_set_(8):, ', np.unique(datasets_dict[general_keys.TEST].data_label,
+                                 return_counts=True))
+  print('Remaining: ', np.unique(normal_data.data_label,
+                                 return_counts=True), '\n')
 
   bogus_data_name = 'bogus_juliano_franz_pancho.pkl'
   bogus_path = os.path.join(
       data_folder, 'converted_' + bogus_data_name)
   bogus_dataset = get_df_dataset_from_name(params, bogus_path)
-  print('bogus.shape: ', bogus_dataset.data_array.shape)
+  print('\n Alerce Bogus.shape: ', bogus_dataset.data_array.shape, '\n')
   real_data_name = 'tns_confirmed_sn.pkl'
   real_path = os.path.join(
       data_folder, 'converted_' + real_data_name)
   real_dataset = get_df_dataset_from_name(params, real_path)
+  print('\n TNS SNe_(real).shape: ', real_dataset.data_array.shape, '\n')
 
   # 1 real - 0 bogus
   bogus_label_value = 0
   normal_data_bogus = normal_data.data_array[
     normal_data.data_label == bogus_label_value]
+  # saving Bogus_Ashish_(2)
+  utils.save_pickle(normal_data_bogus,
+                    os.path.join(save_folder, 'Inliers_Bogus_Ashish_(2).pkl'))
   normal_data_real = normal_data.data_array[
     normal_data.data_label != bogus_label_value]
 
   bogus_all_samples = np.concatenate(
       [normal_data_bogus, bogus_dataset.data_array])
+  print('\n ALL Bogus.shape: ', bogus_all_samples.shape, '\n')
+  # saving ALL_Bogus_(6)
+  utils.save_pickle(bogus_all_samples,
+                    os.path.join(save_folder, 'ALL_Bogus_(6).pkl'))
+
 
   # dont know if must mix TNS with normal cross-matched data
   normal_real_indxs = np.arange(len(normal_data_real))
@@ -108,12 +128,21 @@ if __name__ == "__main__":
     normal_real_indxs[len(bogus_all_samples):]]
   normal_real_test = normal_data_real[
     normal_real_indxs[:len(bogus_all_samples)]]
+  # saving Inliers_Test_(5)
+  utils.save_pickle(normal_real_test,
+                    os.path.join(save_folder, 'Inliers_Test_(5).pkl'))
   normal_real_train = normal_real_aux[val_size_inliers:]
+  # saving Inliers_Train_(4)
+  utils.save_pickle(normal_real_train,
+                    os.path.join(save_folder, 'Inliers_Train_(4).pkl'))
   normal_real_val = normal_real_aux[:val_size_inliers]
-  print(len(normal_data_real))
-  print(len(normal_real_train))
-  print(len(normal_real_val))
-  print(len(normal_real_test))
+  # saving Inliers_Val_(3)
+  utils.save_pickle(normal_real_val,
+                    os.path.join(save_folder, 'Inliers_Val_(3).pkl'))
+  print('All inliers, except mayor test: ', len(normal_data_real))
+  print('Train inliers: ', len(normal_real_train))
+  print('Val inliers: ', len(normal_real_val))
+  print('Test inliers: ', len(normal_real_test))
 
   x_train = normal_real_train
   x_val = normal_real_val
@@ -121,6 +150,9 @@ if __name__ == "__main__":
   y_test = np.concatenate(
       [np.ones(len(normal_real_test)), np.zeros(len(bogus_all_samples))])
   print('y_test: ', np.unique(y_test, return_counts=True))
+  # # saving GEOT_test_Inliers_Test_U_ALL_Bogus_(5)_U_(6)
+  # utils.save_pickle(Dataset(x_test, y_test, batch_size=None),
+  #                   os.path.join(save_folder, 'GEOT_test_Inliers_Test_U_ALL_Bogus_(5)_U_(6)_dataset.pkl'))
 
   gpus = tf.config.experimental.list_physical_devices('GPU')
   for gpu in gpus:
@@ -156,14 +188,16 @@ if __name__ == "__main__":
 
   dirichlet_test_pred = met_dict[general_keys.DIRICHLET]['clf']
   print(np.mean(y_test == dirichlet_test_pred))
-  save_folder = '/home/ereyes/Projects/Thesis/datasets/ALeRCE_data/OD_retieved'
-  utils.check_path(save_folder)
-  bogus_save_path = os.path.join(save_folder, 'new_od_boguses.pkl')
+
+  #Saving Detected_Boguses_(7)
+  bogus_save_path = os.path.join(save_folder, 'Detected_Boguses_(7).pkl')
   new_od_boguses = x_test[dirichlet_test_pred == bogus_label_value]
+  print('NEW_OD_BOGUSES: ', len(new_od_boguses))
   utils.save_pickle(new_od_boguses, bogus_save_path)
 
+  #Saving Train_Geotransform_(3)_U_(4)
   real_normal_train_val_data_path = os.path.join(save_folder,
-                                                 'train_real_normal_data.pkl')
+                                                 'Train_Geotransform_(3)_U_(4).pkl')
   real_normal_train_val_data = np.concatenate([x_train, x_val])
   utils.save_pickle(real_normal_train_val_data, real_normal_train_val_data_path)
 
@@ -186,4 +220,11 @@ entropy 0.9722893095078529
 cross_entropy 0.9381526013680639
 mutual_information 0.9715040533038952
 Train and evaluate 00:07:01.02
+
+  outliers_random_seed = 42
+  n_test_outliers = 600
+  outliers_indexs = np.arange(len(outliers))
+  np.random.RandomState(seed=outliers_random_seed).shuffle(outliers)
+  outliers_train = outliers[n_test_outliers:]
+  outliers_test = outliers[:n_test_outliers]
 """
