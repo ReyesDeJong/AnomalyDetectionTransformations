@@ -55,6 +55,7 @@ class TransformODModel(tf.keras.Model):
         input_shape=input_shape, n_classes=self.transformer.n_transforms,
         depth=depth, widen_factor=widen_factor, **kwargs)
     self.percentile = 95.46
+    self.create_specific_model_paths()
 
   # TODO: do a param dict
   def get_network(self, input_shape, n_classes,
@@ -92,7 +93,6 @@ class TransformODModel(tf.keras.Model):
       epochs=2, patience=0, **kwargs):
     if epochs is None:
       epochs = int(np.ceil(200 / self.transformer.n_transforms))
-    self.create_specific_model_paths()
     # ToDo: must be network? or just self.compile???
     self.network.compile(
         general_keys.ADAM, general_keys.CATEGORICAL_CROSSENTROPY,
@@ -137,6 +137,9 @@ class TransformODModel(tf.keras.Model):
         x, transform_batch_size)
     # self.network.eval_tf(x_transformed, tf.keras.utils.to_categorical(y_transformed))
     start_time = time.time()
+    #TODO: Memory leakage HERE, predict is not working!! right, it doubles memory usage!
+    # see reproducing similar issue here:
+    # https://github.com/tensorflow/tensorflow/issues/33030
     x_pred = self.network.predict(x_transformed, batch_size=predict_batch_size)
     len_x = self.transformer.get_not_transformed_data_len(len(x))
     matrix_scores = np.zeros((len_x, n_transforms, n_transforms))
@@ -228,12 +231,12 @@ class TransformODModel(tf.keras.Model):
     matrix_scores = matrix_scores / self.transformer.n_transforms
     scores_dict = {
       general_keys.DIRICHLET: diri_scores,
-      general_keys.MATRIX_TRACE: np.trace(matrix_scores, axis1=1, axis2=2),
-      general_keys.ENTROPY: -1 * score_functions.get_entropy(matrix_scores),
-      general_keys.CROSS_ENTROPY: -1 * score_functions.get_xH(self.transformer,
-                                                              matrix_scores),
-      general_keys.MUTUAL_INFORMATION: score_functions.get_xy_mutual_info(
-          matrix_scores)
+      # general_keys.MATRIX_TRACE: np.trace(matrix_scores, axis1=1, axis2=2),
+      # general_keys.ENTROPY: -1 * score_functions.get_entropy(matrix_scores),
+      # general_keys.CROSS_ENTROPY: -1 * score_functions.get_xH(self.transformer,
+      #                                                         matrix_scores),
+      # general_keys.MUTUAL_INFORMATION: score_functions.get_xy_mutual_info(
+      #     matrix_scores)
     }
     return scores_dict
 
@@ -321,7 +324,7 @@ class TransformODModel(tf.keras.Model):
     validation_scores_dict = self.get_scores_dict(
         x_train, x_validation, transform_batch_size, predict_batch_size,
         **kwargs)
-    del self.matrix_scores_train
+    # del self.matrix_scores_train
     # print('start metric')
     metrics_of_each_score = {}
     for score_name, scores_value in eval_scores_dict.items():
@@ -335,6 +338,7 @@ class TransformODModel(tf.keras.Model):
           metrics_of_each_score[score_name])
       self._save_histogram(metrics_of_each_score[score_name], score_name,
                            dataset_name, class_name, save_hist_folder_path)
+    print('hola')
     return metrics_of_each_score
 
   def _get_score_result_name(self, score_name, dataset_name,
