@@ -27,7 +27,7 @@ def _train_ocsvm_and_score(params, x_train, val_labels, x_val):
 
 # TODO: think if its better to create a trainer instead of an encapsulated model
 class AlreadyTransformODModel(TransformODModel):
-  def __init__(self, transformer: AbstractTransformer, input_shape, depth=10,
+  def __init__(self, data_loader=None, transformer: AbstractTransformer=None, input_shape=None, depth=10,
       widen_factor=4, results_folder_name='',
       name='Already_Transformer_OD_Model', **kwargs):
     super().__init__(None,

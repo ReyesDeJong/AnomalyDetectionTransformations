@@ -1,5 +1,7 @@
 """
 First attempt (train_step_tf2 like) to build geometric trasnformer for outlier detection in tf2
+
+Getting validations threshold at training time, to avoid calculation at each evaluation, something that is time and memory consuming
 """
 
 import os

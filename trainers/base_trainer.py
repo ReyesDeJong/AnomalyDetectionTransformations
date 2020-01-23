@@ -18,10 +18,8 @@ class Trainer(object):
   Constructor
   """
 
-  def __init__(self, data_loader: HiTSOutlierLoader,
-      params={param_keys.RESULTS_FOLDER_NAME: '',
-              param_keys.SCORES_TO_USE: None}):
-    self.data_loader = data_loader
+  def __init__(self, params={param_keys.RESULTS_FOLDER_NAME: '',
+                             param_keys.SCORES_TO_USE: None}):
     self.all_models_metrics_message_dict = {}
     self.all_models_metrics_dict = {}
     self.print_manager = PrintManager()
@@ -55,13 +53,18 @@ class Trainer(object):
         message += '\n  %s : %.4f +/- %.4f' % (score_key, mean, std)
     return message
 
-  def train_model_n_times(self, ModelClass,
+  def train_model_n_times(self, ModelClass, data_loader: HiTSOutlierLoader,
       transformer: AbstractTransformer, params, train_times,
-      model_name=None):
+      model_name=None, training_data=None):
+    self.data_loader = data_loader
     seed_array = np.arange(train_times).tolist()
     all_it_metrics = self.metrics_dict_template.copy()
-    (x_train, y_train), (x_val, y_val), (
-      x_test, y_test) = self.data_loader.get_outlier_detection_datasets()
+    if training_data:
+      (x_train, y_train), (x_val, y_val), (
+        x_test, y_test) = training_data
+    else:
+      (x_train, y_train), (x_val, y_val), (
+        x_test, y_test) = self.data_loader.get_outlier_detection_datasets()
     if model_name is None:
       aux_model = ModelClass(data_loader=self.data_loader,
                              transformer=transformer,
@@ -72,19 +75,20 @@ class Trainer(object):
       model = ModelClass(data_loader=self.data_loader, transformer=transformer,
                          input_shape=x_train.shape[1:],
                          name=model_name, results_folder_name=self.models_path)
-      model.fit(x_train, x_val, epochs=params['epochs'], patience=params['patience'])
+      model.fit(x_train, x_val, epochs=params['epochs'],
+                patience=params['patience'])
       metrics_dict = model.evaluate_od(
           x_train, x_test, y_test, self.data_loader.name, general_keys.REAL,
-          x_val)
-      # print('\nroc_auc')
-      # for key in metrics_dict.keys():
-      #   print(key, metrics_dict[key]['roc_auc'])
-      # print('\nacc_at_percentil')
-      # for key in metrics_dict.keys():
-      #   print(key, metrics_dict[key]['acc_at_percentil'])
-      # print('\nmax_accuracy')
-      # for key in metrics_dict.keys():
-      #   print(key, metrics_dict[key]['max_accuracy'])
+          x_val, save_hist_folder_path=model.specific_model_folder)
+      print('\nroc_auc')
+      for key in metrics_dict.keys():
+        print(key, metrics_dict[key]['roc_auc'])
+      print('\nacc_at_percentil')
+      for key in metrics_dict.keys():
+        print(key, metrics_dict[key]['acc_at_percentil'])
+      print('\nmax_accuracy')
+      for key in metrics_dict.keys():
+        print(key, metrics_dict[key]['max_accuracy'])
       self.append_model_metrics_to_all_it_models_metrics(all_it_metrics,
                                                          metrics_dict)
       printing_message = self.get_metrics_message(all_it_metrics, i + 1,
@@ -123,17 +127,39 @@ class Trainer(object):
       for single_metric_name in metrics_names:
         create_auc_table(all_metric_files_paths, single_metric_name)
 
+  def get_training_data(self, transformer: AbstractTransformer,
+      data_loader: HiTSOutlierLoader):
+    (x_train, y_train), (x_val, y_val), (
+      x_test, y_test) = data_loader.get_outlier_detection_datasets()
+    x_train_transform, y_train_transform = transformer.apply_all_transforms(
+        x=x_train)
+    x_val_transform, y_val_transform = transformer.apply_all_transforms(
+        x=x_val)
+    x_test_transform, y_test_transform = transformer.apply_all_transforms(
+        x=x_test)
+    training_data = (x_train_transform, y_train_transform), (
+      x_val_transform, y_val_transform), (x_test_transform, y_test)
+    return training_data
+
 
 if __name__ == '__main__':
   from parameters import loader_keys
-  from models.transformer_od import TransformODModel
-  from models.transformer_od_simple_net import TransformODSimpleModel
-  from modules.geometric_transform.transformations_tf import TransTransformer
+  from models.transformer_od_already_transformed import AlreadyTransformODModel
+  # from models.transformer_od_simple_net import TransformODSimpleModel
+  from modules.geometric_transform import transformations_tf
   import tensorflow as tf
+
+  training_times = 10
 
   gpus = tf.config.experimental.list_physical_devices('GPU')
   for gpu in gpus:
     tf.config.experimental.set_memory_growth(gpu, True)
+  train_params = {
+    param_keys.RESULTS_FOLDER_NAME: 'Already_transformed',
+    'epochs': 1,
+    'patience': 0
+  }
+  trainer = Trainer(train_params)
 
   hits_params = {
     loader_keys.DATA_PATH: os.path.join(
@@ -147,15 +173,20 @@ if __name__ == '__main__':
     loader_keys.TRANSFORMATION_INLIER_CLASS_VALUE: 1
   }
   data_loader = HiTSOutlierLoader(hits_params)
-  transformer = TransTransformer()
-  params = {
-    param_keys.RESULTS_FOLDER_NAME: 'trainer_test',
-    'epochs': 1,
-  }
-  trainer = Trainer(params)
-  trainer.train_model_n_times(TransformODModel, data_loader, transformer,
-                              params, train_times=3)
-  trainer.train_model_n_times(TransformODSimpleModel, data_loader, transformer,
-                              params, train_times=3)
+
+  transformer = transformations_tf.Transformer()
+  training_data = trainer.get_training_data(transformer, data_loader)
+  trainer.train_model_n_times(
+      AlreadyTransformODModel, data_loader, transformer, train_params,
+      train_times=training_times, training_data=training_data)
+
+  trans_transformer = transformations_tf.TransTransformer
+  training_data = trainer.get_training_data(trans_transformer, data_loader)
+  trainer.train_model_n_times(
+      AlreadyTransformODModel, data_loader, trans_transformer, train_params,
+      train_times=training_times, training_data=training_data)
+
+  # trainer.train_model_n_times(TransformODSimpleModel, data_loader, transformer,
+  #                             params, train_times=3)
 
   trainer.print_all_models_metrics()

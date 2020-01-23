@@ -19,7 +19,7 @@ from modules.data_loaders.hits_outlier_loader import HiTSOutlierLoader
 from modules.data_loaders.ztf_outlier_loader import ZTFOutlierLoader
 
 TRAIN_TIME = 10
-
+EXP_NAME = 'CORRECTED_SETS'
 
 def best_score_evaluation(result_folder_name, epochs, patience=0):
   trainer_params = {
@@ -64,7 +64,7 @@ def best_score_evaluation(result_folder_name, epochs, patience=0):
   plus_kernel_transformer, kernel_transformer,
   transformer_72, trans_transformer,
   )
-  trainers_list = (ztf_trainer, hits_trainer, )
+  trainers_list = (hits_trainer,)#(ztf_trainer, hits_trainer, )
   trainer_model_transformer_tuples = list(
       itertools.product(trainers_list, model_constructors_list,
                         transformers_list))
@@ -73,7 +73,7 @@ def best_score_evaluation(result_folder_name, epochs, patience=0):
     trainer.train_model_n_times(model_constructor, transformer,
                                 trainer_params, train_times=TRAIN_TIME)
 
-  hits_trainer.create_tables_of_results_folders()
+    hits_trainer.create_tables_of_results_folders()
 
 
 if __name__ == '__main__':
@@ -82,17 +82,17 @@ if __name__ == '__main__':
     tf.config.experimental.set_memory_growth(gpu, True)
 
   best_score_evaluation(
-      result_folder_name='best_scores_refact/best_scores_resnet_1_epochs',
+      result_folder_name='%s/resnet_1_epochs' % EXP_NAME,
       epochs=1)
   best_score_evaluation(
-      result_folder_name='best_scores_refact/best_scores_resnet_2_epochs',
+      result_folder_name='%s/resnet_2_epochs' % EXP_NAME,
       epochs=2)
   best_score_evaluation(
-      result_folder_name='best_scores_refact/best_scores_resnet_VAL_epochs',
+      result_folder_name='%s/resnet_VAL_epochs' % EXP_NAME,
       epochs=1234)
   best_score_evaluation(
-      result_folder_name='best_scores_refact/best_scores_resnet_VAL_epochs_patience2',
+      result_folder_name='%s/resnet_VAL_epochs_patience2' % EXP_NAME,
       epochs=1234, patience=2)
   best_score_evaluation(
-      result_folder_name='best_scores_refact/best_scores_resnet_SOTA_epochs',
+      result_folder_name='%s/resnet_SOTA_epochs' % EXP_NAME,
       epochs=None)

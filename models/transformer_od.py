@@ -338,7 +338,7 @@ class TransformODModel(tf.keras.Model):
           metrics_of_each_score[score_name])
       self._save_histogram(metrics_of_each_score[score_name], score_name,
                            dataset_name, class_name, save_hist_folder_path)
-    print('hola')
+    #print('hola')
     return metrics_of_each_score
 
   def _get_score_result_name(self, score_name, dataset_name,
