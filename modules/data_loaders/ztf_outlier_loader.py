@@ -81,9 +81,9 @@ class ZTFOutlierLoader(object):
         [data_loader.dataset_preprocessor.check_single_image,
          data_loader.dataset_preprocessor.clean_misshaped,
          data_loader.dataset_preprocessor.select_channels,
+         data_loader.dataset_preprocessor.crop_at_center,
          data_loader.dataset_preprocessor.normalize_by_image,
-         data_loader.dataset_preprocessor.nan_to_num,
-         data_loader.dataset_preprocessor.crop_at_center
+         data_loader.dataset_preprocessor.nan_to_num
          ])
     dataset = data_loader.get_single_dataset()
     utils.save_pickle(dataset, unsplitted_data_path)

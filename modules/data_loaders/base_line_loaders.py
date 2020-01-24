@@ -41,7 +41,12 @@ def normalize_minus1_1(data):
 
 
 def normalize_hits_minus1_1(data):
-  return 2 * (data / np.max(data)) - 1
+  images = data
+  images -= np.nanmin(images, axis=(1, 2))[:, np.newaxis, np.newaxis, :]
+  images = images / np.nanmax(images, axis=(1, 2))[
+                    :, np.newaxis, np.newaxis, :]
+  images = 2 * images - 1
+  return images
 
 
 def get_channels_axis():
@@ -285,9 +290,9 @@ def load_ztf_real_bog(val_percentage_of_inliers=0.10,
       [data_loader.dataset_preprocessor.check_single_image,
        data_loader.dataset_preprocessor.clean_misshaped,
        data_loader.dataset_preprocessor.select_channels,
+       data_loader.dataset_preprocessor.crop_at_center,
        data_loader.dataset_preprocessor.normalize_by_image,
-       data_loader.dataset_preprocessor.nan_to_num,
-       data_loader.dataset_preprocessor.crop_at_center
+       data_loader.dataset_preprocessor.nan_to_num
        ])
   dataset = data_loader.get_single_dataset()
   # labels from 5 classes to 0-1 as bogus-real
@@ -328,6 +333,29 @@ def load_ztf_real_bog(val_percentage_of_inliers=0.10,
     return (X_train, y_train), (X_val, y_val), (X_test, y_test)
   return (X_train, y_train), (X_test, y_test)
 
+
+def load_hits4c(n_samples_by_class=10000, test_size=0.20, val_size=0.10,
+    return_val=False, channels_to_get=[0, 1, 2, 3]):  # [2]):  #
+  data_path = os.path.join(PROJECT_PATH, '..', 'datasets',
+                           'HiTS2013_300k_samples.pkl')
+  params = {
+    param_keys.DATA_PATH_TRAIN: data_path,
+    param_keys.BATCH_SIZE: 50
+  }
+  hits_loader = HiTSLoader(params, label_value=-1,
+                           first_n_samples_by_class=n_samples_by_class,
+                           test_size=test_size, validation_size=val_size,
+                           channels_to_get=channels_to_get)
+
+  (X_train, y_train), (X_val, y_val), (X_test, y_test) = hits_loader.load_data()
+
+  X_train = normalize_hits_minus1_1(cast_to_floatx(X_train))
+  X_val = normalize_hits_minus1_1(cast_to_floatx(X_val))
+  X_test = normalize_hits_minus1_1(cast_to_floatx(X_test))
+
+  if return_val:
+    return (X_train, y_train), (X_val, y_val), (X_test, y_test)
+  return (X_train, y_train), (X_test, y_test)
 
 def get_class_name_from_index(index, dataset_name):
   ind_to_name = {

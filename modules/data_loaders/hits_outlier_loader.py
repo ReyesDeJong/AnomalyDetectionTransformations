@@ -82,9 +82,13 @@ class HiTSOutlierLoader(object):
       return pd.read_pickle(preproc_data_path)
 
     dataset = self.get_unsplitted_dataset()
-    # preprocessing -1 to 1 normalize
-    dataset.data_array = 2 * (
-        dataset.data_array / np.max(dataset.data_array)) - 1
+    # preprocessing -1 to 1 normalize by image
+    images = dataset.data_array
+    images -= np.nanmin(images, axis=(1, 2))[:, np.newaxis, np.newaxis, :]
+    images = images / np.nanmax(images, axis=(1, 2))[
+                      :, np.newaxis, np.newaxis, :]
+    images = 2 * images - 1
+    dataset.data_array = images
     utils.save_pickle(dataset, preproc_data_path)
     return dataset
 

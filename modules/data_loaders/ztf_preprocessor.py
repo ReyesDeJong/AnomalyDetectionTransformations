@@ -89,6 +89,7 @@ class ZTFDataPreprocessor(object):
     images -= np.nanmin(images, axis=(1, 2))[:, np.newaxis, np.newaxis, :]
     images = images / np.nanmax(images, axis=(1, 2))[
                       :, np.newaxis, np.newaxis, :]
+    images = 2 * images - 1
     dataset.data_array = images
     return dataset
 

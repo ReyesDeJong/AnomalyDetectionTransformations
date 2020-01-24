@@ -21,9 +21,9 @@ def get_df_dataset_from_name(params: dict, path: str) -> Dataset:
       [frame_to_input.dataset_preprocessor.check_single_image,
        frame_to_input.dataset_preprocessor.clean_misshaped,
        frame_to_input.dataset_preprocessor.select_channels,
+       frame_to_input.dataset_preprocessor.crop_at_center,
        frame_to_input.dataset_preprocessor.normalize_by_image,
        frame_to_input.dataset_preprocessor.nan_to_num,
-       frame_to_input.dataset_preprocessor.crop_at_center,
        frame_to_input.dataset_preprocessor.labels_to_real_bogus
        ])
   return frame_to_input.get_single_dataset()
@@ -62,9 +62,9 @@ if __name__ == "__main__":
       [frame_to_input.dataset_preprocessor.check_single_image,
        frame_to_input.dataset_preprocessor.clean_misshaped,
        frame_to_input.dataset_preprocessor.select_channels,
+       frame_to_input.dataset_preprocessor.crop_at_center,
        frame_to_input.dataset_preprocessor.normalize_by_image,
        frame_to_input.dataset_preprocessor.nan_to_num,
-       frame_to_input.dataset_preprocessor.crop_at_center,
        ])
   aux_datasets_dict = frame_to_input.get_datasets()
   print('Aux Train Set: ',
