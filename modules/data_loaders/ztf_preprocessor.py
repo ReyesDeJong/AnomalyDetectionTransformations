@@ -172,18 +172,6 @@ class ZTFDataPreprocessor(object):
                       meta_data=metadata_clone)
     return dataset
 
-  def _get_string_label_count(self, labels):
-    class_names = np.array(['AGN', 'SN', 'VS', 'asteroid', 'bogus'])
-    label_values, label_counts = np.unique(labels, return_counts=True)
-    if len(label_values) != class_names.shape[0]:
-      return ""
-    count_dict = dict(zip(label_values, label_counts))
-    return_str = 'Label count '
-    for single_label_value in count_dict.keys():
-      return_str += '%s: %i -' % (class_names[single_label_value],
-                                  count_dict[single_label_value])
-    return return_str
-
   def crop_at_center(self, dataset: Dataset):
     if self.crop_size is None:
       return dataset
@@ -200,4 +188,32 @@ class ZTFDataPreprocessor(object):
     # print(crop_begin, crop_end)
     cropped_samples = samples[:, crop_begin:crop_end, crop_begin:crop_end, :]
     dataset.data_array = cropped_samples
+    return dataset
+
+  def _get_string_label_count(self, labels,
+      class_names=np.array(['AGN', 'SN', 'VS', 'asteroid', 'bogus'])):
+    label_values, label_counts = np.unique(labels, return_counts=True)
+    if len(label_values) != class_names.shape[0]:
+      return ""
+    count_dict = dict(zip(label_values, label_counts))
+    return_str = 'Label count '
+    for single_label_value in count_dict.keys():
+      return_str += '%s: %i -' % (class_names[single_label_value],
+                                  count_dict[single_label_value])
+    return return_str
+
+  def labels_to_real_bogus(self, dataset: Dataset):
+    bogus_label_value = self.params[param_keys.BOGUS_LABEL_VALUE]
+    if bogus_label_value is None:
+      label_values = np.unique(dataset.data_label)
+      bogus_label_value = label_values[-1]
+    bogus_indexes = np.where(dataset.data_label == bogus_label_value)[0]
+    real_indexes = np.where(dataset.data_label != bogus_label_value)[0]
+    dataset.data_label[bogus_indexes] = 0
+    dataset.data_label[real_indexes] = 1
+    if self.verbose:
+      print('Labels changed to Real - Bogus\n%s' % (
+        self._get_string_label_count(dataset.data_label,
+                                     np.array(['bogus', 'real']))),
+            flush=True)
     return dataset
