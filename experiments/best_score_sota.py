@@ -31,7 +31,7 @@ def best_score_evaluation(result_folder_name, epochs, patience=0):
   # data loaders
   hits_params = {
     loader_keys.DATA_PATH: os.path.join(
-        PROJECT_PATH, '/home/ereyes/Projects/Thesis//datasets/HiTS2013_300k_samples.pkl'),
+        PROJECT_PATH, '../datasets/HiTS2013_300k_samples.pkl'),
     loader_keys.N_SAMPLES_BY_CLASS: 10000,
     loader_keys.TEST_PERCENTAGE: 0.2,
     loader_keys.VAL_SET_INLIER_PERCENTAGE: 0.1,
@@ -52,7 +52,8 @@ def best_score_evaluation(result_folder_name, epochs, patience=0):
   # }
   # ztf_loader = ZTFOutlierLoader(ztf_params)
   ztf_params = {
-    loader_keys.DATA_PATH: '/home/ereyes/Projects/Thesis/datasets/ALeRCE_data/new_small_od_dataset_tuples.pkl',
+    loader_keys.DATA_PATH: os.path.join(
+        PROJECT_PATH, '../datasets/ALeRCE_data/new_small_od_dataset_tuples.pkl'),
   }
   ztf_loader = ZTFSmallOutlierLoader(ztf_params)
   # transformers
