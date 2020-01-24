@@ -18,8 +18,11 @@ class Trainer(object):
   Constructor
   """
 
-  def __init__(self, params={param_keys.RESULTS_FOLDER_NAME: '',
-                             param_keys.SCORES_TO_USE: None}):
+
+  def __init__(self, data_loader: HiTSOutlierLoader,
+      params={param_keys.RESULTS_FOLDER_NAME: '',
+              param_keys.SCORES_TO_USE: None}):
+    self.data_loader = data_loader
     self.all_models_metrics_message_dict = {}
     self.all_models_metrics_dict = {}
     self.print_manager = PrintManager()
@@ -53,9 +56,9 @@ class Trainer(object):
         message += '\n  %s : %.4f +/- %.4f' % (score_key, mean, std)
     return message
 
-  def train_model_n_times(self, ModelClass, data_loader: HiTSOutlierLoader,
+  def train_model_n_times(self, ModelClass,
       transformer: AbstractTransformer, params, train_times,
-      model_name=None, training_data=None):
+      model_name=None):
     self.data_loader = data_loader
     seed_array = np.arange(train_times).tolist()
     all_it_metrics = self.metrics_dict_template.copy()
@@ -159,8 +162,6 @@ if __name__ == '__main__':
     'epochs': 1,
     'patience': 0
   }
-  trainer = Trainer(train_params)
-
   hits_params = {
     loader_keys.DATA_PATH: os.path.join(
         PROJECT_PATH, '../datasets/HiTS2013_300k_samples.pkl'),
@@ -173,17 +174,17 @@ if __name__ == '__main__':
     loader_keys.TRANSFORMATION_INLIER_CLASS_VALUE: 1
   }
   data_loader = HiTSOutlierLoader(hits_params)
-
+  trainer = Trainer(data_loader, train_params)
   transformer = transformations_tf.Transformer()
   training_data = trainer.get_training_data(transformer, data_loader)
   trainer.train_model_n_times(
-      AlreadyTransformODModel, data_loader, transformer, train_params,
+      AlreadyTransformODModel, transformer, train_params,
       train_times=training_times, training_data=training_data)
 
   trans_transformer = transformations_tf.TransTransformer
   training_data = trainer.get_training_data(trans_transformer, data_loader)
   trainer.train_model_n_times(
-      AlreadyTransformODModel, data_loader, trans_transformer, train_params,
+      AlreadyTransformODModel, trans_transformer, train_params,
       train_times=training_times, training_data=training_data)
 
   # trainer.train_model_n_times(TransformODSimpleModel, data_loader, transformer,
