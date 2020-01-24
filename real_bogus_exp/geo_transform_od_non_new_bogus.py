@@ -1,6 +1,11 @@
 import os
 import sys
 
+
+"""
+Bogus used ar only Ashish's
+"""
+
 PROJECT_PATH = os.path.abspath(
     os.path.join(os.path.dirname(__file__), '..'))
 sys.path.append(PROJECT_PATH)

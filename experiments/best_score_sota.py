@@ -16,10 +16,11 @@ from models.transformer_od import TransformODModel
 from modules.geometric_transform import transformations_tf
 import tensorflow as tf
 from modules.data_loaders.hits_outlier_loader import HiTSOutlierLoader
-from modules.data_loaders.ztf_outlier_loader import ZTFOutlierLoader
+# from modules.data_loaders.ztf_outlier_loader import ZTFOutlierLoader
+from modules.data_loaders.ztf_small_outlier_loader import ZTFSmallOutlierLoader
 
 TRAIN_TIME = 10
-EXP_NAME = 'ALL_KERNEL'
+EXP_NAME = 'ztf_small_test'
 
 def best_score_evaluation(result_folder_name, epochs, patience=0):
   trainer_params = {
@@ -40,16 +41,20 @@ def best_score_evaluation(result_folder_name, epochs, patience=0):
     loader_keys.TRANSFORMATION_INLIER_CLASS_VALUE: 1
   }
   hits_loader = HiTSOutlierLoader(hits_params)
+  # ztf_params = {
+  #   loader_keys.DATA_PATH: os.path.join(
+  #       PROJECT_PATH, '/home/ereyes/Projects/Thesis/datasets/ztf_v1_bogus_added.pkl'),
+  #   loader_keys.VAL_SET_INLIER_PERCENTAGE: 0.1,
+  #   loader_keys.USED_CHANNELS: [0, 1, 2],
+  #   loader_keys.CROP_SIZE: 21,
+  #   general_keys.RANDOM_SEED: 42,
+  #   loader_keys.TRANSFORMATION_INLIER_CLASS_VALUE: 1
+  # }
+  # ztf_loader = ZTFOutlierLoader(ztf_params)
   ztf_params = {
-    loader_keys.DATA_PATH: os.path.join(
-        PROJECT_PATH, '/home/ereyes/Projects/Thesis/datasets/ztf_v1_bogus_added.pkl'),
-    loader_keys.VAL_SET_INLIER_PERCENTAGE: 0.1,
-    loader_keys.USED_CHANNELS: [0, 1, 2],
-    loader_keys.CROP_SIZE: 21,
-    general_keys.RANDOM_SEED: 42,
-    loader_keys.TRANSFORMATION_INLIER_CLASS_VALUE: 1
+    loader_keys.DATA_PATH: '/home/ereyes/Projects/Thesis/datasets/ALeRCE_data/new_small_od_dataset_tuples.pkl',
   }
-  ztf_loader = ZTFOutlierLoader(ztf_params)
+  ztf_loader = ZTFSmallOutlierLoader(ztf_params)
   # transformers
   transformer_72 = transformations_tf.Transformer()
   trans_transformer = transformations_tf.TransTransformer()
@@ -63,12 +68,12 @@ def best_score_evaluation(result_folder_name, epochs, patience=0):
 
   model_constructors_list = (TransformODModel,)
   transformers_list = (
-  all_kernel_transformer,
-  #plus_kernel_transformer, kernel_transformer,
-  #transformer_72,
-  # trans_transformer,
+  # all_kernel_transformer,
+  plus_kernel_transformer, kernel_transformer,
+  transformer_72,
+  trans_transformer,
   )
-  trainers_list = (hits_trainer,)#(ztf_trainer, hits_trainer, )
+  trainers_list = (ztf_trainer,)#(ztf_trainer, hits_trainer, )#(hits_trainer,)
   trainer_model_transformer_tuples = list(
       itertools.product(trainers_list, model_constructors_list,
                         transformers_list))
@@ -88,7 +93,4 @@ if __name__ == '__main__':
   best_score_evaluation(
       result_folder_name='%s/resnet_VAL_epochs' % EXP_NAME,
       epochs=1234)
-  best_score_evaluation(
-      result_folder_name='%s/resnet_SOTA_epochs' % EXP_NAME,
-      epochs=None)
 
