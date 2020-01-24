@@ -20,7 +20,7 @@ from modules.data_loaders.hits_outlier_loader import HiTSOutlierLoader
 from modules.data_loaders.ztf_small_outlier_loader import ZTFSmallOutlierLoader
 
 TRAIN_TIME = 10
-EXP_NAME = 'ztf_small_test'
+EXP_NAME = 'ZTF_SMALL'
 
 def best_score_evaluation(result_folder_name, epochs, patience=0):
   trainer_params = {
