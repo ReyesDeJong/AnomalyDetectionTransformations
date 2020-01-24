@@ -142,7 +142,7 @@ class DeepHits(tf.keras.Model):
   def fit_tf_val(self, x, y, validation_data=None, batch_size=128, epochs=1,
       iterations_to_validate=None, patience=0, verbose=1):
     self.verbose = verbose
-    n_iterations_in_epoch = len(y) // batch_size
+    n_iterations_in_epoch = (len(y) // batch_size)-1
     # check if validate at end of epoch
     if iterations_to_validate is None:
       iterations_to_validate = n_iterations_in_epoch
@@ -156,17 +156,21 @@ class DeepHits(tf.keras.Model):
     val_ds = tf.data.Dataset.from_tensor_slices(
         (validation_data[0], validation_data[1])).batch(1024)
     self.check_best_model_save(iteration=0)
+    start_time = time.time()
     for epoch in range(epochs):
-      start_time = time.time()
       for it_i, (images, labels) in enumerate(train_ds):
         self.train_step(images, labels)
+        # print(it_i)
         if it_i % iterations_to_validate == 0 and it_i != 0:
+          # print('validate')
           if self.check_early_stopping(patience):
             return
           for test_images, test_labels in val_ds:
             self.eval_step(test_images, test_labels)
           # TODO: check train printer
+          # print('hola')
           if self.verbose:
+            # print('here')
             template = 'Epoch {}, Loss: {}, Acc: {}, Val loss: {}, Val acc: {}, Time: {}'
             print(template.format(epoch + 1,
                                   self.train_loss.result(),

@@ -30,7 +30,7 @@ def best_score_evaluation(result_folder_name, epochs, patience=0):
   # data loaders
   hits_params = {
     loader_keys.DATA_PATH: os.path.join(
-        PROJECT_PATH, '../datasets/HiTS2013_300k_samples.pkl'),
+        PROJECT_PATH, '/home/ereyes/Projects/Thesis//datasets/HiTS2013_300k_samples.pkl'),
     loader_keys.N_SAMPLES_BY_CLASS: 10000,
     loader_keys.TEST_PERCENTAGE: 0.2,
     loader_keys.VAL_SET_INLIER_PERCENTAGE: 0.1,
@@ -42,7 +42,7 @@ def best_score_evaluation(result_folder_name, epochs, patience=0):
   hits_loader = HiTSOutlierLoader(hits_params)
   ztf_params = {
     loader_keys.DATA_PATH: os.path.join(
-        PROJECT_PATH, '../datasets/ztf_v1_bogus_added.pkl'),
+        PROJECT_PATH, '/home/ereyes/Projects/Thesis/datasets/ztf_v1_bogus_added.pkl'),
     loader_keys.VAL_SET_INLIER_PERCENTAGE: 0.1,
     loader_keys.USED_CHANNELS: [0, 1, 2],
     loader_keys.CROP_SIZE: 21,
@@ -56,14 +56,14 @@ def best_score_evaluation(result_folder_name, epochs, patience=0):
   kernel_transformer = transformations_tf.KernelTransformer()
   plus_kernel_transformer = transformations_tf.PlusKernelTransformer()
   all_kernel_transformer = transformations_tf.KernelTransformer(rotations=True,
-                                                                flips=True)
+                                                                flips=True, name='All_Kernel_Transform')
   # trainers
   hits_trainer = Trainer(hits_loader, trainer_params)
   ztf_trainer = Trainer(ztf_loader, trainer_params)
 
   model_constructors_list = (TransformODModel,)
   transformers_list = (
-  all_kernel_transformer
+  all_kernel_transformer,
   #plus_kernel_transformer, kernel_transformer,
   #transformer_72, trans_transformer,
   )

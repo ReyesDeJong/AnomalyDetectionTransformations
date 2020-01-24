@@ -59,7 +59,6 @@ class Trainer(object):
   def train_model_n_times(self, ModelClass,
       transformer: AbstractTransformer, params, train_times,
       model_name=None, training_data=None):
-    self.data_loader = data_loader
     seed_array = np.arange(train_times).tolist()
     all_it_metrics = self.metrics_dict_template.copy()
     if training_data:
