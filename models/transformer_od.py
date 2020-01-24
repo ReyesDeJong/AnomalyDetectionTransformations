@@ -28,6 +28,9 @@ import matplotlib.pyplot as plt
 from sklearn.model_selection import ParameterGrid
 from sklearn.externals.joblib import Parallel, delayed
 from sklearn.svm import OneClassSVM
+import matplotlib
+matplotlib.use('Agg')
+
 
 """In situ transformation perform"""
 
@@ -375,10 +378,11 @@ class TransformODModel(tf.keras.Model):
         'AUC_ROC: %.2f%%, BEST ACC: %.2f%%' % (
           auc_roc * 100, np.max(accuracies) * 100))
     ax_acc = ax_hist.twinx()
-    hist1 = ax_hist.hist(inliers_scores, 100, alpha=0.5,
+    hist1 = ax_hist.hist(inliers_scores, 300, alpha=0.5,
                          label='inlier', range=[min_score, max_score])
-    hist2 = ax_hist.hist(outliers_scores, 100, alpha=0.5,
+    hist2 = ax_hist.hist(outliers_scores, 300, alpha=0.5,
                          label='outlier', range=[min_score, max_score])
+    ax_hist.set_yscale('log')
     _, max_ = ax_hist.set_ylim()
     ax_hist.set_ylabel('Counts', fontsize=12)
     ax_hist.set_xlabel(score_name, fontsize=12)

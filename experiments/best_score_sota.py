@@ -19,7 +19,7 @@ from modules.data_loaders.hits_outlier_loader import HiTSOutlierLoader
 from modules.data_loaders.ztf_outlier_loader import ZTFOutlierLoader
 
 TRAIN_TIME = 10
-EXP_NAME = 'ALL_KERNEL'
+EXP_NAME = 'bug'
 
 def best_score_evaluation(result_folder_name, epochs, patience=0):
   trainer_params = {
@@ -63,9 +63,10 @@ def best_score_evaluation(result_folder_name, epochs, patience=0):
 
   model_constructors_list = (TransformODModel,)
   transformers_list = (
-  all_kernel_transformer,
+  #all_kernel_transformer,
   #plus_kernel_transformer, kernel_transformer,
-  #transformer_72, trans_transformer,
+  #transformer_72,
+  trans_transformer,
   )
   trainers_list = (hits_trainer,)#(ztf_trainer, hits_trainer, )
   trainer_model_transformer_tuples = list(
@@ -84,18 +85,18 @@ if __name__ == '__main__':
   for gpu in gpus:
     tf.config.experimental.set_memory_growth(gpu, True)
 
+  best_score_evaluation(
+      result_folder_name='%s/resnet_1_epochs' % EXP_NAME,
+      epochs=1)
+  # # best_score_evaluation(
+  # #     result_folder_name='%s/resnet_2_epochs' % EXP_NAME,
+  # #     epochs=2)
   # best_score_evaluation(
-  #     result_folder_name='%s/resnet_1_epochs' % EXP_NAME,
-  #     epochs=1)
+  #     result_folder_name='%s/resnet_VAL_epochs' % EXP_NAME,
+  #     epochs=1234)
   # best_score_evaluation(
-  #     result_folder_name='%s/resnet_2_epochs' % EXP_NAME,
-  #     epochs=2)
-  best_score_evaluation(
-      result_folder_name='%s/resnet_VAL_epochs' % EXP_NAME,
-      epochs=1234)
-  best_score_evaluation(
-      result_folder_name='%s/resnet_SOTA_epochs' % EXP_NAME,
-      epochs=None)
-  best_score_evaluation(
-      result_folder_name='%s/resnet_VAL_epochs_patience2' % EXP_NAME,
-      epochs=1234, patience=2)
+  #     result_folder_name='%s/resnet_SOTA_epochs' % EXP_NAME,
+  #     epochs=None)
+  # best_score_evaluation(
+  #     result_folder_name='%s/resnet_VAL_epochs_patience2' % EXP_NAME,
+  #     epochs=1234, patience=2)

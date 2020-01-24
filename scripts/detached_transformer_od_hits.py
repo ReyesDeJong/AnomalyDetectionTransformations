@@ -119,10 +119,11 @@ def plot_histogram_disc_loss_acc_thr(inliers_scores, outliers_scores,
       'AUC_ROC: %.2f%%, BEST ACC: %.2f%%' % (
         auc_roc * 100, np.max(accuracies) * 100))
   ax_acc = ax_hist.twinx()
-  hist1 = ax_hist.hist(inliers_scores, 100, alpha=0.5,
+  hist1 = ax_hist.hist(inliers_scores, 300, alpha=0.5,
                        label='inlier', range=[min, max])
-  hist2 = ax_hist.hist(outliers_scores, 100, alpha=0.5,
+  hist2 = ax_hist.hist(outliers_scores, 300, alpha=0.5,
                        label='outlier', range=[min, max])
+  ax_hist.set_yscale('log')
   _, max_ = ax_hist.set_ylim()
   ax_hist.set_ylabel('Counts', fontsize=12)
   ax_hist.set_xlabel(x_label_name, fontsize=12)
@@ -141,7 +142,7 @@ def plot_histogram_disc_loss_acc_thr(inliers_scores, outliers_scores,
                'Acc: {:.2f}%'.format(accuracy_at_percentil * 100))
 
   ax_acc.grid(ls='--')
-  fig.legend(loc="upper right", bbox_to_anchor=(1, 1),
+  fig.legend(loc="upper left", bbox_to_anchor=(1, 1),
              bbox_transform=ax_hist.transAxes)
   if path:
     fig.savefig(os.path.join(path, '%s_hist_thr_acc.png' % x_label_name),
