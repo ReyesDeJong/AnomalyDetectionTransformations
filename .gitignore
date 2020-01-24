@@ -13,7 +13,10 @@
 *.data-00001-of-00002
 *.zip
 *.txt
+*.iml
+*.xml
 .idea/
+/.idea
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
