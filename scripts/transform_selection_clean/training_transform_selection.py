@@ -167,7 +167,7 @@ if __name__ == '__main__':
 
   mdl = EnsembleOVOTransformODSimpleModel(
       data_loader=data_loader, transformer=transformer,
-      input_shape=x_train.shape[1:])
+      input_shape=x_train_shape)
 
   transformer = get_transform_selection_transformer(data_loader, mdl,
                                                     transformer)
