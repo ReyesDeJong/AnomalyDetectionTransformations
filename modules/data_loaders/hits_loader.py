@@ -28,13 +28,17 @@ class HiTSLoader(object):
   Constructor
   """
 
-  def __init__(self, params: dict, label_value=1, first_n_samples_by_class=125000, test_size=0.12, validation_size=0.08, channels_to_get=[0,1,2,3]):
+  def __init__(self, params: dict, label_value=1,
+      first_n_samples_by_class=125000, test_size=0.12, validation_size=0.08,
+      channels_to_get=[0, 1, 2, 3]):
     self.path = params[param_keys.DATA_PATH_TRAIN]
     self.batch_size = params[param_keys.BATCH_SIZE]
-    self.data_splitter = DatasetDivider(data_set_obj=None, test_size=test_size, validation_size=validation_size)
+    self.data_splitter = DatasetDivider(data_set_obj=None, test_size=test_size,
+                                        validation_size=validation_size)
     self.first_n_samples_by_class = first_n_samples_by_class
     self.label_value = label_value
     self.channel_to_get = channels_to_get
+    self.first_n_samples_random_seed = 42
 
   def _init_datasets_dict(self):
     datasets_dict = {
@@ -55,13 +59,14 @@ class HiTSLoader(object):
     # print(labels.shape)
     label_value_idxs = np.where(labels == label_value)[0]
     # print(label_value_idxs.shape)
-    np.random.shuffle(label_value_idxs)
+    np.random.RandomState(seed=self.first_n_samples_by_class).shuffle(
+      label_value_idxs)
     label_idxs_to_get = label_value_idxs[:n_samples]
     data_dict[general_keys.IMAGES] = images[label_idxs_to_get]
     data_dict[general_keys.LABELS] = labels[label_idxs_to_get]
     return data_dict
 
-  #TODO: dont do this normalization, it is by sample
+  # TODO: dont do this normalization, it is by sample
   def normalize_images(self, images):
     # normilize 0-1
     for image_index in range(images.shape[0]):
@@ -128,7 +133,7 @@ class HiTSLoader(object):
       list_of_data_dicts_by_label.append(specific_label_data_dict)
     merged_data_dict = self._concatenate_data_dicts(
         list_of_data_dicts_by_label)
-    #split data into train-test
+    # split data into train-test
     dataset = Dataset(data_array=merged_data_dict[general_keys.IMAGES],
                       data_label=merged_data_dict[general_keys.LABELS],
                       batch_size=self.batch_size)
@@ -143,7 +148,7 @@ class HiTSLoader(object):
            (val_dataset.data_array, val_dataset.data_label), \
            (test_dataset.data_array, test_dataset.data_label)
 
-  #Todo: refactor this and previous_method
+  # Todo: refactor this and previous_method
   def get_single_dataset(self) -> Dataset:
     """get first n_samples_by_class data from each hits class"""
     data_dict = self._load_file(self.path)
@@ -177,6 +182,6 @@ if __name__ == "__main__":
 
   (X_train, y_train), (X_test, y_test) = data_loader.load_data()
   print('All data train shape %s, label mean %.1f' % (str(X_train.shape),
-        np.mean(y_train)))
+                                                      np.mean(y_train)))
   print('All data test shape %s, label mean %.1f' % (str(X_test.shape),
-        np.mean(y_test)))
+                                                     np.mean(y_test)))

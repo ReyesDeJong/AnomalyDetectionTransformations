@@ -7,7 +7,9 @@ PROJECT_PATH = os.path.abspath(
 sys.path.append(PROJECT_PATH)
 # import cv2
 from modules.data_loaders.hits_loader import HiTSLoader
-from parameters import param_keys
+from modules.data_loaders.ztf_small_outlier_loader import ZTFSmallOutlierLoader
+from modules.data_loaders.hits_outlier_loader import HiTSOutlierLoader
+from parameters import param_keys, loader_keys, general_keys
 import numpy as np
 from tensorflow.keras.backend import cast_to_floatx
 from tensorflow.keras.datasets import mnist, fashion_mnist, cifar100, cifar10
@@ -334,28 +336,39 @@ def load_ztf_real_bog(val_percentage_of_inliers=0.10,
   return (X_train, y_train), (X_test, y_test)
 
 
-def load_hits4c(n_samples_by_class=10000, test_size=0.20, val_size=0.10,
-    return_val=False, channels_to_get=[0, 1, 2, 3]):  # [2]):  #
-  data_path = os.path.join(PROJECT_PATH, '..', 'datasets',
-                           'HiTS2013_300k_samples.pkl')
-  params = {
-    param_keys.DATA_PATH_TRAIN: data_path,
-    param_keys.BATCH_SIZE: 50
+def load_hits4c_outlier_loader(return_val=False):
+  # data loaders
+  hits_params = {
+    loader_keys.DATA_PATH: os.path.join(
+        PROJECT_PATH, '../datasets/HiTS2013_300k_samples.pkl'),
+    loader_keys.N_SAMPLES_BY_CLASS: 10000,
+    loader_keys.TEST_PERCENTAGE: 0.2,
+    loader_keys.VAL_SET_INLIER_PERCENTAGE: 0.1,
+    loader_keys.USED_CHANNELS: [0, 1, 2, 3],  # [2],#
+    loader_keys.CROP_SIZE: 21,
+    general_keys.RANDOM_SEED: 42,
+    loader_keys.TRANSFORMATION_INLIER_CLASS_VALUE: 1
   }
-  hits_loader = HiTSLoader(params, label_value=-1,
-                           first_n_samples_by_class=n_samples_by_class,
-                           test_size=test_size, validation_size=val_size,
-                           channels_to_get=channels_to_get)
-
-  (X_train, y_train), (X_val, y_val), (X_test, y_test) = hits_loader.load_data()
-
-  X_train = normalize_hits_minus1_1(cast_to_floatx(X_train))
-  X_val = normalize_hits_minus1_1(cast_to_floatx(X_val))
-  X_test = normalize_hits_minus1_1(cast_to_floatx(X_test))
+  hits_loader = HiTSOutlierLoader(hits_params)
+  (x_train, y_train), (x_val, y_val), (
+    x_test, y_test) = hits_loader.get_outlier_detection_datasets()
 
   if return_val:
-    return (X_train, y_train), (X_val, y_val), (X_test, y_test)
-  return (X_train, y_train), (X_test, y_test)
+    return (x_train, y_train), (x_val, y_val), (x_test, y_test)
+  return (x_train, y_train), (x_test, y_test)
+
+def load_ztf_small(return_val=False):
+  ztf_params = {
+    loader_keys.DATA_PATH: os.path.join(
+        PROJECT_PATH, '../datasets/ALeRCE_data/new_small_od_dataset_tuples.pkl'),
+  }
+  ztf_loader = ZTFSmallOutlierLoader(ztf_params)
+  (x_train, y_train), (x_val, y_val), (
+    x_test, y_test) = ztf_loader.get_outlier_detection_datasets()
+
+  if return_val:
+    return (x_train, y_train), (x_val, y_val), (x_test, y_test)
+  return (x_train, y_train), (x_test, y_test)
 
 def get_class_name_from_index(index, dataset_name):
   ind_to_name = {
@@ -378,8 +391,10 @@ def get_class_name_from_index(index, dataset_name):
     'cats-vs-dogs': ('cat', 'dog'),
     'hits': ('bogus', 'real'),
     'hits-4-c': ('bogus', 'real'),
+    'hits-4-c-od': ('bogus', 'real'),
     'hits-1-c': ('bogus', 'real'),
     'hits-padded': ('bogus', 'real'),
+    'ztf-small-real-bog': ('bogus', 'real'),
     'ztf-real-bog': ('bogus', 'real'),
     'ztf-real-bog-v0': ('bogus', 'real'),
     'ztf-real-bog-v1': ('bogus', 'real'),
