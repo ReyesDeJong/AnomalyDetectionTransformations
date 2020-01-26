@@ -46,13 +46,9 @@ class EnsembleOVOTransformODModel(TransformODModel):
                                             widen_factor=widen_factor,
                                             **kwargs)
     self.models_index_tuples = self._get_models_index_tuples()
+    self.create_commonmodel_paths()
 
-  def create_specific_model_paths(self):
-    self.specific_model_folder = os.path.join(self.main_model_path,
-                                              self.transformer.name,
-                                              '%s_%s' % (self.name, self.date))
-    self.checkpoint_folder = os.path.join(self.specific_model_folder,
-                                          'checkpoints')
+  def create_commonmodel_paths(self):
     self.common_to_all_models_transform_selection_folder = os.path.join(
         self.main_model_path, self.data_loader.name,
         self.transformer.name, 'transform_selection')
@@ -64,8 +60,7 @@ class EnsembleOVOTransformODModel(TransformODModel):
         'results')
     # self.tb_path = os.path.join(self.model_path, 'tb_summaries')
     utils.check_paths(
-        [self.specific_model_folder, self.checkpoint_folder,
-         self.common_to_all_models_transform_selection_folder,
+        [self.common_to_all_models_transform_selection_folder,
          self.common_to_all_models_transform_selection_checkpoints_folder,
          self.common_to_all_models_transform_selection_results_folder])
 
