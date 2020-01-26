@@ -52,6 +52,8 @@ def check_for_discrepancies_between_train_and_val_acc_matrix(
   transform_selector.get_transformer_with_selected_transforms(
       model, val_acc_matrix, val_transformer, verbose=1,
       selection_accuracy_tolerance=accuracy_selection_tolerance)
+  transform_selection_results_path = os.path.join(
+    TRANSFORM_SELECTION_RESULTS_FOLDER, TRANSFORM_SELECTION_RESULTS_FILENAME)
   if val_transformer.tranformation_to_perform == train_transformer.tranformation_to_perform:
     with open(TRANSFORM_SELECTION_RESULTS_FILENAME, "a") as myfile:
       myfile.write(
@@ -59,6 +61,7 @@ def check_for_discrepancies_between_train_and_val_acc_matrix(
       myfile.write(
           'Train and Val Transforms selected are equal')
   else:
+    print('DISCREPANCY OF CONFLICTING TRANSFORMS VAL-TRAIN')
     with open(TRANSFORM_SELECTION_RESULTS_FILENAME, "a") as myfile:
       myfile.write(
           "\n" + model.name + '\n' + transformer.name + '\n' + data_loader.name)

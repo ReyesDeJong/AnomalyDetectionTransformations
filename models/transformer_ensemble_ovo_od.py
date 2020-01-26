@@ -50,8 +50,8 @@ class EnsembleOVOTransformODModel(TransformODModel):
 
   def create_commonmodel_paths(self):
     self.common_to_all_models_transform_selection_folder = os.path.join(
-        self.main_model_path, self.data_loader.name,
-        self.transformer.name, 'transform_selection')
+        self.main_model_path, 'transform_selection', self.data_loader.name,
+        self.transformer.name)
     self.common_to_all_models_transform_selection_checkpoints_folder = os.path.join(
         self.common_to_all_models_transform_selection_folder,
         'checkpoints')
