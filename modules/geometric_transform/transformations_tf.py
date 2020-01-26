@@ -154,6 +154,7 @@ class AbstractTransformer(abc.ABC):
     self.name = name
     self._transform_batch_size = transform_batch_size
     self._transformation_list = None
+    self.tranformation_to_perform = None
     self._create_transformation_list()
     self.verbose = 1
     self.return_data_not_transformed = False

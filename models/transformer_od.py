@@ -77,6 +77,7 @@ class TransformODModel(tf.keras.Model):
     return main_model_path
 
   def _results_folder_name_to_path(self, result_folder_name):
+    #TODO: erease this, it weird, as if in results folder was like 'results/'
     if 'results' in result_folder_name:
       return result_folder_name
     else:

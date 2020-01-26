@@ -29,25 +29,25 @@ class TransformSelectorByOVO(tf.keras.Model):
       model: EnsembleOVOTransformODModel, accuracy_matrix: np.ndarray,
       transformer: AbstractTransformer, selection_accuracy_tolerance=0.01,
       verbose=0):
-    redundant_transforms_tuples = []
+    self.redundant_transforms_tuples = []
     for x_y_tuple in model.models_index_tuples:
       x_ind = x_y_tuple[0]
       y_ind = x_y_tuple[1]
       x_y_acc = accuracy_matrix[x_ind, y_ind]
       accuracy_interval = np.abs(x_y_acc - 0.5)
       if accuracy_interval <= selection_accuracy_tolerance:
-        redundant_transforms_tuples.append(x_y_tuple)
+        self.redundant_transforms_tuples.append(x_y_tuple)
     if verbose:
       print('Conflicting transformations')
-      for conflicting_tuple in redundant_transforms_tuples:
+      for conflicting_tuple in self.redundant_transforms_tuples:
         print('(%i,%i): %s ; %s' % (
           conflicting_tuple[0], conflicting_tuple[1],
           str(transformer.tranformation_to_perform[conflicting_tuple[0]]),
           str(transformer.tranformation_to_perform[conflicting_tuple[1]])))
-    # TODO: do a random selection and a most repeated based. THIS is first
+    # TODO: do a random selection and, selection_accuracy_tolerance=accuracy_selection_tolerance) a most repeated based. THIS is first
     #  chosen
     transforms_to_delete = [x_y_tuple[1] for x_y_tuple in
-                                 redundant_transforms_tuples]
+                                 self.redundant_transforms_tuples]
     unique_transforms_to_delete = np.unique(transforms_to_delete)
     reversed_unique_transfors_to_delete = unique_transforms_to_delete[::-1]
     for i in reversed_unique_transfors_to_delete:

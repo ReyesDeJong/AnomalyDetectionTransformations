@@ -7,7 +7,9 @@ import tensorflow as tf
 from glob import glob
 from collections import defaultdict
 import csv
+import matplotlib
 
+matplotlib.use('Agg')
 
 PROJECT_PATH = os.path.abspath(
     os.path.join(os.path.dirname(__file__), '..'))
@@ -52,6 +54,19 @@ def plot_n_images(dataset, name, save_path, plot_show=False, n=100,
     plt.show()
 
 
+def save_2d_image(image, name, save_folder=None, plot_show=False, img_size=16,
+    axis_show='off'):
+  fig, ax = plt.subplots(1, 1, figsize=(img_size, img_size))
+  fig.suptitle(name, fontsize=40, color='white')
+  ax.imshow(image)
+  ax.axis(axis_show)
+  fig.tight_layout()
+  if save_folder:
+    fig.savefig(os.path.join(save_folder, '%s.png' % name))
+  if plot_show:
+    plt.show()
+
+
 def generated_images_to_dataset(gen_imgs, label=1):
   dataset = Dataset(data_array=gen_imgs,
                     data_label=np.ones(gen_imgs.shape[0]) * label,
@@ -75,6 +90,7 @@ def check_paths(paths):
     if not os.path.exists(path):
       os.makedirs(path)
 
+
 def check_path(path):
   check_paths(path)
 
@@ -94,6 +110,7 @@ def save_pickle(data, path):
   with open(path, 'wb') as handle:
     pkl.dump(data, handle, protocol=pkl.HIGHEST_PROTOCOL)
 
+
 def add_text_to_beginning_of_file_path(file_path, added_text):
   """add text to beginning of file name, without modifying the base path of the original file"""
   folder_path = os.path.dirname(file_path)
@@ -108,6 +125,7 @@ def set_soft_gpu_memory_growth():
   for gpu in gpus:
     tf.config.experimental.set_memory_growth(gpu, True)
 
+
 def timer(start, end):
   hours, rem = divmod(end - start, 3600)
   minutes, seconds = divmod(rem, 60)
@@ -117,6 +135,7 @@ def timer(start, end):
 def normalize_sum1(array, axis=-1):
   sums = np.sum(array, axis=axis)
   return array / np.expand_dims(sums, axis)
+
 
 def delta_timer(delta_time):
   hours, rem = divmod(delta_time, 3600)
@@ -143,8 +162,8 @@ def create_auc_table(path, metric='roc_auc'):
         print(method_name, ' ', roc_aucs)
         results[ds_name][sc_name][method_name] = [np.mean(roc_aucs),
                                                   0 if len(
-                                                    roc_aucs) == 1 else np.std(
-                                                    np.array(roc_aucs))
+                                                      roc_aucs) == 1 else np.std(
+                                                      np.array(roc_aucs))
                                                   ]
 
   with open(os.path.join(path, 'results-{}.csv'.format(metric)),
@@ -157,6 +176,6 @@ def create_auc_table(path, metric='roc_auc'):
       for sc_name in sorted(results[ds_name].keys()):
         row_dict = {'dataset': ds_name, 'single class name': sc_name}
         row_dict.update({method_name: '{:.5f} ({:.5f})'.format(
-          *results[ds_name][sc_name][method_name])
-                         for method_name in results[ds_name][sc_name]})
+            *results[ds_name][sc_name][method_name])
+          for method_name in results[ds_name][sc_name]})
         writer.writerow(row_dict)

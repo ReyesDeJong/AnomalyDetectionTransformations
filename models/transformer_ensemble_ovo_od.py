@@ -47,6 +47,28 @@ class EnsembleOVOTransformODModel(TransformODModel):
                                             **kwargs)
     self.models_index_tuples = self._get_models_index_tuples()
 
+  def create_specific_model_paths(self):
+    self.specific_model_folder = os.path.join(self.main_model_path,
+                                              self.transformer.name,
+                                              '%s_%s' % (self.name, self.date))
+    self.checkpoint_folder = os.path.join(self.specific_model_folder,
+                                          'checkpoints')
+    self.common_to_all_models_transform_selection_folder = os.path.join(
+        self.main_model_path, self.data_loader.name,
+        self.transformer.name, 'transform_selection')
+    self.common_to_all_models_transform_selection_checkpoints_folder = os.path.join(
+        self.common_to_all_models_transform_selection_folder,
+        'checkpoints')
+    self.common_to_all_models_transform_selection_results_folder = os.path.join(
+        self.common_to_all_models_transform_selection_folder,
+        'results')
+    # self.tb_path = os.path.join(self.model_path, 'tb_summaries')
+    utils.check_paths(
+        [self.specific_model_folder, self.checkpoint_folder,
+         self.common_to_all_models_transform_selection_folder,
+         self.common_to_all_models_transform_selection_checkpoints_folder,
+         self.common_to_all_models_transform_selection_results_folder])
+
   def _get_models_index_tuples(self):
     transforms_arange = np.arange(self.transformer.n_transforms)
     transforms_tuples = list(
@@ -160,12 +182,16 @@ class EnsembleOVOTransformODModel(TransformODModel):
           validation_data=validation_data,
           batch_size=train_batch_size,
           epochs=epochs, callbacks=callbacks, **kwargs)
-      weight_path = os.path.join(self.checkpoint_folder,
-                                 'final_weights_modelx%iy%i.ckpt' % (
-                                   model_ind_x, t_mdl_ind_y))
+      weights_name = 'final_weights_modelx%iy%i.ckpt' % (
+        model_ind_x, t_mdl_ind_y)
+      weight_path = os.path.join(self.checkpoint_folder, weights_name)
+      common_to_all_models_weight_path = os.path.join(
+          self.common_to_all_models_transform_selection_checkpoints_folder,
+          weights_name)
       # print(os.path.abspath(weight_path))
       # TODO: what happens if y do self.save_weights??
       model.save_weights(weight_path)
+      model.save_weights(common_to_all_models_weight_path)
       del model, validation_data, val_x_binary, val_y_binary, train_y_binary, train_x_binary
     self.load_model_weights(self.checkpoint_folder)
 
@@ -334,7 +360,7 @@ class EnsembleOVOTransformODModel(TransformODModel):
           weights_path).expect_partial()
 
   def plot_score_acc_matrices(self, matrices, N_to_plot=1):
-    if len(matrices.shape)==2:
+    if len(matrices.shape) == 2:
       matrices = matrices[None]
     for i in range(N_to_plot):
       index = np.random.randint(len(matrices))
