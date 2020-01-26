@@ -161,17 +161,16 @@ if __name__ == '__main__':
     loader_keys.TRANSFORMATION_INLIER_CLASS_VALUE: 1
   }
   data_loader = HiTSOutlierLoader(hits_params)
+  transformer = transformations_tf.KernelTransformer(
+      flips=True, gauss=False, log=False)
+
   (x_train, y_train), (x_val, y_val), (
     x_test, y_test) = data_loader.get_outlier_detection_datasets()
   x_train_shape = x_train.shape[1:]
   del x_train, x_val, x_test, y_train, y_val, y_test
-  transformer = transformations_tf.KernelTransformer(
-      flips=True, gauss=False, log=False)
-
   mdl = EnsembleOVOTransformODSimpleModel(
       data_loader=data_loader, transformer=transformer,
       input_shape=x_train_shape)
-
   transformer = get_transform_selection_transformer(data_loader, mdl,
                                                     transformer)
   print(transformer.tranformation_to_perform)
