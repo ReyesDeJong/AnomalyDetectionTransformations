@@ -789,14 +789,14 @@ def run_experiments(load_dataset_fn, dataset_name, q, class_idx, n_runs):
   # # IF
   # for _ in range(n_runs):
   #   _if_experiment(load_dataset_fn, dataset_name, class_idx)
-
-  # CAE OC-SVM
-  for _ in range(n_runs):
-    processes = [Process(target=_cae_ocsvm_experiment,
-                         args=(load_dataset_fn, dataset_name, class_idx, q))]
-    for p in processes:
-      p.start()
-      p.join()
+  #
+  ## CAE OC-SVM
+  # for _ in range(n_runs):
+  #   processes = [Process(target=_cae_ocsvm_experiment,
+  #                        args=(load_dataset_fn, dataset_name, class_idx, q))]
+  #   for p in processes:
+  #     p.start()
+  #     p.join()
 
   # Raw OC-SVM
   for _ in range(n_runs):
