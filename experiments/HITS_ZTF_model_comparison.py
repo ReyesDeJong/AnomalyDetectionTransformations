@@ -586,10 +586,10 @@ def _cae_ocsvm_experiment(dataset_load_fn, dataset_name, single_class_ind,
           validation_data=(x_test_task, x_test_task))
 
   x_train_task_rep = enc.predict(x_train_task, batch_size=128)
-  if dataset_name in LARGE_DATASET_NAMES:  # OC-SVM is quadratic on the number of examples, so subsample training set
-    subsample_inds = np.random.choice(len(x_train_task_rep), 2500,
+  #if dataset_name in LARGE_DATASET_NAMES:  # OC-SVM is quadratic on the number of examples, so subsample training set
+  subsample_inds = np.random.choice(len(x_train_task_rep), 2500,
                                       replace=False)
-    x_train_task_rep_temp = x_train_task_rep[subsample_inds]
+  x_train_task_rep_temp = x_train_task_rep[subsample_inds]
 
   x_test_rep = enc.predict(x_test, batch_size=128)
   pg = ParameterGrid({'nu': np.linspace(0.1, 0.9, num=9),
