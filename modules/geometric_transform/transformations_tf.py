@@ -385,49 +385,36 @@ class PlusKernelTransformer(KernelTransformer):
 
   def _create_transformation_list(self):
     transformation_list = []
-    for is_flip, tx, ty, k_rotate, is_gauss, is_log in itertools.product(
+    self.tranformation_to_perform = list(itertools.product(
         self.iterable_flips,
         self.iterable_tx,
         self.iterable_ty,
         self.iterable_rot,
         [0],
-        [0]):
-      transformation = KernelTransformation(is_flip, tx, ty, k_rotate, is_gauss,
-                                            is_log)
-      transformation_list.append(transformation)
-
-    for is_flip, tx, ty, k_rotate, is_gauss, is_log in itertools.product(
+        [0]))
+    self.tranformation_to_perform += list(itertools.product(
         [0],
         self.iterable_tx,
         self.iterable_ty,
         [0],
         [1],
-        [0]):
-      transformation = KernelTransformation(is_flip, tx, ty, k_rotate, is_gauss,
-                                            is_log)
-      transformation_list.append(transformation)
-
-    for is_flip, tx, ty, k_rotate, is_gauss, is_log in itertools.product(
+        [0]))
+    self.tranformation_to_perform += list(itertools.product(
         [0],
         self.iterable_tx,
         self.iterable_ty,
         [0],
         [0],
-        [1]):
-      transformation = KernelTransformation(is_flip, tx, ty, k_rotate,
-                                            is_gauss,
-                                            is_log)
-      transformation_list.append(transformation)
-
-    for is_flip, tx, ty, k_rotate, is_gauss, is_log in itertools.product(
+        [1]))
+    self.tranformation_to_perform += list(itertools.product(
         [0],
         self.iterable_tx,
         self.iterable_ty,
         [0],
         [1],
-        [1]):
-      transformation = KernelTransformation(is_flip, tx, ty, k_rotate,
-                                            is_gauss,
+        [1]))
+    for is_flip, tx, ty, k_rotate, is_gauss, is_log in self.tranformation_to_perform:
+      transformation = KernelTransformation(is_flip, tx, ty, k_rotate, is_gauss,
                                             is_log)
       transformation_list.append(transformation)
 
@@ -444,24 +431,21 @@ class PlusGaussTransformer(KernelTransformer):
 
   def _create_transformation_list(self):
     transformation_list = []
-    for is_flip, tx, ty, k_rotate, is_gauss, is_log in itertools.product(
+    self.tranformation_to_perform = list(itertools.product(
         self.iterable_flips,
         self.iterable_tx,
         self.iterable_ty,
         self.iterable_rot,
         [0],
-        [0]):
-      transformation = KernelTransformation(is_flip, tx, ty, k_rotate, is_gauss,
-                                            is_log)
-      transformation_list.append(transformation)
-
-    for is_flip, tx, ty, k_rotate, is_gauss, is_log in itertools.product(
+        [0]))
+    self.tranformation_to_perform += list(itertools.product(
         [0],
         self.iterable_tx,
         self.iterable_ty,
         [0],
         [1],
-        [0]):
+        [0]))
+    for is_flip, tx, ty, k_rotate, is_gauss, is_log in self.tranformation_to_perform:
       transformation = KernelTransformation(is_flip, tx, ty, k_rotate, is_gauss,
                                             is_log)
       transformation_list.append(transformation)
@@ -478,31 +462,26 @@ class PlusLaplaceTransformer(KernelTransformer):
 
   def _create_transformation_list(self):
     transformation_list = []
-    for is_flip, tx, ty, k_rotate, is_gauss, is_log in itertools.product(
+    self.tranformation_to_perform = list(itertools.product(
         self.iterable_flips,
         self.iterable_tx,
         self.iterable_ty,
         self.iterable_rot,
         [0],
-        [0]):
-      transformation = KernelTransformation(is_flip, tx, ty, k_rotate, is_gauss,
-                                            is_log)
-      transformation_list.append(transformation)
-
-    for is_flip, tx, ty, k_rotate, is_gauss, is_log in itertools.product(
+        [0]))
+    self.tranformation_to_perform += list(itertools.product(
         [0],
         self.iterable_tx,
         self.iterable_ty,
         [0],
         [0],
-        [1]):
-      transformation = KernelTransformation(is_flip, tx, ty, k_rotate,
-                                            is_gauss,
+        [1]))
+    for is_flip, tx, ty, k_rotate, is_gauss, is_log in self.tranformation_to_perform:
+      transformation = KernelTransformation(is_flip, tx, ty, k_rotate, is_gauss,
                                             is_log)
       transformation_list.append(transformation)
 
     self._transformation_list = transformation_list
-
 
 
 def test_visualize_transforms():

@@ -70,6 +70,7 @@ def train_transform_selectors():
     plus_kernel_transformer,
     transformer_72,
   )
+  transformers_list = transformers_list[::-1]
   loaders_list = (hits_loader,)
   loaders_transformer_tuples = list(
       itertools.product(loaders_list, transformers_list))
