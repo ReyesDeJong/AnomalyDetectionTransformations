@@ -529,9 +529,9 @@ def _raw_ocsvm_experiment(dataset_load_fn, dataset_name, single_class_ind):
   x_test = x_test.reshape((len(x_test), -1))
 
   x_train_task = x_train[y_train.flatten() == single_class_ind]
-  if dataset_name in LARGE_DATASET_NAMES:  # OC-SVM is quadratic on the number of examples, so subsample training set
-    subsample_inds = np.random.choice(len(x_train_task), 2500, replace=False)
-    x_train_task_tmp = x_train_task[subsample_inds]
+  #if dataset_name in LARGE_DATASET_NAMES:  # OC-SVM is quadratic on the number of examples, so subsample training set
+  subsample_inds = np.random.choice(len(x_train_task), 2500, replace=False)
+  x_train_task_tmp = x_train_task[subsample_inds]
 
   # ToDO: make gridsearch just one
   pg = ParameterGrid({'nu': np.linspace(0.1, 0.9, num=9),
