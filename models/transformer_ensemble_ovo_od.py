@@ -42,10 +42,10 @@ class EnsembleOVOTransformODModel(TransformODModel):
     utils.check_paths(self.main_model_path)
     self.data_loader = data_loader
     self.transformer = transformer
+    self.models_index_tuples = self._get_models_index_tuples()
     self.models_list = self._get_model_list(input_shape, depth=depth,
                                             widen_factor=widen_factor,
                                             **kwargs)
-    self.models_index_tuples = self._get_models_index_tuples()
     self.create_commonmodel_paths()
 
   def create_commonmodel_paths(self):
@@ -86,9 +86,9 @@ class EnsembleOVOTransformODModel(TransformODModel):
 
   def _get_model_list(self, input_shape, depth, widen_factor, **kwargs):
     models_list = []
-    for transform_idx_x in range(self.transformer.n_transforms):
+    for transform_idx_x in tqdm(range(self.transformer.n_transforms)):
       models_list_x = []
-      for transform_idx_y in range(self.transformer.n_transforms):
+      for transform_idx_y in tqdm(range(self.transformer.n_transforms)):
         if transform_idx_x >= transform_idx_y:
           models_list_x.append(None)
           continue

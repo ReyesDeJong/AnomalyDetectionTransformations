@@ -14,6 +14,7 @@ from modules.geometric_transform.transformations_tf import AbstractTransformer
 from modules.data_loaders.ztf_outlier_loader import ZTFOutlierLoader
 from parameters import general_keys
 from models.transformer_ensemble_ovo_od import EnsembleOVOTransformODModel
+from tqdm import tqdm
 
 """In situ transformation perform"""
 
@@ -30,9 +31,9 @@ class EnsembleOVOTransformODSimpleModel(EnsembleOVOTransformODModel):
 
   def _get_model_list(self, input_shape, **kwargs):
     models_list = []
-    for transform_idx_x in range(self.transformer.n_transforms):
+    for transform_idx_x in tqdm(range(self.transformer.n_transforms)):
       models_list_x = []
-      for transform_idx_y in range(self.transformer.n_transforms):
+      for transform_idx_y in tqdm(range(self.transformer.n_transforms)):
         if transform_idx_x >= transform_idx_y:
           models_list_x.append(None)
           continue

@@ -53,8 +53,9 @@ def train_transform_selectors():
   # ztf_loader = ZTFOutlierLoader(ztf_params)
   ztf_params = {
     loader_keys.DATA_PATH: os.path.join(
-        PROJECT_PATH,
-        '../datasets/ALeRCE_data/new_small_od_dataset_tuples.pkl'),
+        #PROJECT_PATH,
+        #'../datasets/ALeRCE_data/new_small_od_dataset_tuples.pkl'),
+        '/home/ereyes/Projects/Thesis/datasets/ALeRCE_data/new_small_od_dataset_tuples.pkl'),
   }
   ztf_loader = ZTFSmallOutlierLoader(ztf_params)
 
@@ -81,7 +82,8 @@ def train_transform_selectors():
     print('Initial N Transformations: ', transformer.n_transforms)
     mdl = EnsembleOVOTransformODSimpleModel(
         data_loader=data_loader, transformer=transformer,
-        input_shape=x_train_shape)
+        input_shape=x_train_shape, build=False)
+    print('here')
     transformer = get_transform_selection_transformer(data_loader, mdl,
                                                       transformer)
     del mdl
