@@ -88,7 +88,7 @@ class EnsembleOVOTransformODModel(TransformODModel):
     models_list = []
     for transform_idx_x in tqdm(range(self.transformer.n_transforms)):
       models_list_x = []
-      for transform_idx_y in tqdm(range(self.transformer.n_transforms)):
+      for transform_idx_y in range(self.transformer.n_transforms):
         if transform_idx_x >= transform_idx_y:
           models_list_x.append(None)
           continue

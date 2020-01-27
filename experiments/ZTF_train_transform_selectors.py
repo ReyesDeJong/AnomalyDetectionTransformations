@@ -84,7 +84,6 @@ def train_transform_selectors():
     mdl = EnsembleOVOTransformODSimpleModel(
         data_loader=data_loader, transformer=transformer,
         input_shape=x_train_shape, build=False)
-    print('here')
     transformer = get_transform_selection_transformer(data_loader, mdl,
                                                       transformer)
     del mdl
