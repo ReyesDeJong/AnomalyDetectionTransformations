@@ -163,6 +163,7 @@ if __name__ == '__main__':
   data_loader = HiTSOutlierLoader(hits_params)
   transformer = transformations_tf.KernelTransformer(
       flips=True, gauss=False, log=False)
+  print(transformer.n_transforms)
 
   (x_train, y_train), (x_val, y_val), (
     x_test, y_test) = data_loader.get_outlier_detection_datasets()
@@ -173,4 +174,6 @@ if __name__ == '__main__':
       input_shape=x_train_shape)
   transformer = get_transform_selection_transformer(data_loader, mdl,
                                                     transformer)
+  del mdl
   print(transformer.tranformation_to_perform)
+  print(transformer.n_transforms)
