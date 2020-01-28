@@ -84,7 +84,7 @@ def best_score_evaluation(result_folder_name, epochs, patience=0):
   )
   transformers_list = transformers_list[::-1]
 
-  trainers_list = (ztf_trainer,)#(ztf_trainer, hits_trainer, )#(hits_trainer,)#
+  trainers_list = (hits_trainer,)#(ztf_trainer,)#(ztf_trainer, hits_trainer, )#
   trainer_model_transformer_tuples = list(
       itertools.product(trainers_list, model_constructors_list,
                         transformers_list))
