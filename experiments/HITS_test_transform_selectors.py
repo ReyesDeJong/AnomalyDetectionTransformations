@@ -24,7 +24,7 @@ from models.transformer_ensemble_ovo_simple_net_od import \
 
 
 TRAIN_TIME = 10
-EXP_NAME = 'ZTF_SELECTED_TRANSFORMS'
+EXP_NAME = 'HITS_SELECTED_TRANSFORMS'
 
 
 def test_transform_selectors(result_folder_name, epochs, patience=0):
