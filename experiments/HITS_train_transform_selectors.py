@@ -66,9 +66,9 @@ def train_transform_selectors():
                                                                 name='All_Kernel_Transform')
 
   transformers_list = (
-    all_kernel_transformer,
+    #all_kernel_transformer,
     plus_kernel_transformer,
-    transformer_72,
+    #transformer_72,
   )
   transformers_list = transformers_list[::-1]
   loaders_list = (hits_loader,)

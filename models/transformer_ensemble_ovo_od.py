@@ -31,7 +31,7 @@ class EnsembleOVOTransformODModel(TransformODModel):
   def __init__(self, data_loader: ZTFOutlierLoader,
       transformer: AbstractTransformer, input_shape, depth=10,
       widen_factor=4, results_folder_name='',
-      name='Ensemble_OVO_Transformer_OD_Model', **kwargs):
+      name='Ensemble_OVO_Transformer_OD_Model', build=True, **kwargs):
     super(TransformODModel, self).__init__(name=name)
     self.builder_input_shape = input_shape
     self.depth = 10
@@ -43,9 +43,10 @@ class EnsembleOVOTransformODModel(TransformODModel):
     self.data_loader = data_loader
     self.transformer = transformer
     self.models_index_tuples = self._get_models_index_tuples()
-    self.models_list = self._get_model_list(input_shape, depth=depth,
-                                            widen_factor=widen_factor,
-                                            **kwargs)
+    if build:
+      self.models_list = self._get_model_list(input_shape, depth=depth,
+                                              widen_factor=widen_factor,
+                                              **kwargs)
     self.create_commonmodel_paths()
 
   def create_commonmodel_paths(self):

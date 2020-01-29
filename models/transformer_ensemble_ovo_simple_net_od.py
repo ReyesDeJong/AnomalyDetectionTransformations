@@ -24,10 +24,10 @@ from tqdm import tqdm
 class EnsembleOVOTransformODSimpleModel(EnsembleOVOTransformODModel):
   def __init__(self, data_loader: ZTFOutlierLoader,
       transformer: AbstractTransformer, input_shape, results_folder_name='',
-      name='Ensemble_OVO_Transformer_OD_Simple_Model', **kwargs):
+      name='Ensemble_OVO_Transformer_OD_Simple_Model', build=True, **kwargs):
     super().__init__(
         data_loader, transformer, input_shape,
-        results_folder_name=results_folder_name, name=name, **kwargs)
+        results_folder_name=results_folder_name, name=name, build=build,**kwargs)
 
   def _get_model_list(self, input_shape, **kwargs):
     models_list = []
