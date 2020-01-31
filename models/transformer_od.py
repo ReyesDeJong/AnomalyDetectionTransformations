@@ -64,7 +64,7 @@ class TransformODModel(tf.keras.Model):
       depth, widen_factor, model_path, **kwargs):
     return WideResidualNetwork(
         input_shape=input_shape, n_classes=n_classes, depth=depth,
-        widen_factor=widen_factor, model_path = model_path, **kwargs)
+        widen_factor=widen_factor, model_path=model_path, **kwargs)
 
   def call(self, input_tensor, training=False):
     return self.network(input_tensor, training)

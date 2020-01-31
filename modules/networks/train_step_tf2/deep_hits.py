@@ -23,7 +23,7 @@ from modules import utils
 
 class DeepHits(tf.keras.Model):
   def __init__(self, input_shape, n_classes, drop_rate=0.0,
-      final_activation='softmax', name='deep_hits', model_path='' **kwargs):
+      final_activation='softmax', name='deep_hits', model_path='', **kwargs):
     super().__init__(name=name)
     self.model_path = model_path
     # TODO: relgate this to method in order to make a unified init
