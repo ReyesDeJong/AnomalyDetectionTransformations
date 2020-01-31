@@ -23,8 +23,9 @@ from modules import utils
 
 class DeepHits(tf.keras.Model):
   def __init__(self, input_shape, n_classes, drop_rate=0.0,
-      final_activation='softmax', name='deep_hits', **kwargs):
+      final_activation='softmax', name='deep_hits', model_path='' **kwargs):
     super().__init__(name=name)
+    self.model_path = model_path
     # TODO: relgate this to method in order to make a unified init
     self.inp_shape = input_shape
     self.zp = tf.keras.layers.ZeroPadding2D(padding=(3, 3))
@@ -193,6 +194,7 @@ class DeepHits(tf.keras.Model):
   def check_early_stopping(self, patience):
     if self.best_model_so_far[
       general_keys.NOT_IMPROVED_COUNTER] >= patience + 1:
+      print(self.best_model_weights_path)
       self.load_weights(
           self.best_model_weights_path).expect_partial()
       self.eval_loss.reset_states()
@@ -206,7 +208,7 @@ class DeepHits(tf.keras.Model):
 
   def check_best_model_save(self, iteration):
     if iteration == 0:
-      best_model_weights_folder = os.path.join(PROJECT_PATH, constants.RESULTS,
+      best_model_weights_folder = os.path.join(self.model_path,
                                                'aux_weights')
       utils.check_path(best_model_weights_folder)
       self.best_model_weights_path = os.path.join(best_model_weights_folder,

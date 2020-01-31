@@ -26,8 +26,9 @@ class WideResidualNetwork(DeepHits):
   def __init__(self, input_shape, n_classes, depth,
       widen_factor=1, dropout_rate=0.0, final_activation='softmax',
       name='wide_resnet', data_format='channels_last',
-      weight_decay=WEIGHT_DECAY):
+      weight_decay=WEIGHT_DECAY, model_path=''):
     super(DeepHits, self).__init__(name=name)
+    self.model_path = model_path
     self.inp_shape = input_shape
     self.input_channels = input_shape[_get_channels_axis(data_format)]
     self.data_format = data_format

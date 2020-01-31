@@ -9,28 +9,26 @@ PROJECT_PATH = os.path.abspath(
     os.path.join(os.path.dirname(__file__), '..'))
 sys.path.append(PROJECT_PATH)
 import tensorflow as tf
-from modules.networks.train_step_tf2.wide_residual_network import WideResidualNetwork
+from modules.networks.train_step_tf2.wide_residual_network import \
+  WideResidualNetwork
 # from modules.networks.wide_residual_network import WideResidualNetwork
 from modules.geometric_transform.transformations_tf import AbstractTransformer
 from modules.data_loaders.ztf_outlier_loader import ZTFOutlierLoader
-from modules.data_loaders.hits_outlier_loader import HiTSOutlierLoader
 from parameters import general_keys
 import numpy as np
 from modules import dirichlet_utils, utils
-from modules import score_functions
 from sklearn.metrics import roc_curve, precision_recall_curve, auc
 from modules.metrics import accuracies_by_threshold, accuracy_at_thr
 import pprint
 import datetime
-import time
 from tqdm import tqdm
 import matplotlib.pyplot as plt
 from sklearn.model_selection import ParameterGrid
 from sklearn.externals.joblib import Parallel, delayed
 from sklearn.svm import OneClassSVM
 import matplotlib
-matplotlib.use('Agg')
 
+matplotlib.use('Agg')
 
 """In situ transformation perform"""
 
@@ -51,21 +49,22 @@ class TransformODModel(tf.keras.Model):
     self.date = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
     self.main_model_path = self.create_main_model_paths(results_folder_name,
                                                         self.name)
+    self.create_specific_model_paths()
     utils.check_paths(self.main_model_path)
     self.data_loader = data_loader
     self.transformer = transformer
     self.network = self.get_network(
         input_shape=input_shape, n_classes=self.transformer.n_transforms,
-        depth=depth, widen_factor=widen_factor, **kwargs)
+        depth=depth, widen_factor=widen_factor,
+        model_path=self.specific_model_folder, **kwargs)
     self.percentile = 95.46
-    self.create_specific_model_paths()
 
   # TODO: do a param dict
   def get_network(self, input_shape, n_classes,
-      depth, widen_factor, **kwargs):
+      depth, widen_factor, model_path, **kwargs):
     return WideResidualNetwork(
         input_shape=input_shape, n_classes=n_classes, depth=depth,
-        widen_factor=widen_factor, **kwargs)
+        widen_factor=widen_factor, model_path = model_path, **kwargs)
 
   def call(self, input_tensor, training=False):
     return self.network(input_tensor, training)
@@ -77,7 +76,7 @@ class TransformODModel(tf.keras.Model):
     return main_model_path
 
   def _results_folder_name_to_path(self, result_folder_name):
-    #TODO: erease this, it weird, as if in results folder was like 'results/'
+    # TODO: erease this, it weird, as if in results folder was like 'results/'
     if 'results' in result_folder_name:
       return result_folder_name
     else:
@@ -110,10 +109,11 @@ class TransformODModel(tf.keras.Model):
     es = tf.keras.callbacks.EarlyStopping(
         monitor='val_loss', mode='min', verbose=1, patience=patience,
         restore_best_weights=True)
-    if epochs < 3 or epochs==int(np.ceil(200 / self.transformer.n_transforms)):
+    if epochs < 3 or epochs == int(
+        np.ceil(200 / self.transformer.n_transforms)):
       es = tf.keras.callbacks.EarlyStopping(
-        monitor='val_loss', mode='min', verbose=1, patience=1e100,
-        restore_best_weights=False)
+          monitor='val_loss', mode='min', verbose=1, patience=1e100,
+          restore_best_weights=False)
     self.network.fit(
         x=x_train_transform, y=tf.keras.utils.to_categorical(y_train_transform),
         validation_data=(
@@ -141,7 +141,7 @@ class TransformODModel(tf.keras.Model):
         x, transform_batch_size)
     # self.network.eval_tf(x_transformed, tf.keras.utils.to_categorical(y_transformed))
     start_time = time.time()
-    #TODO: Memory leakage HERE, predict is not working!! right, it doubles memory usage!
+    # TODO: Memory leakage HERE, predict is not working!! right, it doubles memory usage!
     # see reproducing similar issue here:
     # https://github.com/tensorflow/tensorflow/issues/33030
     x_pred = self.network.predict(x_transformed, batch_size=predict_batch_size)
@@ -216,7 +216,7 @@ class TransformODModel(tf.keras.Model):
     del x_train
     matrix_scores_eval = self.predict_matrix_score(
         x_eval, transform_batch_size, predict_batch_size, **kwargs)
-    #TODO:!!! make method to get actual lenght from data, otherwise it just te latest run
+    # TODO:!!! make method to get actual lenght from data, otherwise it just te latest run
     len_x_eval = self.transformer.get_not_transformed_data_len(len(x_eval))
     diri_scores = np.zeros(len_x_eval)
     del x_eval
@@ -249,7 +249,7 @@ class TransformODModel(tf.keras.Model):
       sub_sample_train_size=5000, raw_matrices=False, n_jobs=15,
       additional_score_save_path_list=None, save_hist_folder_path=None,
       **kwargs):
-    #TODO fix len(x)
+    # TODO fix len(x)
     subsample_inds = np.random.choice(len(x_train), sub_sample_train_size,
                                       replace=False)
     x_train = x_train[subsample_inds]
@@ -316,7 +316,7 @@ class TransformODModel(tf.keras.Model):
       x_validation=None, transform_batch_size=512, predict_batch_size=1000,
       additional_score_save_path_list=None, save_hist_folder_path=None,
       **kwargs):
-    #TODO: avoid doing this!! need refctoring, but avoid repreedict of training
+    # TODO: avoid doing this!! need refctoring, but avoid repreedict of training
     self.matrix_scores_train = None
     print('evaluating')
     if x_validation is None:
@@ -342,7 +342,7 @@ class TransformODModel(tf.keras.Model):
           metrics_of_each_score[score_name])
       self._save_histogram(metrics_of_each_score[score_name], score_name,
                            dataset_name, class_name, save_hist_folder_path)
-    #print('hola')
+    # print('hola')
     return metrics_of_each_score
 
   def _get_score_result_name(self, score_name, dataset_name,
@@ -360,7 +360,7 @@ class TransformODModel(tf.keras.Model):
       return
     # TODO: refactor usage of percentile, include it in metrics and
     #  get it from key
-    #percentile = 95.46
+    # percentile = 95.46
     scores_val = score_metric_dict['scores_val']
     auc_roc = score_metric_dict['roc_auc']
     accuracies = score_metric_dict['accuracies']
@@ -424,8 +424,9 @@ class TransformODModel(tf.keras.Model):
       additional_save_path = os.path.join(path, metric_file_name)
       np.savez_compressed(additional_save_path, **metrics_dict)
 
-  def get_metrics_dict(self, scores, scores_val, labels, save_file_path=None):#,
-     # percentile=95.46):
+  def get_metrics_dict(self, scores, scores_val, labels,
+      save_file_path=None):  # ,
+    # percentile=95.46):
     scores = scores.flatten()
     labels = labels.flatten()
     scores_pos = scores[labels == 1]
@@ -448,7 +449,7 @@ class TransformODModel(tf.keras.Model):
         truth, -preds, pos_label=0)
     pr_auc_anom = auc(recall_anom, precision_anom)
     metrics_dict = {'scores': scores, 'labels': labels,
-                    'clf':   (scores > thr) * 1,
+                    'clf': (scores > thr) * 1,
                     'scores_val': scores_val, 'fpr': fpr,
                     'tpr': tpr, 'roc_thresholds': roc_thresholds,
                     'roc_auc': roc_auc,
@@ -473,7 +474,7 @@ class TransformODModel(tf.keras.Model):
 
 if __name__ == '__main__':
   from parameters import loader_keys
-  from modules.geometric_transform.transformations_tf import Transformer, TransTransformer
+  from modules.geometric_transform.transformations_tf import Transformer
   import time
 
   gpus = tf.config.experimental.list_physical_devices('GPU')
