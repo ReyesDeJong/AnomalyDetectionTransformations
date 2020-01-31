@@ -4,6 +4,8 @@ from one another.
 Distinguishability is characterized by accuracy between classes,
 the idea is to return a new transformer object, which only contains the
 distinguishable transformations
+
+Tp see transformation set verbose to 1
 """
 
 import os
@@ -49,6 +51,9 @@ class TransformSelectorByOVO(tf.keras.Model):
     transforms_to_delete = [x_y_tuple[1] for x_y_tuple in
                                  self.redundant_transforms_tuples]
     unique_transforms_to_delete = np.unique(transforms_to_delete)
+    if verbose:
+      print(transforms_to_delete)
+      print(unique_transforms_to_delete)
     reversed_unique_transfors_to_delete = unique_transforms_to_delete[::-1]
     for i in reversed_unique_transfors_to_delete:
       del transformer.tranformation_to_perform[i]

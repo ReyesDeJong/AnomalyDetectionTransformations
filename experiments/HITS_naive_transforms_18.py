@@ -20,7 +20,8 @@ from modules.data_loaders.hits_outlier_loader import HiTSOutlierLoader
 from modules.data_loaders.ztf_small_outlier_loader import ZTFSmallOutlierLoader
 
 TRAIN_TIME = 10
-EXP_NAME = 'HITS_NAIVE_TRANSFORMS_HIST'
+EXP_NAME = 'HITS_NAIVE_TRANSFORMS_D_18_only'
+
 
 def best_score_evaluation(result_folder_name, epochs, patience=0):
   trainer_params = {
@@ -53,7 +54,8 @@ def best_score_evaluation(result_folder_name, epochs, patience=0):
   # ztf_loader = ZTFOutlierLoader(ztf_params)
   ztf_params = {
     loader_keys.DATA_PATH: os.path.join(
-        PROJECT_PATH, '../datasets/ALeRCE_data/new_small_od_dataset_tuples.pkl'),
+        PROJECT_PATH,
+        '../datasets/ALeRCE_data/new_small_od_dataset_tuples.pkl'),
   }
   ztf_loader = ZTFSmallOutlierLoader(ztf_params)
   # transformers
@@ -65,19 +67,22 @@ def best_score_evaluation(result_folder_name, epochs, patience=0):
   plus_laplace_transformer = transformations_tf.PlusLaplaceTransformer()
   # all_kernel_transformer = transformations_tf.KernelTransformer(rotations=True,
   #                                                               flips=True, name='All_Kernel_Transform')
+  transformer_18 = transformations_tf.KernelTransformer(
+      flips=True, gauss=False, log=False, name='18_Transform')
+
   # trainers
   hits_trainer = Trainer(hits_loader, trainer_params)
   ztf_trainer = Trainer(ztf_loader, trainer_params)
 
   model_constructors_list = (TransformODModel,)
   transformers_list = (
-  # all_kernel_transformer,
-  #plus_kernel_transformer, plus_gauss_transformer, plus_laplace_transformer,
-  #transformer_72,
-  kernel_transformer,
-  #trans_transformer,
+    transformer_18,
+    # all_kernel_transformer,
+    # plus_kernel_transformer, plus_gauss_transformer, plus_laplace_transformer,
+    # transformer_72, kernel_transformer, trans_transformer,
   )
-  trainers_list = (hits_trainer,)#(ztf_trainer,)#(ztf_trainer, hits_trainer, )#
+  trainers_list = (
+  hits_trainer,)  # (ztf_trainer,)#(ztf_trainer, hits_trainer, )#
   trainer_model_transformer_tuples = list(
       itertools.product(trainers_list, model_constructors_list,
                         transformers_list))
@@ -97,4 +102,3 @@ if __name__ == '__main__':
   best_score_evaluation(
       result_folder_name='%s/resnet_VAL_epochs' % EXP_NAME,
       epochs=1234)
-

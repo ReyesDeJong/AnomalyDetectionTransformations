@@ -153,8 +153,10 @@ class AbstractTransformer(abc.ABC):
   def __init__(self, transform_batch_size=512, name='Abstract_Transformer'):
     self.name = name
     self._transform_batch_size = transform_batch_size
+    #TODO: get none from returns
     self._transformation_list = None
     self.tranformation_to_perform = None
+    self._create_transformation_to_perform_list()
     self._create_transformation_list()
     self.verbose = 1
     self.return_data_not_transformed = False
@@ -167,6 +169,16 @@ class AbstractTransformer(abc.ABC):
   def _create_transformation_list(self):
     return
 
+  @abc.abstractmethod
+  def _create_transformation_to_perform_list(self):
+    return
+
+  def set_transformations_to_perform(self, transformation_list):
+    #TODO: set to private
+    self.tranformation_to_perform = transformation_list
+    self._create_transformation_list()
+
+
   def set_verbose(self, verbose_value):
     self.verbose = verbose_value
 
@@ -174,9 +186,9 @@ class AbstractTransformer(abc.ABC):
     self.return_data_not_transformed = return_data_not_transformed
 
   def get_not_transformed_data_len(self, data_len):
-    #TODO: NOT optimal because it requires correct transform batch size
+    # TODO: NOT optimal because it requires correct transform batch size
     if self.return_data_not_transformed:
-      return int(data_len/self.n_transforms)
+      return int(data_len / self.n_transforms)
     return data_len
 
   # This must be included within preprocessing mapping(?)
@@ -257,7 +269,8 @@ class AbstractTransformer(abc.ABC):
         transformed_batch.numpy()
       i += self._transform_batch_size * len(transformations_inds)
     self.original_x_len = len(x)
-    y_transform = self.get_y_transform(self.original_x_len, transformations_inds)
+    y_transform = self.get_y_transform(self.original_x_len,
+                                       transformations_inds)
     del train_ds
     return x_transform, y_transform
 
@@ -281,14 +294,16 @@ class Transformer(AbstractTransformer):
     self.max_ty = translation_y
     super().__init__(transform_batch_size, name)
 
+  def _create_transformation_to_perform_list(self):
+    self.tranformation_to_perform = list(itertools.product((False, True),
+                                                      (0, -self.max_tx,
+                                                       self.max_tx),
+                                                      (0, -self.max_ty,
+                                                       self.max_ty),
+                                                      range(4)))
+
   def _create_transformation_list(self):
     transformation_list = []
-    self.tranformation_to_perform = list(itertools.product((False, True),
-                                                           (0, -self.max_tx,
-                                                            self.max_tx),
-                                                           (0, -self.max_ty,
-                                                            self.max_ty),
-                                                           range(4)))
     for is_flip, tx, ty, k_rotate in self.tranformation_to_perform:
       transformation = AffineTransformation(is_flip, tx, ty, k_rotate)
       transformation_list.append(transformation)
@@ -300,10 +315,12 @@ class SimpleTransformer(AbstractTransformer):
   def __init__(self, transform_batch_size=512, name='Simple_Transformer'):
     super().__init__(transform_batch_size, name)
 
-  def _create_transformation_list(self):
-    transformation_list = []
+  def _create_transformation_to_perform_list(self):
     self.tranformation_to_perform = list(itertools.product((False, True),
                                                            range(4)))
+
+  def _create_transformation_list(self):
+    transformation_list = []
     for is_flip, k_rotate in self.tranformation_to_perform:
       transformation = AffineTransformation(is_flip, 0, 0, k_rotate)
       transformation_list.append(transformation)
@@ -318,12 +335,14 @@ class TransTransformer(AbstractTransformer):
     self.max_ty = translation_y
     super().__init__(transform_batch_size, name)
 
-  def _create_transformation_list(self):
-    transformation_list = []
+  def _create_transformation_to_perform_list(self):
     self.tranformation_to_perform = list(itertools.product(
         (0, -self.max_tx, self.max_tx),
         (0, -self.max_ty, self.max_ty),
     ))
+
+  def _create_transformation_list(self):
+    transformation_list = []
     for tx, ty in self.tranformation_to_perform:
       transformation = AffineTransformation(False, tx, ty, 0)
       transformation_list.append(transformation)
@@ -358,8 +377,7 @@ class KernelTransformer(AbstractTransformer):
       return range(2)
     return range(1)
 
-  def _create_transformation_list(self):
-    transformation_list = []
+  def _create_transformation_to_perform_list(self):
     self.tranformation_to_perform = list(itertools.product(
         self.iterable_flips,
         self.iterable_tx,
@@ -367,6 +385,9 @@ class KernelTransformer(AbstractTransformer):
         self.iterable_rot,
         self.iterable_gauss,
         self.iterable_log))
+
+  def _create_transformation_list(self):
+    transformation_list = []
     for is_flip, tx, ty, k_rotate, is_gauss, is_log in self.tranformation_to_perform:
       transformation = KernelTransformation(is_flip, tx, ty, k_rotate, is_gauss,
                                             is_log)
@@ -383,8 +404,7 @@ class PlusKernelTransformer(KernelTransformer):
     super().__init__(translation_x, translation_y, rotations,
                      flips, gauss, log, transform_batch_size, name)
 
-  def _create_transformation_list(self):
-    transformation_list = []
+  def _create_transformation_to_perform_list(self):
     self.tranformation_to_perform = list(itertools.product(
         self.iterable_flips,
         self.iterable_tx,
@@ -413,6 +433,9 @@ class PlusKernelTransformer(KernelTransformer):
         [0],
         [1],
         [1]))
+
+  def _create_transformation_list(self):
+    transformation_list = []
     for is_flip, tx, ty, k_rotate, is_gauss, is_log in self.tranformation_to_perform:
       transformation = KernelTransformation(is_flip, tx, ty, k_rotate, is_gauss,
                                             is_log)
@@ -429,8 +452,7 @@ class PlusGaussTransformer(KernelTransformer):
     super().__init__(translation_x, translation_y, rotations,
                      flips, gauss, log, transform_batch_size, name)
 
-  def _create_transformation_list(self):
-    transformation_list = []
+  def _create_transformation_to_perform_list(self):
     self.tranformation_to_perform = list(itertools.product(
         self.iterable_flips,
         self.iterable_tx,
@@ -445,12 +467,17 @@ class PlusGaussTransformer(KernelTransformer):
         [0],
         [1],
         [0]))
+
+
+  def _create_transformation_list(self):
+    transformation_list = []
     for is_flip, tx, ty, k_rotate, is_gauss, is_log in self.tranformation_to_perform:
       transformation = KernelTransformation(is_flip, tx, ty, k_rotate, is_gauss,
                                             is_log)
       transformation_list.append(transformation)
 
     self._transformation_list = transformation_list
+
 
 # TODO: see if can do some refactoring here
 class PlusLaplaceTransformer(KernelTransformer):
@@ -460,8 +487,7 @@ class PlusLaplaceTransformer(KernelTransformer):
     super().__init__(translation_x, translation_y, rotations,
                      flips, gauss, log, transform_batch_size, name)
 
-  def _create_transformation_list(self):
-    transformation_list = []
+  def _create_transformation_to_perform_list(self):
     self.tranformation_to_perform = list(itertools.product(
         self.iterable_flips,
         self.iterable_tx,
@@ -476,6 +502,9 @@ class PlusLaplaceTransformer(KernelTransformer):
         [0],
         [0],
         [1]))
+
+  def _create_transformation_list(self):
+    transformation_list = []
     for is_flip, tx, ty, k_rotate, is_gauss, is_log in self.tranformation_to_perform:
       transformation = KernelTransformation(is_flip, tx, ty, k_rotate, is_gauss,
                                             is_log)

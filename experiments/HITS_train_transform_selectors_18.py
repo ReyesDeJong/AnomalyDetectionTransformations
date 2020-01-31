@@ -16,18 +16,18 @@ from models.transformer_od import TransformODModel
 from modules.geometric_transform import transformations_tf
 import tensorflow as tf
 from modules.data_loaders.hits_outlier_loader import HiTSOutlierLoader
-# from modules.data_loaders.ztf_outlier_loader import ZTFOutlierLoader
+from scripts.transform_selection_clean.training_transform_selection import \
+  get_transform_selection_transformer
 from modules.data_loaders.ztf_small_outlier_loader import ZTFSmallOutlierLoader
+from models.transformer_ensemble_ovo_simple_net_od import \
+  EnsembleOVOTransformODSimpleModel
 
-TRAIN_TIME = 10
-EXP_NAME = 'HITS_NAIVE_TRANSFORMS_HIST'
 
-def best_score_evaluation(result_folder_name, epochs, patience=0):
-  trainer_params = {
-    param_keys.RESULTS_FOLDER_NAME: result_folder_name,
-    'epochs': epochs,
-    'patience': patience,
-  }
+# TRAIN_TIME = 10
+# EXP_NAME = 'ZTF_SMALL'
+
+
+def train_transform_selectors():
   # data loaders
   hits_params = {
     loader_keys.DATA_PATH: os.path.join(
@@ -35,7 +35,7 @@ def best_score_evaluation(result_folder_name, epochs, patience=0):
     loader_keys.N_SAMPLES_BY_CLASS: 10000,
     loader_keys.TEST_PERCENTAGE: 0.2,
     loader_keys.VAL_SET_INLIER_PERCENTAGE: 0.1,
-    loader_keys.USED_CHANNELS: [0, 1, 2, 3],  # [2],#
+    loader_keys.USED_CHANNELS: [0, 1, 2, 3],
     loader_keys.CROP_SIZE: 21,
     general_keys.RANDOM_SEED: 42,
     loader_keys.TRANSFORMATION_INLIER_CLASS_VALUE: 1
@@ -53,48 +53,48 @@ def best_score_evaluation(result_folder_name, epochs, patience=0):
   # ztf_loader = ZTFOutlierLoader(ztf_params)
   ztf_params = {
     loader_keys.DATA_PATH: os.path.join(
-        PROJECT_PATH, '../datasets/ALeRCE_data/new_small_od_dataset_tuples.pkl'),
+        PROJECT_PATH,
+        '../datasets/ALeRCE_data/new_small_od_dataset_tuples.pkl'),
   }
   ztf_loader = ZTFSmallOutlierLoader(ztf_params)
+
   # transformers
   transformer_72 = transformations_tf.Transformer()
-  trans_transformer = transformations_tf.TransTransformer()
-  kernel_transformer = transformations_tf.KernelTransformer()
   plus_kernel_transformer = transformations_tf.PlusKernelTransformer()
-  plus_gauss_transformer = transformations_tf.PlusGaussTransformer()
-  plus_laplace_transformer = transformations_tf.PlusLaplaceTransformer()
-  # all_kernel_transformer = transformations_tf.KernelTransformer(rotations=True,
-  #                                                               flips=True, name='All_Kernel_Transform')
-  # trainers
-  hits_trainer = Trainer(hits_loader, trainer_params)
-  ztf_trainer = Trainer(ztf_loader, trainer_params)
+  all_kernel_transformer = transformations_tf.KernelTransformer(rotations=True,
+                                                                flips=True,
+                                                                name='All_Kernel_Transform')
+  transformer_18 = transformations_tf.KernelTransformer(
+      flips=True, gauss=False, log=False, name='18_Transform')
 
-  model_constructors_list = (TransformODModel,)
   transformers_list = (
-  # all_kernel_transformer,
-  #plus_kernel_transformer, plus_gauss_transformer, plus_laplace_transformer,
-  #transformer_72,
-  kernel_transformer,
-  #trans_transformer,
+    transformer_18,
+    #all_kernel_transformer,
+    # plus_kernel_transformer,
+    #transformer_72,
   )
-  trainers_list = (hits_trainer,)#(ztf_trainer,)#(ztf_trainer, hits_trainer, )#
-  trainer_model_transformer_tuples = list(
-      itertools.product(trainers_list, model_constructors_list,
-                        transformers_list))
+  transformers_list = transformers_list[::-1]
+  loaders_list = (hits_loader,)
+  loaders_transformer_tuples = list(
+      itertools.product(loaders_list, transformers_list))
 
-  for trainer, model_constructor, transformer in trainer_model_transformer_tuples:
-    trainer.train_model_n_times(model_constructor, transformer,
-                                trainer_params, train_times=TRAIN_TIME)
+  for data_loader, transformer in loaders_transformer_tuples:
+    (x_train, _), _, _ = data_loader.get_outlier_detection_datasets()
+    x_train_shape = x_train.shape[1:]
+    del x_train
+    print('Initial N Transformations: ', transformer.n_transforms)
+    mdl = EnsembleOVOTransformODSimpleModel(
+        data_loader=data_loader, transformer=transformer,
+        input_shape=x_train_shape)
+    transformer = get_transform_selection_transformer(data_loader, mdl,
+                                                      transformer)
+    del mdl
+    print('Final N Transformations: ', transformer.n_transforms)
 
-    hits_trainer.create_tables_of_results_folders()
 
 
 if __name__ == '__main__':
   gpus = tf.config.experimental.list_physical_devices('GPU')
   for gpu in gpus:
     tf.config.experimental.set_memory_growth(gpu, True)
-
-  best_score_evaluation(
-      result_folder_name='%s/resnet_VAL_epochs' % EXP_NAME,
-      epochs=1234)
-
+  train_transform_selectors()
