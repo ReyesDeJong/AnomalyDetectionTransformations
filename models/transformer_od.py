@@ -46,13 +46,13 @@ class TransformODModel(tf.keras.Model):
       widen_factor=4, results_folder_name='', name='Transformer_OD_Model',
       **kwargs):
     super().__init__(name=name)
+    self.data_loader = data_loader
+    self.transformer = transformer
     self.date = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
     self.main_model_path = self.create_main_model_paths(results_folder_name,
                                                         self.name)
     self.create_specific_model_paths()
     utils.check_paths(self.main_model_path)
-    self.data_loader = data_loader
-    self.transformer = transformer
     self.network = self.get_network(
         input_shape=input_shape, n_classes=self.transformer.n_transforms,
         depth=depth, widen_factor=widen_factor,
