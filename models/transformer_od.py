@@ -27,6 +27,7 @@ from sklearn.model_selection import ParameterGrid
 from sklearn.externals.joblib import Parallel, delayed
 from sklearn.svm import OneClassSVM
 import matplotlib
+import time
 
 matplotlib.use('Agg')
 
@@ -475,7 +476,7 @@ class TransformODModel(tf.keras.Model):
 if __name__ == '__main__':
   from parameters import loader_keys
   from modules.geometric_transform.transformations_tf import Transformer
-  import time
+
 
   gpus = tf.config.experimental.list_physical_devices('GPU')
   for gpu in gpus:

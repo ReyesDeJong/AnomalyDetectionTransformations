@@ -194,7 +194,7 @@ class DeepHits(tf.keras.Model):
   def check_early_stopping(self, patience):
     if self.best_model_so_far[
       general_keys.NOT_IMPROVED_COUNTER] >= patience + 1:
-      print(self.best_model_weights_path)
+      # print(self.best_model_weights_path)
       self.load_weights(
           self.best_model_weights_path).expect_partial()
       self.eval_loss.reset_states()
