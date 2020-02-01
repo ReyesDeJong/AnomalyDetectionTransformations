@@ -38,7 +38,7 @@ import torch
 import torch.nn as nn
 from modules.utils import check_path
 
-RESULTS_DIR = os.path.join(PROJECT_PATH, 'results/replication')
+RESULTS_DIR = os.path.join(PROJECT_PATH, 'results/PAPER_RESULTS/MODEL_COMPARISON')
 LARGE_DATASET_NAMES = ['cats-vs-dogs', 'hits', 'hits_padded']
 PARALLEL_N_JOBS = 11
 
@@ -856,7 +856,7 @@ def create_auc_table(metric='roc_auc'):
         print(method_name, ' ', roc_aucs)
         results[ds_name][sc_name][method_name] = [np.mean(roc_aucs),
                                                   0 if len(
-                                                    roc_aucs) == 1 else scipy.stats.sem(
+                                                    roc_aucs) == 1 else np.std(
                                                     np.array(roc_aucs))
                                                   ]
 
@@ -890,9 +890,9 @@ if __name__ == '__main__':
     ]
 
     start_time = time.time()
-    for data_load_fn, dataset_name, class_idx, run_i in experiments_list:
-      run_experiments(data_load_fn, dataset_name, q, class_idx, run_i)
-    # create_auc_table()
+    # for data_load_fn, dataset_name, class_idx, run_i in experiments_list:
+    #   run_experiments(data_load_fn, dataset_name, q, class_idx, run_i)
+    create_auc_table()
     time_usage = str(datetime.timedelta(
         seconds=int(round(time.time() - start_time))))
     print("Time elapsed to train everything: " + time_usage)
