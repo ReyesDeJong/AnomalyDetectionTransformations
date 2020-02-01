@@ -74,6 +74,7 @@ def best_score_evaluation(result_folder_name, epochs, patience=0):
   # all_kernel_transformer,
   plus_kernel_transformer, plus_gauss_transformer, plus_laplace_transformer,
   transformer_72, kernel_transformer, trans_transformer,
+
   )
   trainers_list = (hits_trainer,)#(ztf_trainer,)#(ztf_trainer, hits_trainer, )#
   trainer_model_transformer_tuples = list(
