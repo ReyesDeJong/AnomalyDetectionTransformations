@@ -45,10 +45,10 @@ if __name__ == '__main__':
   }
   ztf_loader = ZTFSmallOutlierLoader(ztf_params)
 
-  data_loader = ztf_loader
+  data_loader = hits_loader
 
-  _, (x_val, y_val), _ = data_loader.get_outlier_detection_datasets()
-  x_samples = x_val#[...,-1][...,None]
+  (x_train, y_train), (x_val, y_val), _ = data_loader.get_outlier_detection_datasets()
+  x_samples = x_train#[...,-1][...,None]
 
 
   transformer_72 = transformations_tf.Transformer()
