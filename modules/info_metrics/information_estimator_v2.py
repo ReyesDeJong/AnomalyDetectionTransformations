@@ -108,6 +108,8 @@ class InformationEstimator(object):
         """See 'normalized_gram' doc."""
         x = tf.convert_to_tensor(x, dtype=tf.float32)
         y = tf.convert_to_tensor(y, dtype=tf.float32)
+        x = tf.compat.v1.layers.flatten(x)
+        y = tf.compat.v1.layers.flatten(y)
         norm_gram_a = self.normalized_gram(x, sigma_x, x_is_image)
         norm_gram_b = self.normalized_gram(y, sigma_y, y_is_image)
         mi_xy = self.mutual_information_with_gram(norm_gram_a, norm_gram_b)

@@ -1,26 +1,21 @@
-import numpy as np
-import matplotlib.pyplot as plt
-import tensorflow as tf
 import os
 import sys
+
+import numpy as np
 
 """
 See if chinos MI is compatible with TF2
 """
 
 PROJECT_PATH = os.path.abspath(
-    os.path.join(os.path.dirname(__file__), '..'))
+    os.path.join(os.path.dirname(__file__), '..', '..'))
 sys.path.append(PROJECT_PATH)
 
 from modules.info_metrics.information_estimator_v2 import InformationEstimator
-from modules.info_metrics.gaussian_dataset import generate_dataset
-from trainers.base_trainer import Trainer
-from parameters import loader_keys, general_keys, param_keys
-from models.transformer_od import TransformODModel
+from parameters import loader_keys, general_keys
 from modules.geometric_transform import transformations_tf
 import tensorflow as tf
 from modules.data_loaders.hits_outlier_loader import HiTSOutlierLoader
-# from modules.data_loaders.ztf_outlier_loader import ZTFOutlierLoader
 from modules.data_loaders.ztf_small_outlier_loader import ZTFSmallOutlierLoader
 import time
 from modules.utils import timer
@@ -28,12 +23,9 @@ from modules.utils import timer
 if __name__ == '__main__':
   transformations_arg_to_use_from_available = 0
   random_seed = 42
-  dimension = 10
-  n_samples_batch = 128
+  n_samples_batch = 512
   sigma_zero = 2.0
-  corr_factor = 0.9
-  x_samples, y_samples, real_MI = generate_dataset(dimension, corr_factor,
-                                                   n_samples_batch)
+
   hits_params = {
     loader_keys.DATA_PATH: os.path.join(
         PROJECT_PATH, '../datasets/HiTS2013_300k_samples.pkl'),
@@ -45,22 +37,33 @@ if __name__ == '__main__':
     general_keys.RANDOM_SEED: 42,
     loader_keys.TRANSFORMATION_INLIER_CLASS_VALUE: 1
   }
-  data_loader = HiTSOutlierLoader(hits_params)
+  hits_loader = HiTSOutlierLoader(hits_params)
+
+  ztf_params = {
+    loader_keys.DATA_PATH: os.path.join(
+        PROJECT_PATH, '../datasets/ALeRCE_data/new_small_od_dataset_tuples.pkl'),
+  }
+  ztf_loader = ZTFSmallOutlierLoader(ztf_params)
+
+  data_loader = ztf_loader
+
   _, (x_val, y_val), _ = data_loader.get_outlier_detection_datasets()
-  x_samples = x_val
+  x_samples = x_val#[...,-1][...,None]
+
 
   transformer_72 = transformations_tf.Transformer()
   print(transformer_72.transformation_tuples)
   rotation_90_arg = transformer_72.transformation_tuples.index((False, 0, 0, 1))
   trans_down_arg = transformer_72.transformation_tuples.index((False, 0, -8, 0))
   non_transform_arg = transformer_72.transformation_tuples.index(
-      (False, 0, -8, 0))
+      (False, 0, 0, 0))
   transformation_args_list = [non_transform_arg, rotation_90_arg,
                               trans_down_arg]
 
-  transformation_arg = transformation_args_list[transformations_arg_to_use_from_available]
+  transformation_arg = transformation_args_list[
+    transformations_arg_to_use_from_available]
   x_transformed, y_transformed = transformer_72.apply_transforms(
-      x_samples, transformation_arg)
+      x_samples, [transformation_arg])
   print(np.unique(y_transformed, return_counts=True))
   rndm_indxs = np.random.RandomState(42).permutation(len(x_samples))
   x_transformed = x_transformed[rndm_indxs]
@@ -76,9 +79,10 @@ if __name__ == '__main__':
   mean_mi = tf.keras.metrics.Mean(name='MI')
   start_time = time.time()
   for x_orig, x_trans in estimation_ds:
-    mi_estimation = estimator.mutual_information(x_samples, y_samples)
+    mi_estimation = estimator.mutual_information(
+        x_orig, x_trans, x_is_image=True, y_is_image=True)
     mean_mi(mi_estimation)
   finish_time = time.time()
   print('Comparing original and %s, MI: %f' % (
-  transformer_72.transformation_tuples[transformation_arg], mean_mi.result()))
+    transformer_72.transformation_tuples[transformation_arg], mean_mi.result()))
   print(timer(start_time, finish_time))
