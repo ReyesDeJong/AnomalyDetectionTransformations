@@ -58,7 +58,7 @@ class TransformODModel(tf.keras.Model):
         input_shape=input_shape, n_classes=self.transformer.n_transforms,
         depth=depth, widen_factor=widen_factor,
         model_path=self.specific_model_folder, **kwargs)
-    self.percentile = 95.46
+    self.percentile = 97.73#95.45
 
   # TODO: do a param dict
   def get_network(self, input_shape, n_classes,
