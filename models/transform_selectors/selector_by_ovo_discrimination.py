@@ -44,8 +44,8 @@ class TransformSelectorByOVO(tf.keras.Model):
       for conflicting_tuple in self.redundant_transforms_tuples:
         print('(%i,%i): %s ; %s' % (
           conflicting_tuple[0], conflicting_tuple[1],
-          str(transformer.tranformation_to_perform[conflicting_tuple[0]]),
-          str(transformer.tranformation_to_perform[conflicting_tuple[1]])))
+          str(transformer.tranformation_tuples[conflicting_tuple[0]]),
+          str(transformer.tranformation_tuples[conflicting_tuple[1]])))
     # TODO: do a random selection and, selection_accuracy_tolerance=accuracy_selection_tolerance) a most repeated based. THIS is first
     #  chosen
     transforms_to_delete = [x_y_tuple[1] for x_y_tuple in
@@ -56,10 +56,10 @@ class TransformSelectorByOVO(tf.keras.Model):
       print(unique_transforms_to_delete)
     reversed_unique_transfors_to_delete = unique_transforms_to_delete[::-1]
     for i in reversed_unique_transfors_to_delete:
-      del transformer.tranformation_to_perform[i]
+      del transformer.tranformation_tuples[i]
       del transformer._transformation_list[i]
     if verbose:
       print(
-        'Left Transformations %i' % len(transformer.tranformation_to_perform))
-      print(transformer.tranformation_to_perform)
+        'Left Transformations %i' % len(transformer.tranformation_tuples))
+      print(transformer.tranformation_tuples)
     return transformer
