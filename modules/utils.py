@@ -1,15 +1,15 @@
+import csv
 import os
 import pickle as pkl
 import sys
+from collections import defaultdict
+from glob import glob
+
 import matplotlib.pyplot as plt
 import numpy as np
 import tensorflow as tf
-from glob import glob
-from collections import defaultdict
-import csv
-import matplotlib
 
-matplotlib.use('Agg')
+# matplotlib.use('Agg')
 
 PROJECT_PATH = os.path.abspath(
     os.path.join(os.path.dirname(__file__), '..'))
@@ -18,6 +18,14 @@ sys.path.append(PROJECT_PATH)
 from modules.data_set_generic import Dataset
 from parameters import general_keys
 from modules.data_splitter import DatasetDivider
+from scipy import stats
+
+
+def get_pvalue_welchs_ttest(list_value_1, list_value_2, show_print=False):
+  p_value = stats.ttest_ind(list_value_1, list_value_2, equal_var=False)[1]
+  if show_print:
+    print("Welch’s t_test p_values: ", p_value)
+  return p_value
 
 
 def createCircularMask(h, w, center=None, radius=None):
@@ -64,6 +72,36 @@ def save_2d_image(image, name, save_folder=None, plot_show=False, img_size=16,
   if save_folder:
     fig.savefig(os.path.join(save_folder, '%s.png' % name))
   if plot_show:
+    plt.show()
+
+
+def plot_image(image, name=None, path=None, show=True):
+  # fill titles with blanks
+  titles = ['template', 'science', 'difference', 'SNR difference']
+  n_channels = image.shape[-1]
+  for i in range(n_channels):
+    plt.subplot(1, 4, i + 1)
+    if i == 0:
+      indx = 1
+    elif i == 1:
+      indx = 0
+    else:
+      indx = i
+    plt.imshow(image[:, :, indx], interpolation='nearest')
+    plt.axis('off')
+    plt.title(titles[i], fontdict={'fontsize': 15})
+  plt.gca().set_axis_off()
+  plt.subplots_adjust(top=1, bottom=0, right=1, left=0,
+                      hspace=0, wspace=0.1)
+  plt.margins(0, 0)
+  plt.gca().xaxis.set_major_locator(plt.NullLocator())
+  plt.gca().yaxis.set_major_locator(plt.NullLocator())
+  if path or name:
+    plt.savefig(
+        os.path.join(PROJECT_PATH, 'figure_creation/figs/%s.svg' % name),
+        format='svg', dpi=600, bbox_inches='tight', pad_inches=0,
+        transparent=True)
+  if show:
     plt.show()
 
 
