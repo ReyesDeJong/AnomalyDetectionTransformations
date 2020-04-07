@@ -1,24 +1,15 @@
+"""
+Creating an artificial dataset of circles with random sizes and random gaussian
+ blurring
+"""
+
 import os
 import sys
-
-import numpy as np
-
-"""
-Creating an artificial dataset of circles with random sizes and random gaussian blurring
-"""
 
 PROJECT_PATH = os.path.abspath(
     os.path.join(os.path.dirname(__file__), '..', '..'))
 sys.path.append(PROJECT_PATH)
 
-from modules.info_metrics.information_estimator_v2 import InformationEstimator
-from parameters import loader_keys, general_keys
-from modules.geometric_transform import transformations_tf
-import tensorflow as tf
-from modules.data_loaders.hits_outlier_loader import HiTSOutlierLoader
-from modules.data_loaders.ztf_small_outlier_loader import ZTFSmallOutlierLoader
-import time
-from modules.utils import timer, plot_image, get_pvalue_welchs_ttest
 import numpy as np
 import matplotlib.pyplot as plt
 from modules.geometric_transform.transformations_tf import makeGaussian, \
@@ -26,8 +17,8 @@ from modules.geometric_transform.transformations_tf import makeGaussian, \
 
 
 class CirclesFactory(object):
-  def __init__(self, image_size=21, radius_range=[1, 4],
-      sigma_gauss_range=[0, 3], gauss_kernel_size=7, random_seed=42):
+  def __init__(self, image_size=21, radius_range=(1, 4),
+      sigma_gauss_range=(0, 3), gauss_kernel_size=7, random_seed=42):
     self.image_size = image_size
     self.radius_range = radius_range
     self.sigma_gauss_range = sigma_gauss_range
@@ -65,15 +56,23 @@ class CirclesFactory(object):
 
   # TODO: maybe put outside; on utils, not necesarry as a method
   def plot_n_images(self, image_array, save_path=None, plot_show=False,
-      n_to_plot=25, fig_size=20, channel_to_plot=0):
+      n_to_plot=25, fig_size=20, channel_to_plot=0, title=None):
     if len(image_array.shape) == 4:
       image_array = image_array[..., channel_to_plot]
+
     n_imags_available = len(image_array)
-    random_img_idxs = np.random.choice(range(n_imags_available), n_to_plot)
+    if n_imags_available < n_to_plot:
+      n_to_plot = n_imags_available
+
+    random_img_idxs = np.random.choice(range(n_imags_available), n_to_plot,
+                                       replace=False)
     imgs_to_plot = image_array[random_img_idxs, ...]
     sqrt_n = int(np.ceil(np.sqrt(n_to_plot)))
     fig, axs = plt.subplots(sqrt_n, sqrt_n, figsize=(fig_size, fig_size),
                             gridspec_kw={'wspace': 0, 'hspace': 0})
+    if title:
+      fig.suptitle(title, fontsize=40, color='white')
+
     axs = axs.flatten()
     for img_index in range(n_to_plot):
       axs[img_index].imshow(imgs_to_plot[img_index])

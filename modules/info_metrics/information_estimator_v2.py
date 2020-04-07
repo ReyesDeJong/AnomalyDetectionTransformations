@@ -60,6 +60,7 @@ class InformationEstimator(object):
         self.normalize_scale = normalize_scale
         self.normalize_dimension = normalize_dimension
         self.log_base = log_base
+        self.flatten_layer = tf.keras.layers.Flatten()
 
     def normalized_gram(self, x, sigma_x=None, x_is_image=False):
         """If sigma_x is provided, then that value will be used. Otherwise
@@ -106,10 +107,10 @@ class InformationEstimator(object):
     def mutual_information(self, x, y, sigma_x=None, sigma_y=None,
                            x_is_image=False, y_is_image=False):
         """See 'normalized_gram' doc."""
-        x = tf.convert_to_tensor(x, dtype=tf.float32)
-        y = tf.convert_to_tensor(y, dtype=tf.float32)
-        x = tf.compat.v1.layers.flatten(x)
-        y = tf.compat.v1.layers.flatten(y)
+        x = tf.cast(x, dtype=tf.float32)
+        y = tf.cast(y, dtype=tf.float32)
+        x = self.flatten_layer(x)
+        y = self.flatten_layer(y)
         norm_gram_a = self.normalized_gram(x, sigma_x, x_is_image)
         norm_gram_b = self.normalized_gram(y, sigma_y, y_is_image)
         mi_xy = self.mutual_information_with_gram(norm_gram_a, norm_gram_b)
