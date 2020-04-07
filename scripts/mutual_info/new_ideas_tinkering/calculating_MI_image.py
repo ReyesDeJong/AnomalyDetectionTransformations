@@ -91,8 +91,8 @@ class MIImageCalculator(object):
     for img_idx in range(n_images):
       image = image_array[img_idx]
       list_of_patches_for_a_single_image = []
-      for col_idx in range(n_windows_in_a_row):
-        for row_idx in range(n_windows_in_a_row):
+      for row_idx in range(n_windows_in_a_row):
+        for col_idx in range(n_windows_in_a_row):
           # print(row_idx * (1 + (self.window_stride-1)), row_idx * (
           #     1 + (self.window_stride-1)) + self.window_size)
           window = image[row_idx * (1 + (self.window_stride - 1)):row_idx * (
@@ -124,16 +124,20 @@ class MIImageCalculator(object):
       mi_for_every_patch.append(mutual_info_estimation)
     return np.array(mi_for_every_patch)
 
-  def mi_image(self, X, Y):
+  def mi_images(self, X, Y):
     patches_X = self.image_array_to_patches(X)
     patches_Y = self.image_array_to_patches(Y)
     mi_of_patches = self.calculate_mi_for_patches(patches_X, patches_Y)
-    return mi_of_patches
+    image_size = int(np.sqrt(len(mi_of_patches)))
+    # print(mi_of_patches[:image_size])
+    mi_images = mi_of_patches.reshape((image_size, image_size, -1))
+    # print(mi_images[0, :])
+    return mi_images
 
 
 if __name__ == '__main__':
-  SHOW_PLOTS = False
-  N_IMAGES = 10
+  SHOW_PLOTS = True
+  N_IMAGES = 7000
   WINDOW_SIZE = 3
   SIGMA_ZERO = 2.0
   BATCH_SIZE = 512
@@ -147,8 +151,18 @@ if __name__ == '__main__':
   circle_factory.plot_n_images(images, plot_show=SHOW_PLOTS, title='X')
   circle_factory.plot_n_images(images_transformed, plot_show=SHOW_PLOTS,
                                title='T(X)')
-  windows = mi_image_calculator.image_array_to_patches(images)
-  print(windows.shape)
-  mi_patches = mi_image_calculator.mi_image(images, images_transformed)
-  print(mi_patches.shape)
+  mi_images = mi_image_calculator.mi_images(images, images_transformed)
+  print(mi_images.shape)
+  circle_factory.plot_n_images(mi_images, plot_show=SHOW_PLOTS,
+                               title='MI(X, T(X))')
+  mean_mi_image = np.mean(mi_images, axis=-1)
+  plt.imshow(mean_mi_image)
+  if SHOW_PLOTS:
+    plt.show()
+  plt.close()
+  std_mi_image = np.std(mi_images, axis=-1)
+  plt.imshow(std_mi_image)
+  if SHOW_PLOTS:
+    plt.show()
+  plt.close()
   print('')
