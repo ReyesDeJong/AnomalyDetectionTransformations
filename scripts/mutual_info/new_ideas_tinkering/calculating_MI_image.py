@@ -8,24 +8,14 @@ A MI image is defined as an image where every pixel represents the MI
 import os
 import sys
 
-import numpy as np
-
 PROJECT_PATH = os.path.abspath(
     os.path.join(os.path.dirname(__file__), '..', '..'))
 sys.path.append(PROJECT_PATH)
 
 from modules.info_metrics.information_estimator_v2 import InformationEstimator
-from parameters import loader_keys, general_keys
-from modules.geometric_transform import transformations_tf
 import tensorflow as tf
-from modules.data_loaders.hits_outlier_loader import HiTSOutlierLoader
-from modules.data_loaders.ztf_small_outlier_loader import ZTFSmallOutlierLoader
-import time
-from modules.utils import timer, plot_image, get_pvalue_welchs_ttest
 import numpy as np
 import matplotlib.pyplot as plt
-from modules.geometric_transform.transformations_tf import makeGaussian, \
-  cnn2d_depthwise_tf, check_shape_kernel
 from scripts.mutual_info.new_ideas_tinkering. \
   creating_artificial_dataset import CirclesFactory
 
@@ -46,6 +36,10 @@ class InformationEstimatorByBatch(InformationEstimator):
         self.batch_size)
     mi_list = []
     for x_batch, y_batch in estimation_ds:
+      #print(tf.shape(x_batch))
+      #print(tf.shape(y_batch))
+      # diff = x_batch-y_batch
+      # print(np.unique(diff.numpy()))
       mi_estimation = self.mutual_information(
           x_batch, y_batch, x_is_image=self.x_is_image,
           y_is_image=self.y_is_image)
@@ -126,42 +120,68 @@ class MIImageCalculator(object):
 
   def mi_images(self, X, Y):
     patches_X = self.image_array_to_patches(X)
+    # print(patches_X)
     patches_Y = self.image_array_to_patches(Y)
+    # patches_X = self.normalize_patches_1_1(patches_X)
+    # patches_Y = self.normalize_patches_1_1(patches_Y)
+    # print(patches_X)
     mi_of_patches = self.calculate_mi_for_patches(patches_X, patches_Y)
     image_size = int(np.sqrt(len(mi_of_patches)))
     # print(mi_of_patches[:image_size])
     mi_images = mi_of_patches.reshape((image_size, image_size, -1))
+    mi_images = np.rollaxis(mi_images, -1)
     # print(mi_images[0, :])
     return mi_images
 
+  def normalize_patches_1_1(self, patches):
+    patches -= np.nanmin(patches, axis=(2, 3))[:, :, np.newaxis, np.newaxis, :]
+    patches = patches / self.replace_zeros_with_ones(
+        np.nanmax(patches, axis=(2, 3))[:, :, np.newaxis, np.newaxis, :])
+    patches = 2 * patches - 1
+    return patches
+
+  def replace_zeros_with_ones(self, array):
+    array[array == 0] = 1
+    return array
+
 
 if __name__ == '__main__':
-  SHOW_PLOTS = True
-  N_IMAGES = 7000
+  gpus = tf.config.experimental.list_physical_devices('GPU')
+  for gpu in gpus:
+    tf.config.experimental.set_memory_growth(gpu, True)
+  SHOW_PLOTS = False
+  N_IMAGES = 64 * 4
   WINDOW_SIZE = 3
   SIGMA_ZERO = 2.0
-  BATCH_SIZE = 512
-  TRANSFORMATION_SHIFT = 8
+  BATCH_SIZE = 64
+  TRANSFORMATION_SHIFT = 6
   circle_factory = CirclesFactory()
   mi_estimator = InformationEstimatorByBatch(SIGMA_ZERO, BATCH_SIZE)
   mi_image_calculator = MIImageCalculator(information_estimator=mi_estimator,
                                           window_size=WINDOW_SIZE)
   images = circle_factory.get_final_dataset(N_IMAGES)
   images_transformed = np.roll(images, shift=TRANSFORMATION_SHIFT, axis=2)
+  # images_transformed = np.rot90(images, axes=(1, 2))
   circle_factory.plot_n_images(images, plot_show=SHOW_PLOTS, title='X')
   circle_factory.plot_n_images(images_transformed, plot_show=SHOW_PLOTS,
                                title='T(X)')
+  # images = np.zeros_like(images)
+  # print(images.shape)
+  # print(np.unique(np.min(images, axis=(-1,-2,-3))))
+  # images = np.random.normal(0,1,images.shape)
   mi_images = mi_image_calculator.mi_images(images, images_transformed)
   print(mi_images.shape)
   circle_factory.plot_n_images(mi_images, plot_show=SHOW_PLOTS,
                                title='MI(X, T(X))')
-  mean_mi_image = np.mean(mi_images, axis=-1)
+  mean_mi_image = np.mean(mi_images, axis=0)
   plt.imshow(mean_mi_image)
+  plt.colorbar()
   if SHOW_PLOTS:
     plt.show()
   plt.close()
-  std_mi_image = np.std(mi_images, axis=-1)
+  std_mi_image = np.std(mi_images, axis=0)
   plt.imshow(std_mi_image)
+  plt.colorbar()
   if SHOW_PLOTS:
     plt.show()
   plt.close()

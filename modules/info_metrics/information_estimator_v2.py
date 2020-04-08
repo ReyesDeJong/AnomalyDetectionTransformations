@@ -117,7 +117,12 @@ class InformationEstimator(object):
         return mi_xy
 
     def entropy_with_gram(self, norm_gram):
-        eigvals, _ = tf.linalg.eigh(norm_gram)
+        # eigvals, _ = tf.linalg.eigh(norm_gram)
+        eigvals, _ = tf.compat.v1.self_adjoint_eig(norm_gram)
+        # try:
+        #     eigvals, _ = tf.linalg.eigh(norm_gram)
+        # except Exception as e: print(e)
+        #     print('error')
         eigvals = tf.nn.relu(eigvals)  # Avoids small negatives
 
         # Ensure eigenvalues sum 1,

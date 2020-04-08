@@ -56,7 +56,7 @@ class CirclesFactory(object):
 
   # TODO: maybe put outside; on utils, not necesarry as a method
   def plot_n_images(self, image_array, save_path=None, plot_show=False,
-      n_to_plot=25, fig_size=20, channel_to_plot=0, title=None):
+      n_to_plot=25, fig_size=20, channel_to_plot=0, title=None, seed=42):
     if len(image_array.shape) == 4:
       image_array = image_array[..., channel_to_plot]
 
@@ -64,14 +64,15 @@ class CirclesFactory(object):
     if n_imags_available < n_to_plot:
       n_to_plot = n_imags_available
 
-    random_img_idxs = np.random.choice(range(n_imags_available), n_to_plot,
-                                       replace=False)
+    random_img_idxs = np.random.RandomState(seed).choice(
+      range(n_imags_available), n_to_plot, replace=False)
     imgs_to_plot = image_array[random_img_idxs, ...]
     sqrt_n = int(np.ceil(np.sqrt(n_to_plot)))
-    fig, axs = plt.subplots(sqrt_n, sqrt_n, figsize=(fig_size, fig_size),
-                            gridspec_kw={'wspace': 0, 'hspace': 0})
+    fig, axs = plt.subplots(
+        sqrt_n, sqrt_n, figsize=(fig_size, fig_size),
+        gridspec_kw={'wspace': 0.001, 'hspace': 0.002}, constrained_layout=True)
     if title:
-      fig.suptitle(title, fontsize=40, color='white')
+      fig.suptitle(title, fontsize=40)  # , color='white')
 
     axs = axs.flatten()
     for img_index in range(n_to_plot):
@@ -80,7 +81,7 @@ class CirclesFactory(object):
     for ax in axs:
       ax.axis('off')
 
-    fig.tight_layout()
+    # fig.tight_layout()
     if save_path:
       fig.savefig(os.path.join(save_path))
 
@@ -122,7 +123,7 @@ class CirclesFactory(object):
 
     return np.array(filtered_images)
 
-  def normilize_0_1(self, images):
+  def normilize_1_1(self, images):
     if len(images.shape) == 3:
       images = images[..., None]
     images -= np.nanmin(images, axis=(1, 2))[:, np.newaxis, np.newaxis, :]
@@ -134,8 +135,10 @@ class CirclesFactory(object):
   def get_final_dataset(self, n_images):
     images = self.get_circular_masks(n_images)
     images = self.apply_gaussian_filter_within_sigma_range(images)
-    images = self.normilize_0_1(images)
+    images = self.normilize_1_1(images)
     images = self.add_noise(images, self.sigma_noise)
+    images = self.normilize_1_1(images)
+    images = np.float32(images)
     return images
 
 

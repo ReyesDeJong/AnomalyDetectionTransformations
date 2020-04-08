@@ -25,7 +25,7 @@ if __name__ == '__main__':
   random_seed = 4
   n_samples_batch = 512
   sigma_zero = 2.0
-  show = True
+  show = False
   roll = True
   blanc = True
   as_images = False
