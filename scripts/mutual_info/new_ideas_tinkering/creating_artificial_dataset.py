@@ -141,6 +141,13 @@ class CirclesFactory(object):
     images = np.float32(images)
     return images
 
+  def get_final_dataset_no_noise(self, n_images):
+    images = self.get_circular_masks(n_images)
+    images = self.apply_gaussian_filter_within_sigma_range(images)
+    images = self.normilize_1_1(images)
+    images = np.float32(images)
+    return images
+
 
 if __name__ == '__main__':
   SHOW_PLOTS = True

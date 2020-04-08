@@ -36,8 +36,8 @@ class InformationEstimatorByBatch(InformationEstimator):
         self.batch_size)
     mi_list = []
     for x_batch, y_batch in estimation_ds:
-      #print(tf.shape(x_batch))
-      #print(tf.shape(y_batch))
+      # print(tf.shape(x_batch))
+      # print(tf.shape(y_batch))
       # diff = x_batch-y_batch
       # print(np.unique(diff.numpy()))
       mi_estimation = self.mutual_information(
@@ -118,12 +118,14 @@ class MIImageCalculator(object):
       mi_for_every_patch.append(mutual_info_estimation)
     return np.array(mi_for_every_patch)
 
-  def mi_images(self, X, Y):
+  def mi_images(self, X, Y, normalize_patches=False):
     patches_X = self.image_array_to_patches(X)
     # print(patches_X)
     patches_Y = self.image_array_to_patches(Y)
-    # patches_X = self.normalize_patches_1_1(patches_X)
-    # patches_Y = self.normalize_patches_1_1(patches_Y)
+    if normalize_patches:
+      patches_X = self.normalize_patches_1_1(patches_X)
+      patches_Y = self.normalize_patches_1_1(patches_Y)
+
     # print(patches_X)
     mi_of_patches = self.calculate_mi_for_patches(patches_X, patches_Y)
     image_size = int(np.sqrt(len(mi_of_patches)))
@@ -132,6 +134,14 @@ class MIImageCalculator(object):
     mi_images = np.rollaxis(mi_images, -1)
     # print(mi_images[0, :])
     return mi_images
+
+  def mi_images_mean(self, X, Y, normalize_patches=False):
+    mi_images = self.mi_images(X, Y, normalize_patches)
+    return np.mean(mi_images, axis=0)
+
+  def mi_images_std(self, X, Y, normalize_patches=False):
+    mi_images = self.mi_images(X, Y, normalize_patches)
+    return np.std(mi_images, axis=0)
 
   def normalize_patches_1_1(self, patches):
     patches -= np.nanmin(patches, axis=(2, 3))[:, :, np.newaxis, np.newaxis, :]
