@@ -76,17 +76,19 @@ def mi_images_exp(images_without_noise, show_images, show_mi_images,
                  r'I(X;$T_{trans%ipx}(X))$' % transformation_shift]
   plot_mi_images(mi_images_list, plot_show=show_mi_images,
                  titles_list=titles_list)
+  plot_mi_images(mi_images_list[1:], plot_show=show_mi_images,
+                 titles_list=titles_list[1:])
 
 
 if __name__ == '__main__':
-  SHOW_IMAGES = True
-  SHOW_MI_IMAGES = True
-  BATCH_SIZE = 64
-  N_IMAGES = BATCH_SIZE * 100
+  SHOW_IMAGES = False
+  SHOW_MI_IMAGES = False
+  BATCH_SIZE = 512
+  N_IMAGES = BATCH_SIZE * 4
   WINDOW_SIZE = 3
   SIGMA_ZERO = 2.0
   TRANSFORMATION_SHIFT = 6
-  NORMALIZE_PATCHES = False
+  NORMALIZE_PATCHES = True
 
   circle_factory = CirclesFactory()
   mi_estimator = InformationEstimatorByBatch(SIGMA_ZERO, BATCH_SIZE)
@@ -105,10 +107,9 @@ if __name__ == '__main__':
   mi_images_exp(
       images_without_noise, SHOW_IMAGES, SHOW_MI_IMAGES, TRANSFORMATION_SHIFT,
       mi_image_calculator, NORMALIZE_PATCHES, circle_factory)
-
   # EXP: images with noise
   NORMALIZE_PATCHES = True
-  SHOW_IMAGES = True
+  SHOW_IMAGES = False#True
   images_with_noise = circle_factory.get_final_dataset(N_IMAGES)
   mi_images_exp(
       images_with_noise, SHOW_IMAGES, SHOW_MI_IMAGES, TRANSFORMATION_SHIFT,
