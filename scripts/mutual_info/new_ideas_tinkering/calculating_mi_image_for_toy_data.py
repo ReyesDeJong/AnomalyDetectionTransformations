@@ -82,10 +82,10 @@ def mi_images_exp(images_without_noise, show_images, show_mi_images,
 
 
 if __name__ == '__main__':
-  SHOW_IMAGES = True
+  SHOW_IMAGES = False
   SHOW_MI_IMAGES = True
   BATCH_SIZE = 512
-  N_IMAGES = BATCH_SIZE * 4
+  N_IMAGES = 7000# BATCH_SIZE * 4
   WINDOW_SIZE = 3
   SIGMA_ZERO = 2.0
   TRANSFORMATION_SHIFT = 6
