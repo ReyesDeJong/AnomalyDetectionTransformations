@@ -87,6 +87,7 @@ class CirclesFactory(object):
 
     if plot_show:
       plt.show()
+
     plt.close()
 
   def add_noise_to_back_ground(self, images, sigma_noise):

@@ -12,52 +12,17 @@ PROJECT_PATH = os.path.abspath(
     os.path.join(os.path.dirname(__file__), '..', '..'))
 sys.path.append(PROJECT_PATH)
 
-from modules.info_metrics.information_estimator_v2 import InformationEstimator
+from modules.info_metrics.information_estimator_by_batch import \
+  InformationEstimatorByBatch
 import tensorflow as tf
 import numpy as np
 import matplotlib.pyplot as plt
+from modules.geometric_transform.transformations_tf import AbstractTransformer
 from scripts.mutual_info.new_ideas_tinkering. \
   creating_artificial_dataset import CirclesFactory
-
-
-class InformationEstimatorByBatch(InformationEstimator):
-  def __init__(self, sigma_zero, batch_size, random_seed=42,
-      shuffle_buffer_size=10000, x_and_y_as_images=True):
-    super().__init__(sigma_zero=sigma_zero)
-    self.batch_size = batch_size
-    self.random_seed = random_seed
-    self.shuffle_buffer_size = shuffle_buffer_size
-    self.x_is_image = x_and_y_as_images
-    self.y_is_image = x_and_y_as_images
-
-  def mutual_information_by_batch(self, X, Y):
-    estimation_ds = tf.data.Dataset.from_tensor_slices(
-        (X, Y)).shuffle(self.shuffle_buffer_size, seed=self.random_seed).batch(
-        self.batch_size)
-    mi_list = []
-    for x_batch, y_batch in estimation_ds:
-      # print(tf.shape(x_batch))
-      # print(tf.shape(y_batch))
-      # diff = x_batch-y_batch
-      # print(np.unique(diff.numpy()))
-      mi_estimation = self.mutual_information(
-          x_batch, y_batch, x_is_image=self.x_is_image,
-          y_is_image=self.y_is_image)
-      mi_list.append(mi_estimation.numpy())
-    return np.array(mi_list)
-
-  def mutual_information_mean_fast(self, X, Y, x_is_image=True,
-      y_is_image=True):
-    estimation_ds = tf.data.Dataset.from_tensor_slices(
-        (X, Y)).shuffle(self.shuffle_buffer_size, seed=self.random_seed).batch(
-        self.batch_size)
-    mean_mi = tf.keras.metrics.Mean(name='MI')
-    for x_batch, y_batch in estimation_ds:
-      mi_estimation = self.mutual_information(
-          x_batch, y_batch, x_is_image=self.x_is_image,
-          y_is_image=self.y_is_image)
-      mean_mi(mi_estimation)
-    return mean_mi.result()
+from scripts.mutual_info.new_ideas_tinkering.\
+  mi_images_on_transformations_manager import MIIOnTransformationsManager
+from tqdm import tqdm
 
 
 class MIImageCalculator(object):
@@ -145,17 +110,40 @@ class MIImageCalculator(object):
 
   def normalize_patches_1_1(self, patches):
     patches -= np.nanmin(patches, axis=(2, 3))[:, :, np.newaxis, np.newaxis, :]
-    patches = patches / self.replace_zeros_with_ones(
+    patches = patches / self._replace_zeros_with_ones(
         np.nanmax(patches, axis=(2, 3))[:, :, np.newaxis, np.newaxis, :])
     patches = 2 * patches - 1
     return patches
 
-  def replace_zeros_with_ones(self, array):
+  def _replace_zeros_with_ones(self, array):
     array[array == 0] = 1
     return array
 
+  def mii_for_transformations(self, X, transformer: AbstractTransformer,
+      normalize_patches=False, plot_transformations=False) -> MIIOnTransformationsManager:
+    n_transformations = transformer.n_transforms
+    mii_images = {}
+    transformation_tuples = transformer.transformation_tuples
+    # print(transformation_tuples)
+    for trnsform_idx in tqdm(range(n_transformations)):
+      current_transformation_tuple = transformation_tuples[trnsform_idx]
+      x_transformed, _ = transformer.apply_transforms(X, [trnsform_idx])
+      if plot_transformations:
+        CirclesFactory().plot_n_images(
+            x_transformed, plot_show=True,
+            title=str(trnsform_idx) + '_' + str(current_transformation_tuple))
+
+      mii_images_specific_transform = self.mi_images(X, x_transformed,
+                                                     normalize_patches)
+      mii_images[current_transformation_tuple] = mii_images_specific_transform
+
+    return MIIOnTransformationsManager(mii_images, transformer)
+
 
 if __name__ == '__main__':
+  from scripts.mutual_info.new_ideas_tinkering. \
+    creating_artificial_dataset import CirclesFactory
+
   gpus = tf.config.experimental.list_physical_devices('GPU')
   for gpu in gpus:
     tf.config.experimental.set_memory_growth(gpu, True)
