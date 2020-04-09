@@ -1,5 +1,8 @@
 """
 Calculating MI image over synth dataset, rot and traslation
+No patches normalization works better.
+Numpy on eigh values for MI estimations dont crush but gives slightly diff
+results than with TF eigh
 """
 
 import os
@@ -9,8 +12,6 @@ PROJECT_PATH = os.path.abspath(
     os.path.join(os.path.dirname(__file__), '..', '..'))
 sys.path.append(PROJECT_PATH)
 
-from modules.info_metrics.information_estimator_v2 import InformationEstimator
-import tensorflow as tf
 import numpy as np
 import matplotlib.pyplot as plt
 from scripts.mutual_info.new_ideas_tinkering. \
@@ -81,8 +82,8 @@ def mi_images_exp(images_without_noise, show_images, show_mi_images,
 
 
 if __name__ == '__main__':
-  SHOW_IMAGES = False
-  SHOW_MI_IMAGES = False
+  SHOW_IMAGES = True
+  SHOW_MI_IMAGES = True
   BATCH_SIZE = 512
   N_IMAGES = BATCH_SIZE * 4
   WINDOW_SIZE = 3
@@ -95,29 +96,29 @@ if __name__ == '__main__':
   mi_image_calculator = MIImageCalculator(information_estimator=mi_estimator,
                                           window_size=WINDOW_SIZE)
 
-  # EXP: images without noise
+  # # EXP: images without noise
   images_without_noise = circle_factory.get_final_dataset_no_noise(N_IMAGES)
-  mi_images_exp(
-      images_without_noise, SHOW_IMAGES, SHOW_MI_IMAGES, TRANSFORMATION_SHIFT,
-      mi_image_calculator, NORMALIZE_PATCHES, circle_factory)
+  # mi_images_exp(
+  #     images_without_noise, SHOW_IMAGES, SHOW_MI_IMAGES, TRANSFORMATION_SHIFT,
+  #     mi_image_calculator, NORMALIZE_PATCHES, circle_factory)
 
   # EXP: images without noise NO Norm_patches
   NORMALIZE_PATCHES = False
-  SHOW_IMAGES= False
+  # SHOW_IMAGES= False
   mi_images_exp(
       images_without_noise, SHOW_IMAGES, SHOW_MI_IMAGES, TRANSFORMATION_SHIFT,
       mi_image_calculator, NORMALIZE_PATCHES, circle_factory)
-  # EXP: images with noise
-  NORMALIZE_PATCHES = True
-  SHOW_IMAGES = False#True
+  # # EXP: images with noise
+  # NORMALIZE_PATCHES = True
+  # SHOW_IMAGES = False#True
   images_with_noise = circle_factory.get_final_dataset(N_IMAGES)
-  mi_images_exp(
-      images_with_noise, SHOW_IMAGES, SHOW_MI_IMAGES, TRANSFORMATION_SHIFT,
-      mi_image_calculator, NORMALIZE_PATCHES, circle_factory)
+  # mi_images_exp(
+  #     images_with_noise, SHOW_IMAGES, SHOW_MI_IMAGES, TRANSFORMATION_SHIFT,
+  #     mi_image_calculator, NORMALIZE_PATCHES, circle_factory)
 
   # EXP: images with noise NO Norm_patches
   NORMALIZE_PATCHES = False
-  SHOW_IMAGES= False
+  # SHOW_IMAGES= False
   mi_images_exp(
       images_with_noise, SHOW_IMAGES, SHOW_MI_IMAGES, TRANSFORMATION_SHIFT,
       mi_image_calculator, NORMALIZE_PATCHES, circle_factory)
