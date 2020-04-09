@@ -125,6 +125,7 @@ class MIImageCalculator(object):
     mii_images = {}
     transformation_tuples = transformer.transformation_tuples
     # print(transformation_tuples)
+    print('Calculating MII for all %i transformations' % int(n_transformations))
     for trnsform_idx in tqdm(range(n_transformations)):
       current_transformation_tuple = transformation_tuples[trnsform_idx]
       x_transformed, _ = transformer.apply_transforms(X, [trnsform_idx])
