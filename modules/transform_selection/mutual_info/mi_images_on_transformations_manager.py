@@ -14,7 +14,6 @@ import tensorflow as tf
 import numpy as np
 import matplotlib.pyplot as plt
 from modules.geometric_transform.transformations_tf import AbstractTransformer
-from mpl_toolkits.axes_grid1 import make_axes_locatable
 
 
 class MIIOnTransformationsManager(object):
@@ -96,9 +95,8 @@ class MIIOnTransformationsManager(object):
 
 
 if __name__ == '__main__':
-  from scripts.mutual_info.new_ideas_tinkering. \
-    artificial_dataset_factory import CirclesFactory
-  from scripts.mutual_info.new_ideas_tinkering.mi_image_calculator import \
+  from modules.transform_selection.artificial_dataset_factory import CirclesFactory
+  from modules.transform_selection.mutual_info.mi_image_calculator import \
     MIImageCalculator
   from modules.info_metrics.information_estimator_by_batch import \
     InformationEstimatorByBatch
@@ -125,10 +123,10 @@ if __name__ == '__main__':
       images, transformer)
   mii_every_transform.plot_mii_dict(plot_show=SHOW_PLOTS, norm_mii=False)
   mii_every_transform.plot_mii_dict(plot_show=SHOW_PLOTS, norm_mii=True)
-  mii_every_transform = mi_image_calculator.mii_for_transformations(
-      images, transformer, normalize_patches=True)
-  mii_every_transform.plot_mii_dict(plot_show=SHOW_PLOTS, norm_mii=False,
-                                    extra_title_text='normed patches')
-  mii_every_transform.plot_mii_dict(plot_show=SHOW_PLOTS, norm_mii=True,
-                                    extra_title_text='normed patches')
+  # mii_every_transform = mi_image_calculator.mii_for_transformations(
+  #     images, transformer, normalize_patches=True)
+  # mii_every_transform.plot_mii_dict(plot_show=SHOW_PLOTS, norm_mii=False,
+  #                                   extra_title_text='normed patches')
+  # mii_every_transform.plot_mii_dict(plot_show=SHOW_PLOTS, norm_mii=True,
+  #                                   extra_title_text='normed patches')
   print('')
