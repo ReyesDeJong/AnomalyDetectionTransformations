@@ -87,6 +87,11 @@ def mi_images_exp(images_without_noise, show_images, show_mi_images,
 
 
 if __name__ == '__main__':
+  import tensorflow as tf
+  gpus = tf.config.experimental.list_physical_devices('GPU')
+  for gpu in gpus:
+    tf.config.experimental.set_memory_growth(gpu, True)
+
   SHOW_IMAGES = False
   SHOW_MI_IMAGES = True
   BATCH_SIZE = 512
