@@ -53,4 +53,5 @@ if __name__ == '__main__':
       n_images=N_IMAGES,
       windows_size=WINDOW_SIZE,
       sigma_zero=SIGMA_ZERO)
+  experiment.run_experiment()
   print('')
