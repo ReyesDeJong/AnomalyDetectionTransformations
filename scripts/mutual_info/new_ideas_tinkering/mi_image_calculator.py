@@ -19,7 +19,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from modules.geometric_transform.transformations_tf import AbstractTransformer
 from scripts.mutual_info.new_ideas_tinkering. \
-  creating_artificial_dataset import CirclesFactory
+  artificial_dataset_factory import CirclesFactory
 from scripts.mutual_info.new_ideas_tinkering.\
   mi_images_on_transformations_manager import MIIOnTransformationsManager
 from tqdm import tqdm
@@ -143,7 +143,7 @@ class MIImageCalculator(object):
 
 if __name__ == '__main__':
   from scripts.mutual_info.new_ideas_tinkering. \
-    creating_artificial_dataset import CirclesFactory
+    artificial_dataset_factory import CirclesFactory
 
   gpus = tf.config.experimental.list_physical_devices('GPU')
   for gpu in gpus:

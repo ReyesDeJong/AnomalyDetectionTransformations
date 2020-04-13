@@ -55,7 +55,8 @@ class MIIOnTransformationsManager(object):
       norm_mii_dict[key] = norm_mii_array[i]
     return norm_mii_dict
 
-  def plot_mii_dict(self, plot_show=False, fig_size=20, norm_mii=True):
+  def plot_mii_dict(self, plot_show=False, fig_size=20, norm_mii=True,
+      extra_title_text=''):
     transformation_tuples = list(self.mii_dict.keys())
     transform_tuple_explain_text = self._get_transformation_tuples_explain_txt(
         len(transformation_tuples[0]))
@@ -70,7 +71,8 @@ class MIIOnTransformationsManager(object):
         n_subplots_sqrt_side, n_subplots_sqrt_side,
         figsize=(fig_size, fig_size),
         gridspec_kw={'wspace': 0.01, 'hspace': 0.01}, constrained_layout=True)
-    sup_title = transform_tuple_explain_text + '; norm mii: %s' % str(norm_mii)
+    sup_title = transform_tuple_explain_text + '; norm mii: %s' % str(
+        norm_mii) + '; %s' % extra_title_text
     fig.suptitle(sup_title, fontsize=fig_size * 2)
     axs = axs.flatten()
     vmin = np.min(all_mean_mii_array)
@@ -95,12 +97,13 @@ class MIIOnTransformationsManager(object):
 
 if __name__ == '__main__':
   from scripts.mutual_info.new_ideas_tinkering. \
-    creating_artificial_dataset import CirclesFactory
+    artificial_dataset_factory import CirclesFactory
   from scripts.mutual_info.new_ideas_tinkering.mi_image_calculator import \
     MIImageCalculator
   from modules.info_metrics.information_estimator_by_batch import \
     InformationEstimatorByBatch
-  from modules.geometric_transform import transformations_tf
+  from modules.geometric_transform.transformer_no_compositions import \
+    NoCompositionTransformer
 
   gpus = tf.config.experimental.list_physical_devices('GPU')
   for gpu in gpus:
@@ -116,11 +119,16 @@ if __name__ == '__main__':
   mi_estimator = InformationEstimatorByBatch(SIGMA_ZERO, BATCH_SIZE)
   mi_image_calculator = MIImageCalculator(information_estimator=mi_estimator,
                                           window_size=WINDOW_SIZE)
-  transformer_18 = transformations_tf.KernelTransformer(
-      flips=True, gauss=False, log=False, rotations=False, name='18_Transform')
+  transformer = NoCompositionTransformer()
   images = circle_factory.get_final_dataset(N_IMAGES)
   mii_every_transform = mi_image_calculator.mii_for_transformations(
-      images, transformer_18)
+      images, transformer)
   mii_every_transform.plot_mii_dict(plot_show=SHOW_PLOTS, norm_mii=False)
   mii_every_transform.plot_mii_dict(plot_show=SHOW_PLOTS, norm_mii=True)
+  mii_every_transform = mi_image_calculator.mii_for_transformations(
+      images, transformer, normalize_patches=True)
+  mii_every_transform.plot_mii_dict(plot_show=SHOW_PLOTS, norm_mii=False,
+                                    extra_title_text='normed patches')
+  mii_every_transform.plot_mii_dict(plot_show=SHOW_PLOTS, norm_mii=True,
+                                    extra_title_text='normed patches')
   print('')

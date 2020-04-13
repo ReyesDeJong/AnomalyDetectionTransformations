@@ -15,7 +15,7 @@ sys.path.append(PROJECT_PATH)
 import numpy as np
 import matplotlib.pyplot as plt
 from scripts.mutual_info.new_ideas_tinkering. \
-  creating_artificial_dataset import CirclesFactory
+  artificial_dataset_factory import CirclesFactory
 from scripts.mutual_info.new_ideas_tinkering.mi_image_calculator import \
   InformationEstimatorByBatch, MIImageCalculator
 
