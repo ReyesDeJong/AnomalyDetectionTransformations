@@ -111,7 +111,7 @@ if __name__ == '__main__':
 
   SHOW_PLOTS = True
   BATCH_SIZE = 512  # 2
-  N_IMAGES = 7000  # BATCH_SIZE * 2
+  N_IMAGES = BATCH_SIZE * 4# 7000  # BATCH_SIZE * 2
   WINDOW_SIZE = 3
   SIGMA_ZERO = 2.0
 
