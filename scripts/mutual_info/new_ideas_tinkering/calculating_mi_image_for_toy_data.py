@@ -53,6 +53,7 @@ def mi_images_exp(images_without_noise, show_images, show_mi_images,
   images_wn_translated = np.roll(images_without_noise,
                                  shift=transformation_shift, axis=2)
   images_wn_rotated = np.rot90(images_without_noise, axes=(1, 2))
+  images_wn_flipped = images_without_noise[:, :, ::-1]
 
   circle_factory.plot_n_images(images_without_noise, plot_show=show_images,
                                title='X')
@@ -71,10 +72,14 @@ def mi_images_exp(images_without_noise, show_images, show_mi_images,
   trans_mi_image = mi_image_calculator.mi_images_mean(
       images_without_noise, images_wn_translated,
       normalize_patches=normalize_patches)
-  mi_images_list = [auto_mi_image, rot_mi_image, trans_mi_image]
+  flip_mi_image = mi_image_calculator.mi_images_mean(
+      images_without_noise, images_wn_flipped,
+      normalize_patches=normalize_patches)
+  mi_images_list = [auto_mi_image, rot_mi_image, trans_mi_image, flip_mi_image]
   titles_list = [r'$I(X;X)$',
                  r'$I(X;T_{rot90}(X))$',
-                 r'I(X;$T_{trans%ipx}(X))$' % transformation_shift]
+                 r'I(X;$T_{trans%ipx}(X))$' % transformation_shift,
+                 r'$I(X;T_{flipLR}(X))$']
   plot_mi_images(mi_images_list, plot_show=show_mi_images,
                  titles_list=titles_list)
   plot_mi_images(mi_images_list[1:], plot_show=show_mi_images,
@@ -85,7 +90,7 @@ if __name__ == '__main__':
   SHOW_IMAGES = False
   SHOW_MI_IMAGES = True
   BATCH_SIZE = 512
-  N_IMAGES = 7000# BATCH_SIZE * 4
+  N_IMAGES = BATCH_SIZE * 4  # 7000#
   WINDOW_SIZE = 3
   SIGMA_ZERO = 2.0
   TRANSFORMATION_SHIFT = 6

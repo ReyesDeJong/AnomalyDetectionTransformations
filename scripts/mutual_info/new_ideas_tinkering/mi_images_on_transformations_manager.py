@@ -80,7 +80,7 @@ class MIIOnTransformationsManager(object):
     for tuple_idx, tuple in enumerate(transformation_tuples):
       img = axs[tuple_idx].imshow(mean_mii_dict[tuple], vmax=vmax, vmin=vmin)
       mii_title = 'I(X;T(X)) %s' % (str(tuple))
-      axs[tuple_idx].set_title(mii_title, fontsize=fig_size)
+      axs[tuple_idx].set_title(mii_title, fontsize=fig_size * 1.2)
       # if not norm_mii:
       #   divider = make_axes_locatable(axs[tuple_idx])
       #   cax = divider.append_axes('right', size='5%', pad=0.05)
@@ -111,7 +111,7 @@ if __name__ == '__main__':
 
   SHOW_PLOTS = True
   BATCH_SIZE = 512  # 2
-  N_IMAGES = BATCH_SIZE * 4# 7000  # BATCH_SIZE * 2
+  N_IMAGES = BATCH_SIZE * 4  # 7000  # BATCH_SIZE * 2
   WINDOW_SIZE = 3
   SIGMA_ZERO = 2.0
 
