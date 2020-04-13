@@ -10,16 +10,18 @@ import sys
 PROJECT_PATH = os.path.abspath(
     os.path.join(os.path.dirname(__file__), '..', '..'))
 sys.path.append(PROJECT_PATH)
+from modules.transform_selection.artificial_dataset_factory import \
+  CirclesFactory
+from modules.transform_selection.mutual_info.mi_image_calculator import \
+  MIImageCalculator
+from modules.info_metrics.information_estimator_by_batch import \
+  InformationEstimatorByBatch
+from modules.geometric_transform.transformer_no_compositions import \
+  NoCompositionTransformer
+import tensorflow as tf
+
 
 if __name__ == '__main__':
-  from modules.transform_selection.artificial_dataset_factory import CirclesFactory
-  from modules.transform_selection.mutual_info.mi_image_calculator import \
-    MIImageCalculator
-  from modules.info_metrics.information_estimator_by_batch import \
-    InformationEstimatorByBatch
-  from modules.geometric_transform.transformer_no_compositions import \
-    NoCompositionTransformer
-
   gpus = tf.config.experimental.list_physical_devices('GPU')
   for gpu in gpus:
     tf.config.experimental.set_memory_growth(gpu, True)

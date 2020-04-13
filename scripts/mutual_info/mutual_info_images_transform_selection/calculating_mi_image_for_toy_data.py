@@ -14,9 +14,11 @@ sys.path.append(PROJECT_PATH)
 
 import numpy as np
 import matplotlib.pyplot as plt
-from modules.transform_selection.artificial_dataset_factory import CirclesFactory
+from modules.transform_selection.artificial_dataset_factory import \
+  CirclesFactory
 from modules.transform_selection.mutual_info.mi_image_calculator import \
   InformationEstimatorByBatch, MIImageCalculator
+import tensorflow as tf
 
 
 def plot_mi_images(images_list, save_path=None, plot_show=False,
@@ -86,7 +88,6 @@ def mi_images_exp(images_without_noise, show_images, show_mi_images,
 
 
 if __name__ == '__main__':
-  import tensorflow as tf
   gpus = tf.config.experimental.list_physical_devices('GPU')
   for gpu in gpus:
     tf.config.experimental.set_memory_growth(gpu, True)
