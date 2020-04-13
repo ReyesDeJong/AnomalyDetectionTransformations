@@ -66,18 +66,18 @@ class MIIOverComposedTransformAndHiTSExperiment(
     mii_every_transform = self.mi_image_calculator.mii_for_transformations(
         images, self.transformer)
     mii_every_transform.plot_mii_dict(
-        plot_show=SHOW_PLOTS, norm_mii=False,
+        plot_show=self.show_plots, norm_mii=False,
         extra_title_text=self.dataset_name_and_extra_title)
     mii_every_transform.plot_mii_dict(
-        plot_show=SHOW_PLOTS, norm_mii=True,
+        plot_show=self.show_plots, norm_mii=True,
         extra_title_text=self.dataset_name_and_extra_title)
     mii_every_transform = self.mi_image_calculator.mii_for_transformations(
         images, self.transformer, normalize_patches=True)
     mii_every_transform.plot_mii_dict(
-        plot_show=SHOW_PLOTS, norm_mii=False,
+        plot_show=self.show_plots, norm_mii=False,
         extra_title_text='normed patches ' + self.dataset_name_and_extra_title)
     mii_every_transform.plot_mii_dict(
-        plot_show=SHOW_PLOTS, norm_mii=True,
+        plot_show=self.show_plots, norm_mii=True,
         extra_title_text='normed patches ' + self.dataset_name_and_extra_title)
 
 
