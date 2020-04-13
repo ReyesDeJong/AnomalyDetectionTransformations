@@ -8,7 +8,7 @@ import os
 import sys
 
 PROJECT_PATH = os.path.abspath(
-    os.path.join(os.path.dirname(__file__), '..', '..'))
+    os.path.join(os.path.dirname(__file__), '..', '..', '..'))
 sys.path.append(PROJECT_PATH)
 from modules.transform_selection.artificial_dataset_factory import \
   CirclesFactory
