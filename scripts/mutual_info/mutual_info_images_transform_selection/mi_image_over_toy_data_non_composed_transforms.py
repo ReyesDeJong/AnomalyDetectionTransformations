@@ -64,6 +64,34 @@ class MIIOverComposedTransformAndToyDataExperiment(object):
     # mii_every_transform.plot_mii_dict(plot_show=SHOW_PLOTS, norm_mii=True,
     #                                   extra_title_text='normed patches')
 
+  def run_experiment_2(self):
+    self.set_tf_gpus()
+    images = self.get_images()
+    mii_every_transform = self.mi_image_calculator.mii_for_transformations(
+        images, self.transformer)
+    mii_every_transform.plot_mii_dict_with_comp_criteria(
+        plot_show=self.show_plots, norm_mii=False,
+        extra_title_text=self.dataset_name_and_extra_title, criteria='mse')
+    mii_every_transform.plot_mii_dict_with_comp_criteria(
+        plot_show=self.show_plots, norm_mii=False,
+        extra_title_text=self.dataset_name_and_extra_title, criteria='entropy')
+    mii_every_transform.plot_mii_dict_with_comp_criteria(
+        plot_show=self.show_plots, norm_mii=False,
+        extra_title_text=self.dataset_name_and_extra_title, criteria='entropy')
+    mii_every_transform.plot_mii_dict_with_comp_criteria(
+        plot_show=self.show_plots, norm_mii=False,
+        extra_title_text=self.dataset_name_and_extra_title,
+        criteria='entropy_diff')
+    # mii_every_transform.plot_mii_dict(
+    #     plot_show=self.show_plots, norm_mii=True,
+    #     extra_title_text=self.dataset_name_and_extra_title)
+    # mii_every_transform = mi_image_calculator.mii_for_transformations(
+    #     images, transformer, normalize_patches=True)
+    # mii_every_transform.plot_mii_dict(plot_show=SHOW_PLOTS, norm_mii=False,
+    #                                   extra_title_text='normed patches')
+    # mii_every_transform.plot_mii_dict(plot_show=SHOW_PLOTS, norm_mii=True,
+    #                                   extra_title_text='normed patches')
+
 
 if __name__ == '__main__':
   SHOW_PLOTS = True
@@ -77,5 +105,5 @@ if __name__ == '__main__':
       n_images=N_IMAGES,
       windows_size=WINDOW_SIZE,
       sigma_zero=SIGMA_ZERO)
-  experiment.run_experiment()
+  experiment.run_experiment_2()
   print('')

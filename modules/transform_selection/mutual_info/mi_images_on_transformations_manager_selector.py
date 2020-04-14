@@ -14,6 +14,7 @@ import tensorflow as tf
 import numpy as np
 import matplotlib.pyplot as plt
 from modules.geometric_transform.transformations_tf import AbstractTransformer
+from modules import score_functions
 
 
 class MIIOnTransformationsManager(object):
@@ -93,9 +94,87 @@ class MIIOnTransformationsManager(object):
 
     plt.close()
 
+  def get_comparisons_with_auto_mii(self, mean_mii_dict=None,
+      comparison_criteria='mse'):
+    if mean_mii_dict is None:
+      mean_mii_dict = self.get_mean_mii_dict()
+    tuples = list(mean_mii_dict.keys())
+    tuples_len = len(tuples[0])
+    auto_mii_x_x_tuple = tuples([0] * tuples_len)
+    auto_mii_x_x = mean_mii_dict[auto_mii_x_x_tuple]
+    sorted_mii_by_criteria = {}
+    for tuple_i in tuples:
+      mii_i = mean_mii_dict[tuple_i]
+      if comparison_criteria == 'mse':
+        axis_where_to_perform_mean = tuple(np.arange(len(mii_i.shape)))[1:]
+        comparison_value = np.mean(
+            np.sqrt(np.sum(np.square(auto_mii_x_x - mii_i),
+                           axis=axis_where_to_perform_mean)))
+
+      elif comparison_criteria == 'entropy_diff':
+        auto_mii_entropy = score_functions.get_entropy(auto_mii_x_x[None, ...])[
+          0]
+        mii_i_entropy = score_functions.get_entropy(mii_i[None, ...])[0]
+        comparison_value = np.abs(auto_mii_entropy - mii_i_entropy)
+
+      elif comparison_criteria == 'entropy':
+        comparison_value = score_functions.get_entropy(auto_mii_x_x[None, ...])[
+          0]
+
+      sorted_mii_by_criteria[tuple_i] = comparison_value
+
+  def plot_mii_dict_with_comp_criteria(self, plot_show=False, fig_size=20,
+      norm_mii=True, extra_title_text='', criteria='mse'):
+    transformation_tuples = list(self.mii_dict.keys())
+    transform_tuple_explain_text = self._get_transformation_tuples_explain_txt(
+        len(transformation_tuples[0]))
+    mean_mii_dict = self.get_mean_mii_dict()
+    if norm_mii:
+      mean_mii_dict = self.normalize_mean_mii_dict(mean_mii_dict)
+
+    comparison_criteria_dict = self.get_comparisons_with_auto_mii(mean_mii_dict,
+                                                                  criteria)
+    comp_tuples = np.array(list(comparison_criteria_dict.keys()))
+    comp_values = list(comparison_criteria_dict.values())
+    sorted_idx_comp_values = np.argsort(comp_values)
+    transformation_tuples = comp_tuples[sorted_idx_comp_values]
+
+    all_mean_mii_array = np.array(list(mean_mii_dict.values()))
+    n_transformations = len(transformation_tuples)
+    n_subplots_sqrt_side = int(np.ceil(np.sqrt(n_transformations)))
+    fig, axs = plt.subplots(
+        n_subplots_sqrt_side, n_subplots_sqrt_side,
+        figsize=(fig_size, fig_size),
+        gridspec_kw={'wspace': 0.01, 'hspace': 0.01}, constrained_layout=True)
+    sup_title = transform_tuple_explain_text + \
+                '; sort criteria %s; norm mii: %s' % (criteria, str(
+        norm_mii)) + '; %s' % extra_title_text
+    fig.suptitle(sup_title, fontsize=fig_size * 2)
+    axs = axs.flatten()
+    vmin = np.min(all_mean_mii_array)
+    vmax = np.max(all_mean_mii_array)
+    for tuple_idx, tuple in enumerate(transformation_tuples):
+      img = axs[tuple_idx].imshow(mean_mii_dict[tuple], vmax=vmax, vmin=vmin)
+      mii_title = 'I(X;T(X)) %s, %.4f' % (
+      str(tuple), comparison_criteria_dict[tuple_idx])
+      axs[tuple_idx].set_title(mii_title, fontsize=fig_size * 1.2)
+      # if not norm_mii:
+      #   divider = make_axes_locatable(axs[tuple_idx])
+      #   cax = divider.append_axes('right', size='5%', pad=0.05)
+      #   fig.colorbar(img, cax=cax, orientation='vertical')
+
+    for ax in axs:
+      ax.axis('off')
+
+    if plot_show:
+      plt.show()
+
+    plt.close()
+
 
 if __name__ == '__main__':
-  from modules.transform_selection.artificial_dataset_factory import CirclesFactory
+  from modules.transform_selection.artificial_dataset_factory import \
+    CirclesFactory
   from modules.transform_selection.mutual_info.mi_image_calculator import \
     MIImageCalculator
   from modules.info_metrics.information_estimator_by_batch import \

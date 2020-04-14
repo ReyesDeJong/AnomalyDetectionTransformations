@@ -47,3 +47,4 @@ ERROR_NAN_METRIC = "Metric %s has NaN values; munsn't be calculated with batch m
 
 #Folder Names
 RESULTS = 'results'
+

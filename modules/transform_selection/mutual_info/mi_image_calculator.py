@@ -18,7 +18,7 @@ import tensorflow as tf
 import numpy as np
 import matplotlib.pyplot as plt
 from modules.geometric_transform.transformations_tf import AbstractTransformer
-from modules.transform_selection.mutual_info.mi_images_on_transformations_manager import MIIOnTransformationsManager
+from modules.transform_selection.mutual_info.mi_images_on_transformations_manager_selector import MIIOnTransformationsManager
 from tqdm import tqdm
 
 
