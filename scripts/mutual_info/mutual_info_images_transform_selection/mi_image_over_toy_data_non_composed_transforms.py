@@ -77,9 +77,6 @@ class MIIOverComposedTransformAndToyDataExperiment(object):
         extra_title_text=self.dataset_name_and_extra_title, criteria='entropy')
     mii_every_transform.plot_mii_dict_with_comp_criteria(
         plot_show=self.show_plots, norm_mii=False,
-        extra_title_text=self.dataset_name_and_extra_title, criteria='entropy')
-    mii_every_transform.plot_mii_dict_with_comp_criteria(
-        plot_show=self.show_plots, norm_mii=False,
         extra_title_text=self.dataset_name_and_extra_title,
         criteria='entropy_diff')
     # mii_every_transform.plot_mii_dict(
