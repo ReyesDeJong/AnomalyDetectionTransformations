@@ -18,7 +18,6 @@ class Trainer(object):
   Constructor
   """
 
-
   def __init__(self, data_loader: HiTSOutlierLoader,
       params={param_keys.RESULTS_FOLDER_NAME: '',
               param_keys.SCORES_TO_USE: None}):
@@ -49,11 +48,11 @@ class Trainer(object):
       message += '\n\n  %s' % essential_metrics_key
       score_names = all_it_metrics[essential_metrics_key].keys()
       for score_key in score_names:
-        mean = np.mean(
-            all_it_metrics[essential_metrics_key][score_key])
-        std = np.std(
-            all_it_metrics[essential_metrics_key][score_key])
-        message += '\n  %s : %.4f +/- %.4f' % (score_key, mean, std)
+        score_list = all_it_metrics[essential_metrics_key][score_key]
+        mean = np.mean(score_list)
+        std = np.std(score_list)
+        message += '\n  %s : %.4f +/- %.4f %s' % (
+        score_key, mean, std, str(score_list))
     return message
 
   def train_model_n_times(self, ModelClass,
