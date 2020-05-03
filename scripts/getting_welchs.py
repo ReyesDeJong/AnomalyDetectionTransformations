@@ -66,3 +66,20 @@ hits_4_channels_Transformer_ac_97 =   [(0.97175), (0.972), (0.97175), (0.97425),
 hits_4_channels_Manual_35_2_Transform_ac_97 =   [(0.97275), (0.96975), (0.97225), (0.97275), (0.97275), (0.9715), (0.97325), (0.97275), (0.97175), (0.97175)]
 [0.9721249999999999, 0.0009568829604502237]
 ttestPrint(hits_4_channels_Manual_35_2_Transform_ac_97, hits_4_channels_Transformer_ac_97)
+
+
+
+#TABLE IV
+
+#hits
+hits_4_channels_Transformer_NO_EARLYSTOP =   [0.9863899999999999, 0.98160825, 0.98385925, 0.9884505, 0.9884715000000001, 0.9846090000000001, 0.98554375, 0.9874827499999999, 0.9843824999999999, 0.98940925]
+hits_4_channels_Manual_35_2_Transform =  [(0.993201), (0.99161825), (0.99145025), (0.99296525), (0.9913495), (0.991835), (0.992156), (0.99183725), (0.99193), (0.9920725)]
+
+print('Table IV HiTS')
+ttestPrint(hits_4_channels_Transformer_NO_EARLYSTOP, hits_4_channels_Manual_35_2_Transform)
+
+#ztf
+small_ztf_Transformer_NO_EARLY_STOP =  [ (0.85118878),  (0.89060556),  (0.87974611),  (0.84909856),  (0.87502222),  (0.87970222),  (0.87623533),  (0.87922178),  (0.87876656),  (0.872923)]
+small_ztf_PlusKernel_Transformer_after_selection_29  =[(0.92467856), (0.90935733), (0.92589711), (0.91672922), (0.91298467), (0.90359922), (0.91629644), (0.91967278), (0.91783511), (0.90742467), (0.89729522), (0.92098756), (0.90957022), (0.91190589)]
+print('Table IV ZTF')
+ttestPrint(small_ztf_Transformer_NO_EARLY_STOP, small_ztf_PlusKernel_Transformer_after_selection_29)
