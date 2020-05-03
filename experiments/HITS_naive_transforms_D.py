@@ -1,4 +1,5 @@
 """
+MEANING OF D IN BOOK!
 Selecting best score for large Resnet model, using Simple-Kernel-72 transformers and hits4c-ztf
 """
 
