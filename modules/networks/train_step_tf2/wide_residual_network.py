@@ -62,7 +62,7 @@ class WideResidualNetwork(DeepHits):
     self._init_builds()
     self._keras_compile()
 
-  def call(self, input_tensor, training=False):
+  def call(self, input_tensor, training=False, remove_top=False):
     # x = self.input_layer(input_tensor)
     x = self.conv_1(input_tensor)  # x)
     x = self.group_1(x, training=training)
@@ -70,6 +70,8 @@ class WideResidualNetwork(DeepHits):
     x = self.group_3(x, training=training)
     x = self.bn_1(x, training=training)
     x = self.act_1(x)
+    if remove_top:
+      return x
     x = self.gap_1(x)
     x = self.fc_1(x)
     x = self.act_out(x)

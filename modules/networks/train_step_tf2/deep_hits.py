@@ -67,7 +67,7 @@ class DeepHits(tf.keras.Model):
           general_keys.ADAM, general_keys.CATEGORICAL_CROSSENTROPY,
           [general_keys.ACC])
 
-  def call(self, input_tensor, training=False):
+  def call(self, input_tensor, training=False, remove_top=False):
     x = self.zp(input_tensor)
     x = self.conv_1(x)
     x = self.conv_2(x)
@@ -76,6 +76,8 @@ class DeepHits(tf.keras.Model):
     x = self.conv_4(x)
     x = self.conv_5(x)
     x = self.mp_2(x)
+    if remove_top:
+      return x
     x = self.flatten(x)
     x = self.dense_1(x)
     x = self.do_1(x, training=training)
@@ -263,6 +265,23 @@ class DeepHits(tf.keras.Model):
     self.eval_loss.reset_states()
     self.eval_accuracy.reset_states()
     return results_dict
+
+  @tf.function
+  def get_activation_step(self, batch):
+    return self.call(batch, remove_top=True)
+
+  def get_activations(self, x, batch_size=1024):
+    dataset = tf.data.Dataset.from_tensor_slices(
+        (x)).batch(batch_size)
+    activations_list = []
+    for images in dataset:
+      # print(images.shape)
+      activations = self.get_activation_step(images)
+      # print(predictions.shape)
+      activations_list.append(activations)
+    concatenated_activation = np.concatenate(activations_list)
+    # print(concatenated_activation.shape)
+    return concatenated_activation.reshape(concatenated_activation.shape[0], np.prod(concatenated_activation.shape[1:]))
 
 
 if __name__ == '__main__':

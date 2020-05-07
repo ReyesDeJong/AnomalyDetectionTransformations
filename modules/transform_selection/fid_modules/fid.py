@@ -189,6 +189,20 @@ def calculate_activation_statistics(images, sess, batch_size=50, verbose=False):
   return mu, sigma
 
 
+def calculate_activation_statistics_from_activation_array(act):
+  """Calculation of the statistics used by the FID.
+  Params:
+  -- act      : Numpy array of dimension (n_samples, activation_dims).
+
+  Returns:
+  -- mu    : The mean over samples of the activations of the pool_3 layer of
+             the incption model.
+  -- sigma : The covariance matrix of the activations of the pool_3 layer of
+             the incption model.
+  """
+  mu = np.mean(act, axis=0)
+  sigma = np.cov(act, rowvar=False)
+  return mu, sigma
 # ------------------
 # The following methods are implemented to obtain a batched version of the activations.
 # This has the advantage to reduce memory requirements, at the cost of slightly reduced efficiency.
