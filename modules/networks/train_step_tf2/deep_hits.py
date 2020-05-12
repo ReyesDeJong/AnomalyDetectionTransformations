@@ -76,13 +76,13 @@ class DeepHits(tf.keras.Model):
     x = self.conv_4(x)
     x = self.conv_5(x)
     x = self.mp_2(x)
-    if remove_top:
-      return x
     x = self.flatten(x)
     x = self.dense_1(x)
     x = self.do_1(x, training=training)
     x = self.dense_2(x)
     x = self.do_2(x, training=training)
+    if remove_top:
+      return x
     x = self.dense_3(x)
     x = self.act_out(x)
     return x

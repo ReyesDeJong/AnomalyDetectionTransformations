@@ -9,7 +9,8 @@ PROJECT_PATH = os.path.abspath(
     os.path.join(os.path.dirname(__file__), '..'))
 sys.path.append(PROJECT_PATH)
 import tensorflow as tf
-from modules.networks.deep_hits import DeepHits
+# from modules.networks.deep_hits import DeepHits
+from modules.networks.train_step_tf2.deep_hits import DeepHits
 from modules.geometric_transform.transformations_tf import AbstractTransformer
 from modules.data_loaders.ztf_outlier_loader import ZTFOutlierLoader
 from parameters import general_keys
@@ -26,20 +27,22 @@ class TransformODSimpleModel(TransformODModel):
       name='Transformer_OD_Simple_Model',
       **kwargs):
     super(TransformODModel, self).__init__(name=name)
+    self.data_loader = data_loader
+    self.transformer = transformer
     self.date = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
     self.main_model_path = self.create_main_model_paths(results_folder_name,
                                                         self.name)
+    self.create_specific_model_paths()
     utils.check_paths(self.main_model_path)
-    self.data_loader = data_loader
-    self.transformer = transformer
     self.network = self.get_network(
         input_shape=input_shape, n_classes=self.transformer.n_transforms,
-        **kwargs)
+        model_path=self.specific_model_folder, **kwargs)
 
   # TODO: do a param dict
-  def get_network(self, input_shape, n_classes, **kwargs):
+  def get_network(self, input_shape, n_classes, model_path, **kwargs):
     return DeepHits(
-        input_shape=input_shape, n_classes=n_classes, **kwargs)
+        input_shape=input_shape, n_classes=n_classes, model_path=model_path,
+        **kwargs)
 
 
 if __name__ == '__main__':

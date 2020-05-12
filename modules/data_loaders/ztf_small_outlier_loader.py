@@ -9,7 +9,6 @@ safe max data loading float64 (~50GB): (by using float 32 it is reduced to half)
 
 import os
 import sys
-import warnings
 
 import numpy as np
 import pandas as pd
@@ -19,25 +18,32 @@ PROJECT_PATH = os.path.abspath(
 sys.path.append(PROJECT_PATH)
 
 from modules.data_set_generic import Dataset
-from parameters import general_keys, param_keys
-from modules.geometric_transform.transformations_tf import AbstractTransformer
 from parameters import loader_keys
-from modules.data_loaders.frame_to_input import FrameToInput
 from modules.data_loaders.ztf_outlier_loader import ZTFOutlierLoader
 from modules import utils
+
 
 class ZTFSmallOutlierLoader(ZTFOutlierLoader):
 
   def __init__(self, params: dict, dataset_name='small_ztf'):
+    self.params = self.get_default_params()
+    self.params.update(params)
     self.data_path = params[loader_keys.DATA_PATH]
     self.name = dataset_name
     self.template_save_path = self._get_template_save_path()
-    self.crop_size = 21
+
+  def get_default_params(self) -> dict:
+    default_params = {
+      loader_keys.USED_CHANNELS: [0, 1, 2],
+      loader_keys.DATA_PATH: None
+    }
+    return default_params
 
   def _get_template_save_path(self) -> str:
     """get name of final saved file to check if it's been already generated"""
     text_to_add = 'generated_%s/data' % (self.name)
-    save_path = utils.add_text_to_beginning_of_file_path(self.data_path, text_to_add)
+    save_path = utils.add_text_to_beginning_of_file_path(self.data_path,
+                                                         text_to_add)
     utils.check_path(os.path.dirname(os.path.abspath(save_path)))
     return save_path
 
@@ -47,6 +53,7 @@ class ZTFSmallOutlierLoader(ZTFOutlierLoader):
   def get_outlier_detection_datasets(self):
     """directly load dataset tuples"""
     return pd.read_pickle(self.data_path)
+
 
 if __name__ == "__main__":
   from modules.geometric_transform.transformations_tf import Transformer
@@ -74,4 +81,3 @@ if __name__ == "__main__":
   print('train: ', np.unique(y_train_trans, return_counts=True))
   print('val: ', np.unique(y_val_trans, return_counts=True))
   print('test: ', np.unique(y_test_trans, return_counts=True))
-
