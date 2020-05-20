@@ -9,9 +9,15 @@ due the fact that padding reflects wiithouy copying the edge pixels"""
 
 
 def cnn2d_depthwise_tf(image_batch, filters):
-  features_tf = tf.nn.depthwise_conv2d(image_batch, filters,
+  df, _, cin, cmul = filters.shape
+  padding = df // 2
+  batch_padded = tf.pad(image_batch,
+                        [[0, 0], [padding, padding],
+                         [padding, padding],
+                         [0, 0]], "REFLECT")
+  features_tf = tf.nn.depthwise_conv2d(batch_padded, filters,
                                        strides=[1, 1, 1, 1],
-                                       padding='SAME')
+                                       padding='VALID')
 
   return features_tf
 
@@ -280,6 +286,7 @@ class AbstractTransformer(abc.ABC):
     y_transform = self._get_y_transform(self.original_x_len,
                                         transformations_inds)
     del train_ds
+    x_transform = self._normalize_1_1_by_image(x_transform)
     return x_transform, y_transform
 
   def _get_y_transform(self, len_x, transformations_inds):

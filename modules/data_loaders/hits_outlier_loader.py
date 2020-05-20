@@ -7,7 +7,6 @@ safe max data loading float64 (~50GB): (by using float 32 it is reduced to half)
 
 import os
 import sys
-import warnings
 
 import numpy as np
 import pandas as pd
@@ -22,6 +21,7 @@ from modules.geometric_transform.transformations_tf import AbstractTransformer
 from parameters import loader_keys
 from modules.data_loaders.hits_loader import HiTSLoader
 from modules import utils
+import matplotlib.pyplot as plt
 
 
 # TODO: refactor to integrate with ZTF dataset and
@@ -45,10 +45,13 @@ class HiTSOutlierLoader(object):
   def _get_template_save_path(self) -> str:
     """get name of final saved file to check if it's been already generated"""
     text_to_add = 'generated_%s/seed%i_crop%s_nChannels%i' % (self.name,
-                                                    self.random_seed,
-                                                    str(self.crop_size),
-                                                    len(self.used_channels))
-    save_path = utils.add_text_to_beginning_of_file_path(self.data_path, text_to_add)
+                                                              self.random_seed,
+                                                              str(
+                                                                  self.crop_size),
+                                                              len(
+                                                                  self.used_channels))
+    save_path = utils.add_text_to_beginning_of_file_path(self.data_path,
+                                                         text_to_add)
     utils.check_path(os.path.dirname(os.path.abspath(save_path)))
     return save_path
 
@@ -109,7 +112,7 @@ class HiTSOutlierLoader(object):
     # print(np.unique(new_labels, return_counts=True))
     inlier_task = 1  #
     n_outliers = int(
-      np.round(self.test_percentage_all_data * self.n_samples_by_class))
+        np.round(self.test_percentage_all_data * self.n_samples_by_class))
     # separate data into train-val-test
     outlier_indexes = np.where(new_labels != inlier_task)[0]
     np.random.RandomState(seed=self.random_seed).shuffle(outlier_indexes)
@@ -169,6 +172,31 @@ class HiTSOutlierLoader(object):
                   (x_test_transformed, test_transform_inds))
     utils.save_pickle(sets_tuple, transformed_data_path)
     return sets_tuple
+
+  def plot_image(self, image, save_path=None, show=True, title=None,
+      figsize=3):
+    image_names = ['template', 'science', 'difference', 'SNR difference']
+    n_channels = image.shape[-1]
+    fig, axes = plt.subplots(
+        1, n_channels, figsize=(figsize * n_channels, figsize + figsize * 0.4))
+    for i, ax_i in enumerate(axes):
+      ax_i.imshow(image[:, :, i], interpolation='nearest', cmap='gray')
+      ax_i.axis('off')
+      ax_i.set_title(image_names[i], fontdict={'fontsize': 15})
+    if title:
+      fig.suptitle(title, fontsize=20)
+    fig.tight_layout()
+    plt.gca().set_axis_off()
+    plt.margins(0, 0)
+    plt.gca().xaxis.set_major_locator(plt.NullLocator())
+    plt.gca().yaxis.set_major_locator(plt.NullLocator())
+    if save_path:
+      data_format = save_path.split('.')[-1]
+      fig.savefig(save_path, format=data_format, dpi=600, bbox_inches='tight',
+                  pad_inches=0, transparent=True)
+    if show:
+      plt.show()
+    plt.close()
 
 
 if __name__ == "__main__":
