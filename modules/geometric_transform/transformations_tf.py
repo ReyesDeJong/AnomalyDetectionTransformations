@@ -534,7 +534,7 @@ def test_visualize_transforms():
   plt.imshow(im[0])
   plt.show()
 
-  transformer = Transformer(16, 16)
+  transformer = Transformer(60, 60)
   transformations_inds = np.arange(transformer.n_transforms)
 
   transformed_batch = transformer.transform_batch(im,
@@ -544,13 +544,15 @@ def test_visualize_transforms():
 
   for i in range(72):
     transform_indx = i
-    if (i % 4) == 0:
+    if (i % 4) == 0 or i==1 or i==2 or i==3:
       plt.imshow(transformed_batch[transform_indx])
       plt.title(str(transformer.transformation_tuples[i]))
+      plt.axis('off')
       plt.show()
 
 
 def plot_img(transformed_batch, transformer, indx, batch_size=8):
+  import matplotlib.pyplot as plt
   plt.imshow(transformed_batch.numpy()[indx])
   transform_indx = indx // batch_size
   plt.title(str(transformer.transformation_tuples[transform_indx]))
@@ -615,112 +617,114 @@ def test_dataset_generation():
 
 
 def plot_astro_img(x, transform):
+  import matplotlib.pyplot as plt
   plt.imshow(x[..., 0])
   plt.title(str(transform))
   plt.show()
 
 
 if __name__ == "__main__":
-  import imageio
-  import glob
-  import os, sys
-  import matplotlib.pyplot as plt
-  import datetime
-  import time
-
-  PROJECT_PATH = os.path.abspath(
-      os.path.join(os.path.dirname(__file__), '..', '..'))
-  sys.path.append(PROJECT_PATH)
-
-  from modules.utils import set_soft_gpu_memory_growth
-  from parameters import loader_keys, general_keys
-  from modules.data_loaders.ztf_outlier_loader import ZTFOutlierLoader
-
-  set_soft_gpu_memory_growth()
-
-  params = {
-    loader_keys.DATA_PATH: os.path.join(
-        PROJECT_PATH, '../datasets/ztf_v1_bogus_added.pkl'),
-    loader_keys.VAL_SET_INLIER_PERCENTAGE: 0.1,
-    loader_keys.USED_CHANNELS: [0, 1, 2],
-    loader_keys.CROP_SIZE: 21,
-    general_keys.RANDOM_SEED: 42,
-    loader_keys.TRANSFORMATION_INLIER_CLASS_VALUE: 1
-  }
-  transformer = Transformer()
-  batch_size = 512
-  ztf_outlier_dataset = ZTFOutlierLoader(params)
-  (X_train, y_train), (X_val, y_val), (
-    X_test, y_test) = ztf_outlier_dataset.get_outlier_detection_datasets()
-
-  train_ds = tf.data.Dataset.from_tensor_slices((X_train)).batch(batch_size)
-  transformations_inds = np.arange(transformer.n_transforms)
-
-  EPOCHS = 1
-
-  # # no labels
+  test_visualize_transforms()
+  # import imageio
+  # import glob
+  # import os, sys
+  # import matplotlib.pyplot as plt
+  # import datetime
+  # import time
+  #
+  # PROJECT_PATH = os.path.abspath(
+  #     os.path.join(os.path.dirname(__file__), '..', '..'))
+  # sys.path.append(PROJECT_PATH)
+  #
+  # from modules.utils import set_soft_gpu_memory_growth
+  # from parameters import loader_keys, general_keys
+  # from modules.data_loaders.ztf_outlier_loader import ZTFOutlierLoader
+  #
+  # set_soft_gpu_memory_growth()
+  #
+  # params = {
+  #   loader_keys.DATA_PATH: os.path.join(
+  #       PROJECT_PATH, '../datasets/ztf_v1_bogus_added.pkl'),
+  #   loader_keys.VAL_SET_INLIER_PERCENTAGE: 0.1,
+  #   loader_keys.USED_CHANNELS: [0, 1, 2],
+  #   loader_keys.CROP_SIZE: 21,
+  #   general_keys.RANDOM_SEED: 42,
+  #   loader_keys.TRANSFORMATION_INLIER_CLASS_VALUE: 1
+  # }
+  # transformer = Transformer()
+  # batch_size = 512
+  # ztf_outlier_dataset = ZTFOutlierLoader(params)
+  # (X_train, y_train), (X_val, y_val), (
+  #   X_test, y_test) = ztf_outlier_dataset.get_outlier_detection_datasets()
+  #
   # train_ds = tf.data.Dataset.from_tensor_slices((X_train)).batch(batch_size)
   # transformations_inds = np.arange(transformer.n_transforms)
+  #
+  # EPOCHS = 1
+  #
+  # # # no labels
+  # # train_ds = tf.data.Dataset.from_tensor_slices((X_train)).batch(batch_size)
+  # # transformations_inds = np.arange(transformer.n_transforms)
+  # # start_time = time.time()
+  # # for epoch in range(EPOCHS):
+  # #   transformed_dataset_v0 = []
+  # #   for images in train_ds:
+  # #     transformed_batch = transformer.transform_batch(images,
+  # #                                                     transformations_inds)
+  # #     transformed_dataset_v0.append(transformed_batch)
+  # #   transformed_dataset_v0 = np.concatenate(
+  # #       [tensor.numpy() for tensor in transformed_dataset_v0])
+  # # print(transformed_dataset_v0.shape)
+  # # time_usage = str(datetime.timedelta(
+  # #     seconds=int(round(time.time() - start_time))))
+  # # print("Time usage No Labels %s: %s" % (transformer.name, str(time_usage)),
+  # #       flush=True)
+  # #
+  # # retrieving labels along side batch generationg
   # start_time = time.time()
   # for epoch in range(EPOCHS):
-  #   transformed_dataset_v0 = []
-  #   for images in train_ds:
-  #     transformed_batch = transformer.transform_batch(images,
-  #                                                     transformations_inds)
-  #     transformed_dataset_v0.append(transformed_batch)
-  #   transformed_dataset_v0 = np.concatenate(
-  #       [tensor.numpy() for tensor in transformed_dataset_v0])
-  # print(transformed_dataset_v0.shape)
+  #   transformed_dataset_v0 = transformer.apply_all_transformsv0(X_train,
+  #                                                               batch_size)
+  # print(transformed_dataset_v0[0].shape)
   # time_usage = str(datetime.timedelta(
   #     seconds=int(round(time.time() - start_time))))
-  # print("Time usage No Labels %s: %s" % (transformer.name, str(time_usage)),
-  #       flush=True)
+  # print("Time usage Images along labels v0 %s: %s" % (
+  #   transformer.name, str(time_usage)), flush=True)
   #
-  # retrieving labels along side batch generationg
-  start_time = time.time()
-  for epoch in range(EPOCHS):
-    transformed_dataset_v0 = transformer.apply_all_transformsv0(X_train,
-                                                                batch_size)
-  print(transformed_dataset_v0[0].shape)
-  time_usage = str(datetime.timedelta(
-      seconds=int(round(time.time() - start_time))))
-  print("Time usage Images along labels v0 %s: %s" % (
-    transformer.name, str(time_usage)), flush=True)
-
-  # retrieving labels after batch generationg
-  start_time = time.time()
-  for epoch in range(EPOCHS):
-    transformed_dataset_v1 = transformer.apply_all_transforms(X_train,
-                                                              batch_size)
-  print(transformed_dataset_v1[0].shape)
-  time_usage = str(datetime.timedelta(
-      seconds=int(round(time.time() - start_time))))
-  print("Time usage Images along labels v1 %s: %s" % (
-    transformer.name, str(time_usage)), flush=True)
-
-  start_time = time.time()
-  (X_train, y_train), (X_val, y_val), (
-    X_test, y_test) = ztf_outlier_dataset.get_transformed_datasets(
-      transformer)
-  print("Time usage Loading Pickle %s: %s" % (
-    transformer.name, str(time_usage)), flush=True)
-
-  # from transformations import Transformer as slow_Transformer
+  # # retrieving labels after batch generationg
+  # start_time = time.time()
+  # for epoch in range(EPOCHS):
+  #   transformed_dataset_v1 = transformer.apply_all_transforms(X_train,
+  #                                                             batch_size)
+  # print(transformed_dataset_v1[0].shape)
+  # time_usage = str(datetime.timedelta(
+  #     seconds=int(round(time.time() - start_time))))
+  # print("Time usage Images along labels v1 %s: %s" % (
+  #   transformer.name, str(time_usage)), flush=True)
   #
-  # slow_transformer = slow_Transformer()
+  # start_time = time.time()
   # (X_train, y_train), (X_val, y_val), (
   #   X_test, y_test) = ztf_outlier_dataset.get_transformed_datasets(
-  #     slow_transformer)
+  #     transformer)
+  # print("Time usage Loading Pickle %s: %s" % (
+  #   transformer.name, str(time_usage)), flush=True)
   #
-  # # tranform + n_transforms * sample_i_in_one_batch
-  # sample_i_in_one_batch = 158
-  # transform_i = 60
-  # plot_astro_img(X_train[transform_i + 72 * sample_i_in_one_batch],
-  #                transformer.transformation_tuples[
-  #                  y_train[transform_i + 72 * sample_i_in_one_batch]])
-  # # sample_i_in_one_batch + tranform * batch_size
-  # plot_astro_img(transformed_dataset_v1[0][
-  #                  sample_i_in_one_batch + transform_i * batch_size],
-  #                transformer.transformation_tuples[
-  #                  transformed_dataset_v1[1][
-  #                    sample_i_in_one_batch + transform_i * batch_size]])
+  # # from transformations import Transformer as slow_Transformer
+  # #
+  # # slow_transformer = slow_Transformer()
+  # # (X_train, y_train), (X_val, y_val), (
+  # #   X_test, y_test) = ztf_outlier_dataset.get_transformed_datasets(
+  # #     slow_transformer)
+  # #
+  # # # tranform + n_transforms * sample_i_in_one_batch
+  # # sample_i_in_one_batch = 158
+  # # transform_i = 60
+  # # plot_astro_img(X_train[transform_i + 72 * sample_i_in_one_batch],
+  # #                transformer.transformation_tuples[
+  # #                  y_train[transform_i + 72 * sample_i_in_one_batch]])
+  # # # sample_i_in_one_batch + tranform * batch_size
+  # # plot_astro_img(transformed_dataset_v1[0][
+  # #                  sample_i_in_one_batch + transform_i * batch_size],
+  # #                transformer.transformation_tuples[
+  # #                  transformed_dataset_v1[1][
+  # #                    sample_i_in_one_batch + transform_i * batch_size]])
