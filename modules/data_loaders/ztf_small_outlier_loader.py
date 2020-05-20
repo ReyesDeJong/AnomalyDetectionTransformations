@@ -21,6 +21,7 @@ from modules.data_set_generic import Dataset
 from parameters import loader_keys
 from modules.data_loaders.ztf_outlier_loader import ZTFOutlierLoader
 from modules import utils
+import matplotlib.pyplot as plt
 
 
 class ZTFSmallOutlierLoader(ZTFOutlierLoader):
@@ -53,6 +54,37 @@ class ZTFSmallOutlierLoader(ZTFOutlierLoader):
   def get_outlier_detection_datasets(self):
     """directly load dataset tuples"""
     return pd.read_pickle(self.data_path)
+
+  def plot_image(self, image, save_path=None, show=True, title=None,
+      figsize=3):
+    image_names = ['template', 'science', 'difference', 'SNR difference']
+    n_channels = image.shape[-1]
+    fig, axes = plt.subplots(
+        1, n_channels, figsize=(figsize * n_channels, figsize + figsize * 0.4))
+    for i, ax_i in enumerate(axes):
+      if i == 0:
+        indx = 1
+      elif i == 1:
+        indx = 0
+      else:
+        indx = i
+      ax_i.imshow(image[:, :, indx], interpolation='nearest', cmap='gray')
+      ax_i.axis('off')
+      ax_i.set_title(image_names[indx], fontdict={'fontsize': 15})
+    if title:
+      fig.suptitle(title, fontsize=20)
+    fig.tight_layout()
+    plt.gca().set_axis_off()
+    plt.margins(0, 0)
+    plt.gca().xaxis.set_major_locator(plt.NullLocator())
+    plt.gca().yaxis.set_major_locator(plt.NullLocator())
+    if save_path:
+      data_format = save_path.split('.')[-1]
+      fig.savefig(save_path, format=data_format, dpi=600, bbox_inches='tight',
+                  pad_inches=0, transparent=True)
+    if show:
+      plt.show()
+    plt.close()
 
 
 if __name__ == "__main__":
