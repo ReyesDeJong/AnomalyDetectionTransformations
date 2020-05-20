@@ -234,6 +234,14 @@ class AbstractTransformer(abc.ABC):
     transformations_inds = np.arange(self.n_transforms)
     return self.apply_transforms(x, transformations_inds, batch_size)
 
+  def _normalize_1_1_by_image(self, image_array):
+    images = image_array
+    images -= np.nanmin(images, axis=(1, 2))[:, np.newaxis, np.newaxis, :]
+    images = images / np.nanmax(images, axis=(1, 2))[
+                      :, np.newaxis, np.newaxis, :]
+    images = 2 * images - 1
+    return images
+
   def apply_transforms(self, x, transformations_inds, batch_size=None):
     """generate transform inds, that are the labels of each transform and
     its respective transformed data. It generates labels after images"""

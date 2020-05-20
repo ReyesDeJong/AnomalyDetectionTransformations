@@ -68,12 +68,11 @@ class HiTSLoader(object):
 
   # TODO: dont do this normalization, it is by sample
   def normalize_images(self, images):
-    # normilize 0-1
-    for image_index in range(images.shape[0]):
-      image = images[image_index]
-      image -= image.min()
-      image = image / image.max()
-      images[image_index] = image
+    # normalize -1:1 by image
+    images -= np.nanmin(images, axis=(1, 2))[:, np.newaxis, np.newaxis, :]
+    images = images / np.nanmax(images, axis=(1, 2))[
+                      :, np.newaxis, np.newaxis, :]
+    images = 2 * images - 1
     return images
 
   def _preprocess_data(self, data_dict, first_n_samples, label_value):
