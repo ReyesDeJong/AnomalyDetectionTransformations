@@ -11,8 +11,6 @@ PROJECT_PATH = os.path.abspath(
     os.path.join(os.path.dirname(__file__), '..', '..', '..'))
 sys.path.append(PROJECT_PATH)
 
-# from trainers.base_trainer import Trainer
-# from models.transformer_od import TransformODModel
 from modules.geometric_transform.transformer_no_compositions import \
   NoCompositionTransformer
 from modules.transform_selection.fid_modules import fid
@@ -21,7 +19,7 @@ from modules.data_loaders.hits_outlier_loader import HiTSOutlierLoader
 from modules import utils
 
 
-class ResultCSVGeneratorRawFID(object):
+class ResultDictGeneratorRawFID(object):
 
   def __init__(self, data_loader: HiTSOutlierLoader):
     self._generator_name = 'RawFID'
@@ -113,15 +111,13 @@ if __name__ == "__main__":
     loader_keys.N_SAMPLES_BY_CLASS: 100000,
     loader_keys.TEST_PERCENTAGE: 0.0,
     loader_keys.VAL_SET_INLIER_PERCENTAGE: 0.0,
-    loader_keys.USED_CHANNELS: [0, 1, 2, 3],  # [2],#
+    loader_keys.USED_CHANNELS: [2],#[0, 1, 2, 3],  #
     loader_keys.CROP_SIZE: 21,
     general_keys.RANDOM_SEED: 42,
     loader_keys.TRANSFORMATION_INLIER_CLASS_VALUE: 1
   }
   hits_loader = HiTSOutlierLoader(hits_params, pickles_usage=False)
-  hits_loader.set_pickle_loading(False)
-  hits_loader.set_pickle_saving(False)
   data_loader = hits_loader
   x_train = data_loader.get_outlier_detection_datasets()[0][0]
-  csv_gen = ResultCSVGeneratorRawFID(hits_loader)
+  csv_gen = ResultDictGeneratorRawFID(hits_loader)
   print(csv_gen.get_results_dict(x_train[:2000]))
