@@ -91,7 +91,7 @@ class HistogramPlotterResultDict(object):
       ax.set_yscale('log')
     ax.set_title('Transformation Distances Grouped By "%s"' % regex)
     # box = ax.get_position()
-    ax.legend(loc='center left', bbox_to_anchor=(1, 1))
+    ax.legend(loc='center left', bbox_to_anchor=(1, 0.5))
     ax.xaxis.set_ticks(aux_idxs)
     ax.set_xticklabels(self._transformation_names_list)
     plt.show()
@@ -99,4 +99,4 @@ class HistogramPlotterResultDict(object):
 
 if __name__ == "__main__":
   hist_plotter = HistogramPlotterResultDict()
-  hist_plotter.plot_histograms_by_regex('RawFID', log_scale=True)
+  hist_plotter.plot_histograms_by_regex('Rdm', log_scale=False)
