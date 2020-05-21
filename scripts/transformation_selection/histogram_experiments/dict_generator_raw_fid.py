@@ -16,7 +16,9 @@ from modules.geometric_transform.transformer_no_compositions import \
 from modules.transform_selection.fid_modules import fid
 import numpy as np
 from modules.data_loaders.hits_outlier_loader import HiTSOutlierLoader
+from modules.data_loaders.ztf_outlier_loader import ZTFOutlierLoader
 from modules import utils
+from tqdm import tqdm
 
 
 class ResultDictGeneratorRawFID(object):
@@ -72,7 +74,7 @@ class ResultDictGeneratorRawFID(object):
       features_to_transform = features_original
     measure_original = self._get_measures_from_data(features_original)
     n_transforms = self._transformer.n_transforms
-    for transform_idx in range(n_transforms):
+    for transform_idx in tqdm(range(n_transforms)):
       features_trf = \
         self._transformer.apply_transforms(features_to_transform,
                                            [transform_idx])[0]
@@ -111,13 +113,34 @@ if __name__ == "__main__":
     loader_keys.N_SAMPLES_BY_CLASS: 100000,
     loader_keys.TEST_PERCENTAGE: 0.0,
     loader_keys.VAL_SET_INLIER_PERCENTAGE: 0.0,
-    loader_keys.USED_CHANNELS: [2],#[0, 1, 2, 3],  #
+    loader_keys.USED_CHANNELS: [2],  # [0, 1, 2, 3],  #
     loader_keys.CROP_SIZE: 21,
     general_keys.RANDOM_SEED: 42,
     loader_keys.TRANSFORMATION_INLIER_CLASS_VALUE: 1
   }
-  hits_loader = HiTSOutlierLoader(hits_params, pickles_usage=False)
-  data_loader = hits_loader
-  x_train = data_loader.get_outlier_detection_datasets()[0][0]
-  csv_gen = ResultDictGeneratorRawFID(hits_loader)
-  print(csv_gen.get_results_dict(x_train[:2000]))
+  hits_loader_1c = HiTSOutlierLoader(hits_params, pickles_usage=False)
+  hits_params.update({loader_keys.USED_CHANNELS: [0, 1, 2, 3]})
+  hits_loader_4c = HiTSOutlierLoader(hits_params, pickles_usage=False)
+  ztf_params = {
+    loader_keys.DATA_PATH: os.path.join(
+        PROJECT_PATH,
+        '../datasets/ALeRCE_data/converted_pancho_septiembre.pkl'),
+    loader_keys.VAL_SET_INLIER_PERCENTAGE: 0.0,
+    loader_keys.USED_CHANNELS: [0, 1, 2],
+    loader_keys.CROP_SIZE: 21,
+    general_keys.RANDOM_SEED: 42,
+    loader_keys.TRANSFORMATION_INLIER_CLASS_VALUE: 1
+  }
+  ztf_loader_3c = ZTFOutlierLoader(ztf_params, pickles_usage=False)
+  ztf_params.update({loader_keys.USED_CHANNELS: [2]})
+  ztf_loader_1c = ZTFOutlierLoader(ztf_params, pickles_usage=False)
+
+  data_loaders = [hits_loader_1c, hits_loader_4c,
+                  ztf_loader_1c, ztf_loader_3c]
+
+  for data_loader_i in data_loaders:
+    x_train = data_loader_i.get_outlier_detection_datasets()[0][0]
+    print(x_train.shape)
+    csv_gen = ResultDictGeneratorRawFID(data_loader_i)
+    csv_gen.get_results_dict(x_train)
+    print('')

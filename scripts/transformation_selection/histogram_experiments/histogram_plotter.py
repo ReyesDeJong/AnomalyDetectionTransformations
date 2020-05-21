@@ -39,14 +39,21 @@ class HistogramPlotterResultDict(object):
       'shiftX_-8', 'shiftY_8', 'shiftY_-8']
     return trf_names
 
-  def _get_dict_expname_results_with_same_dataloader_name(self,
-      dataloader_name):
+  # def _truncate_laplace(self, results_list):
+  #   laplace_idx = 6
+  #   laplace_value = results_list[laplace_idx]
+  #   results_array = np.array(results_list)
+  #   results_array.sort()
+  #   second_bigeest = results_array[-2]
+  #   if laplace_value > second_bigeest*3
+
+  def _get_dict_expname_results_grouped_by_regex(self, regex):
     dict_expname_result = {}
     result_names = [f for f in listdir(self._results_folder_path) if
                     isfile(join(self._results_folder_path, f))]
     result_names_given_dataloader = [name for name in result_names if
-                                     dataloader_name in name]
-    print(result_names_given_dataloader)
+                                     regex in name]
+    # print(result_names_given_dataloader)
     for result_file_name_i in result_names_given_dataloader:
       result_path_i = os.path.join(self._results_folder_path,
                                    result_file_name_i)
@@ -66,38 +73,30 @@ class HistogramPlotterResultDict(object):
     norm_list = norm_list / np.max(norm_list)
     return norm_list
 
-  def plot_histograms_by_dataloader_names(self, data_loader: HiTSOutlierLoader):
-    data_loader_name = data_loader.name
+  def plot_histograms_by_regex(self, regex: str, log_scale=False):
     dict_expname_result = self. \
-      _get_dict_expname_results_with_same_dataloader_name(data_loader_name)
-    ax = plt.figure(figsize=(8, 5)).add_subplot(111)
+      _get_dict_expname_results_grouped_by_regex(regex)
+    # print(list(dict_expname_result.keys()))
+    fig, ax = plt.subplots(1, 1, figsize=(10, 5))
     for exp_name in dict_expname_result.keys():
+      # print(exp_name)
       results_dict = dict_expname_result[exp_name]
       # print(results_dict)
       results_list = self._get_result_in_order_of_trf_names(results_dict)
       # print(results_list)
       aux_idxs = list(range(len(results_list)))
       norm_results = self._0_1_norm_list(results_list)
-      ax.plot(aux_idxs, norm_results)
+      ax.plot(aux_idxs, norm_results, label=exp_name)
+    if log_scale:
+      ax.set_yscale('log')
+    ax.set_title('Transformation Distances Grouped By "%s"' % regex)
+    # box = ax.get_position()
+    ax.legend(loc='center left', bbox_to_anchor=(1, 1))
     ax.xaxis.set_ticks(aux_idxs)
     ax.set_xticklabels(self._transformation_names_list)
     plt.show()
 
 
 if __name__ == "__main__":
-  from parameters import loader_keys, general_keys
-
-  hits_params = {
-    loader_keys.DATA_PATH: os.path.join(
-        PROJECT_PATH, '../datasets/HiTS2013_300k_samples.pkl'),
-    loader_keys.N_SAMPLES_BY_CLASS: 100000,
-    loader_keys.TEST_PERCENTAGE: 0.0,
-    loader_keys.VAL_SET_INLIER_PERCENTAGE: 0.0,
-    loader_keys.USED_CHANNELS: [0, 1, 2, 3],  # [2],#
-    loader_keys.CROP_SIZE: 21,
-    general_keys.RANDOM_SEED: 42,
-    loader_keys.TRANSFORMATION_INLIER_CLASS_VALUE: 1
-  }
-  hits_loader = HiTSOutlierLoader(hits_params, pickles_usage=False)
   hist_plotter = HistogramPlotterResultDict()
-  hist_plotter.plot_histograms_by_dataloader_names(hits_loader)
+  hist_plotter.plot_histograms_by_regex('RawFID', log_scale=True)

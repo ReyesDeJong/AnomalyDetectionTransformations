@@ -25,11 +25,12 @@ from parameters import loader_keys
 from modules.data_loaders.frame_to_input import FrameToInput
 from modules import utils
 
+
 # Todo: Do some refactoring to include kwargs
 # TODO see if data can be stored as 32 float
 class ZTFOutlierLoader(object):
 
-  def __init__(self, params: dict, dataset_name='ztf'):
+  def __init__(self, params: dict, dataset_name='ztf', pickles_usage=True):
     self.data_path = params[loader_keys.DATA_PATH]
     self.val_inlier_percentage = params[loader_keys.VAL_SET_INLIER_PERCENTAGE]
     self.used_channels = params[loader_keys.USED_CHANNELS]
@@ -39,14 +40,29 @@ class ZTFOutlierLoader(object):
       loader_keys.TRANSFORMATION_INLIER_CLASS_VALUE]
     self.name = dataset_name + '_%i_channels' % len(self.used_channels)
     self.template_save_path = self._get_template_save_path()
+    self.save_pickle = pickles_usage
+    self.load_pickle = pickles_usage
+
+  def set_pickles_usage(self, pickles_usage_state):
+    self.save_pickle = pickles_usage_state
+    self.load_pickle = pickles_usage_state
+
+  def set_pickle_loading(self, load_pickle_state):
+    self.load_pickle = load_pickle_state
+
+  def set_pickle_saving(self, save_pickle_state):
+    self.save_pickle = save_pickle_state
 
   def _get_template_save_path(self) -> str:
     """get name of final saved file to check if it's been already generated"""
     text_to_add = 'generated_%s/seed%i_crop%s_nChannels%i' % (self.name,
-                                                    self.random_seed,
-                                                    str(self.crop_size),
-                                                    len(self.used_channels))
-    save_path = utils.add_text_to_beginning_of_file_path(self.data_path, text_to_add)
+                                                              self.random_seed,
+                                                              str(
+                                                                self.crop_size),
+                                                              len(
+                                                                self.used_channels))
+    save_path = utils.add_text_to_beginning_of_file_path(self.data_path,
+                                                         text_to_add)
     utils.check_path(os.path.dirname(os.path.abspath(save_path)))
     return save_path
 
@@ -55,7 +71,7 @@ class ZTFOutlierLoader(object):
     # check if preprocessing has already been done
     unsplitted_data_path = utils.add_text_to_beginning_of_file_path(
         self.template_save_path, 'unsplitted')
-    if os.path.exists(unsplitted_data_path):
+    if os.path.exists(unsplitted_data_path) and self.load_pickle:
       return pd.read_pickle(unsplitted_data_path)
     # useful to avoid frameToInput to perform the transformation of Dataframe to a pickle dict
     data_path = self.data_path
@@ -72,6 +88,7 @@ class ZTFOutlierLoader(object):
       param_keys.TEST_SIZE: 0,  # not used
       param_keys.VAL_SIZE: 0,  # not used
       param_keys.NANS_TO: 0,
+      param_keys.VALIDATION_RANDOM_SEED: self.random_seed,
       param_keys.CROP_SIZE: self.crop_size,
       param_keys.CONVERTED_DATA_SAVEPATH: unprocessed_unsplitted_data_path
     }
@@ -86,7 +103,8 @@ class ZTFOutlierLoader(object):
          data_loader.dataset_preprocessor.nan_to_num
          ])
     dataset = data_loader.get_single_dataset()
-    utils.save_pickle(dataset, unsplitted_data_path)
+    if self.save_pickle:
+      utils.save_pickle(dataset, unsplitted_data_path)
     return dataset
 
   # TODO: check what happens inside here, particularly correct label consistency when new_labels are defined
@@ -95,7 +113,7 @@ class ZTFOutlierLoader(object):
     set of only inliers, while a test set with half-half inliers and outliers"""
     outlier_data_path = utils.add_text_to_beginning_of_file_path(
         self.template_save_path, 'outlier')
-    if os.path.exists(outlier_data_path):
+    if os.path.exists(outlier_data_path) and self.load_pickle:
       return pd.read_pickle(outlier_data_path)
 
     dataset = self.get_unsplitted_dataset()
@@ -140,7 +158,8 @@ class ZTFOutlierLoader(object):
     print('val: ', np.unique(y_val, return_counts=True))
     print('test: ', np.unique(y_test, return_counts=True))
     sets_tuple = ((X_train, y_train), (X_val, y_val), (X_test, y_test))
-    utils.save_pickle(sets_tuple, outlier_data_path)
+    if self.save_pickle:
+      utils.save_pickle(sets_tuple, outlier_data_path)
     return sets_tuple
 
   # TODO: implement transformation loading
@@ -156,7 +175,7 @@ class ZTFOutlierLoader(object):
     #  refactored into single method
     transformed_data_path = utils.add_text_to_beginning_of_file_path(
         self.template_save_path, '%s_outlier' % transformer.name)
-    if os.path.exists(transformed_data_path):
+    if os.path.exists(transformed_data_path) and self.load_pickle:
       print('loading pickle')
       return pd.read_pickle(transformed_data_path)
 
@@ -174,27 +193,30 @@ class ZTFOutlierLoader(object):
     sets_tuple = ((x_train_transformed, train_transform_inds),
                   (x_val_transformed, val_transform_inds),
                   (x_test_transformed, test_transform_inds))
-    utils.save_pickle(sets_tuple, transformed_data_path)
+    if self.save_pickle:
+      utils.save_pickle(sets_tuple, transformed_data_path)
     return sets_tuple
 
 
 if __name__ == "__main__":
-  from modules.geometric_transform.transformations_tf import Transformer
-  import datetime
   import time
 
   start_time = time.time()
   params = {
+    # loader_keys.DATA_PATH: os.path.join(
+    #     PROJECT_PATH, '../datasets/ztf_v1_bogus_added.pkl'),
     loader_keys.DATA_PATH: os.path.join(
-        PROJECT_PATH, '../datasets/ztf_v1_bogus_added.pkl'),
-    loader_keys.VAL_SET_INLIER_PERCENTAGE: 0.1,
+        PROJECT_PATH, '../datasets/ALeRCE_data/converted_pancho_septiembre.pkl'),
+    loader_keys.VAL_SET_INLIER_PERCENTAGE: 0.0,
     loader_keys.USED_CHANNELS: [0, 1, 2],
     loader_keys.CROP_SIZE: 21,
     general_keys.RANDOM_SEED: 42,
     loader_keys.TRANSFORMATION_INLIER_CLASS_VALUE: 1
   }
-  transformer = Transformer()
-  ztf_outlier_dataset = ZTFOutlierLoader(params)
+  # transformer = Transformer()
+  ztf_outlier_dataset = ZTFOutlierLoader(params, pickles_usage=False)
+  x_train = ztf_outlier_dataset.get_outlier_detection_datasets()[0][0]
+  print(x_train.shape)
 
   # dataset = ztf_outlier_dataset.get_unsplitted_dataset()
   # print('dataset: ', np.unique(dataset.data_label, return_counts=True))
@@ -203,13 +225,12 @@ if __name__ == "__main__":
   # print('train: ', np.unique(y_train, return_counts=True))
   # print('val: ', np.unique(y_val, return_counts=True))
   # print('test: ', np.unique(y_test, return_counts=True))
-  (X_train_trans, y_train_trans), (X_val_trans, y_val_trans), (
-    X_test_trans, y_test_trans) = ztf_outlier_dataset.get_transformed_datasets(
-      transformer)
-  time_usage = str(datetime.timedelta(
-      seconds=int(round(time.time() - start_time))))
-  print("Time usage %s: %s" % (transformer.name, str(time_usage)), flush=True)
+  # (X_train_trans, y_train_trans), (X_val_trans, y_val_trans), (
+  #   X_test_trans, y_test_trans) = ztf_outlier_dataset.get_transformed_datasets(
+  #     transformer)
+  # time_usage = str(datetime.timedelta(
+  #     seconds=int(round(time.time() - start_time))))
+  # print("Time usage %s: %s" % (transformer.name, str(time_usage)), flush=True)
   # print('train: ', np.unique(y_train_trans, return_counts=True))
   # print('val: ', np.unique(y_val_trans, return_counts=True))
   # print('test: ', np.unique(y_test_trans, return_counts=True))
-

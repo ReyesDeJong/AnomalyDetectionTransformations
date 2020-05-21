@@ -26,17 +26,22 @@ import matplotlib.pyplot as plt
 
 class ZTFSmallOutlierLoader(ZTFOutlierLoader):
 
-  def __init__(self, params: dict, dataset_name='small_ztf'):
+  def __init__(self, params: dict, dataset_name='small_ztf',
+      pickles_usage=True):
     self.params = self.get_default_params()
     self.params.update(params)
     self.data_path = params[loader_keys.DATA_PATH]
     self.name = dataset_name
     self.template_save_path = self._get_template_save_path()
+    self.crop_size = self.params[loader_keys.CROP_SIZE]
+    self.save_pickle = pickles_usage
+    self.load_pickle = pickles_usage
 
   def get_default_params(self) -> dict:
     default_params = {
       loader_keys.USED_CHANNELS: [0, 1, 2],
-      loader_keys.DATA_PATH: None
+      loader_keys.DATA_PATH: None,
+      loader_keys.CROP_SIZE: 21,
     }
     return default_params
 

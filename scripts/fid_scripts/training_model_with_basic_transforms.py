@@ -22,10 +22,8 @@ from modules.data_loaders.hits_outlier_loader import HiTSOutlierLoader
 from modules.transform_selection.fid_modules import fid
 import numpy as np
 from modules.data_loaders.ztf_small_outlier_loader import ZTFSmallOutlierLoader
+from modules.data_loaders.ztf_outlier_loader import ZTFOutlierLoader
 
-
-# from modules.data_loaders.ztf_outlier_loader import ZTFOutlierLoader
-# from modules.data_loaders.ztf_small_outlier_loader import ZTFSmallOutlierLoader
 
 gpus = tf.config.experimental.list_physical_devices('GPU')
 for gpu in gpus:
@@ -50,7 +48,19 @@ ztf_params = {
 }
 ztf_loader = ZTFSmallOutlierLoader(ztf_params)
 
-data_loader = ztf_loader#hits_loader #
+ztf_params = {
+    loader_keys.DATA_PATH: os.path.join(
+        PROJECT_PATH,
+        '../datasets/ALeRCE_data/converted_pancho_septiembre.pkl'),
+    loader_keys.VAL_SET_INLIER_PERCENTAGE: 0.1,
+    loader_keys.USED_CHANNELS: [0, 1, 2],
+    loader_keys.CROP_SIZE: 21,
+    general_keys.RANDOM_SEED: 42,
+    loader_keys.TRANSFORMATION_INLIER_CLASS_VALUE: 1
+  }
+ztf_loader_3c = ZTFOutlierLoader(ztf_params, pickles_usage=False)
+
+data_loader = ztf_loader_3c#ztf_loader#hits_loader #
 
 (x_train, y_train), (x_val, y_val), (
   x_test, y_test) = data_loader.get_outlier_detection_datasets()

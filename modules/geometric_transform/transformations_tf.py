@@ -159,7 +159,7 @@ class AbstractTransformer(abc.ABC):
   def __init__(self, transform_batch_size=512, name='Abstract_Transformer'):
     self.name = name
     self._transform_batch_size = transform_batch_size
-    #TODO: get none from returns
+    # TODO: get none from returns
     self._transformation_ops = None
     self.transformation_tuples = None
     self._create_transformation_tuples_list()
@@ -180,10 +180,9 @@ class AbstractTransformer(abc.ABC):
     return
 
   def set_transformations_to_perform(self, transformation_list):
-    #TODO: set to private
+    # TODO: set to private
     self.transformation_tuples = transformation_list
     self._create_transformation_op_list()
-
 
   def set_verbose(self, verbose_value):
     self.verbose = verbose_value
@@ -243,8 +242,10 @@ class AbstractTransformer(abc.ABC):
   def _normalize_1_1_by_image(self, image_array):
     images = image_array
     images -= np.nanmin(images, axis=(1, 2))[:, np.newaxis, np.newaxis, :]
-    images = images / np.nanmax(images, axis=(1, 2))[
-                      :, np.newaxis, np.newaxis, :]
+    images_max = np.nanmax(images, axis=(1, 2))[
+                 :, np.newaxis, np.newaxis, :]
+    images_max[images_max == 0] = 1
+    images = images / images_max
     images = 2 * images - 1
     return images
 
@@ -311,11 +312,11 @@ class Transformer(AbstractTransformer):
 
   def _create_transformation_tuples_list(self):
     self.transformation_tuples = list(itertools.product((False, True),
-                                                      (0, -self.max_tx,
-                                                       self.max_tx),
-                                                      (0, -self.max_ty,
-                                                       self.max_ty),
-                                                      range(4)))
+                                                        (0, -self.max_tx,
+                                                         self.max_tx),
+                                                        (0, -self.max_ty,
+                                                         self.max_ty),
+                                                        range(4)))
 
   def _create_transformation_op_list(self):
     transformation_list = []
@@ -332,7 +333,7 @@ class SimpleTransformer(AbstractTransformer):
 
   def _create_transformation_tuples_list(self):
     self.transformation_tuples = list(itertools.product((False, True),
-                                                           range(4)))
+                                                        range(4)))
 
   def _create_transformation_op_list(self):
     transformation_list = []
@@ -483,7 +484,6 @@ class PlusGaussTransformer(KernelTransformer):
         [1],
         [0]))
 
-
   def _create_transformation_op_list(self):
     transformation_list = []
     for is_flip, tx, ty, k_rotate, is_gauss, is_log in self.transformation_tuples:
@@ -559,7 +559,7 @@ def test_visualize_transforms():
 
   for i in range(72):
     transform_indx = i
-    if (i % 4) == 0 or i==1 or i==2 or i==3:
+    if (i % 4) == 0 or i == 1 or i == 2 or i == 3:
       plt.imshow(transformed_batch[transform_indx])
       plt.title(str(transformer.transformation_tuples[i]))
       plt.axis('off')
