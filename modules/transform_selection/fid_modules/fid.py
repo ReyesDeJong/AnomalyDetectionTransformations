@@ -200,6 +200,8 @@ def calculate_activation_statistics_from_activation_array(act):
   -- sigma : The covariance matrix of the activations of the pool_3 layer of
              the incption model.
   """
+  if len(act.shape) > 2:
+    act = act.reshape(act.shape[0], np.prod(act.shape[1:]))
   mu = np.mean(act, axis=0)
   sigma = np.cov(act, rowvar=False)
   return mu, sigma

@@ -217,3 +217,8 @@ def create_auc_table(path, metric='roc_auc'):
             *results[ds_name][sc_name][method_name])
           for method_name in results[ds_name][sc_name]})
         writer.writerow(row_dict)
+
+def init_gpu_soft_growth():
+  gpus = tf.config.experimental.list_physical_devices('GPU')
+  for gpu in gpus:
+    tf.config.experimental.set_memory_growth(gpu, True)

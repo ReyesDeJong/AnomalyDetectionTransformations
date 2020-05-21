@@ -29,7 +29,7 @@ import matplotlib.pyplot as plt
 # Todo: Do some refactoring to include kwargs
 class HiTSOutlierLoader(object):
 
-  def __init__(self, params: dict, dataset_name='hits'):
+  def __init__(self, params: dict, dataset_name='hits', pickles_usage=True):
     # n_samples_by_class = 10000, test_size = 0.20, val_size = 0.10,
     # return_val = False, channels_to_get = [0, 1, 2, 3]
     self.n_samples_by_class = params[loader_keys.N_SAMPLES_BY_CLASS]
@@ -41,6 +41,18 @@ class HiTSOutlierLoader(object):
     self.crop_size = params[loader_keys.CROP_SIZE]
     self.name = dataset_name + '_%i_channels' % len(self.used_channels)
     self.template_save_path = self._get_template_save_path()
+    self.save_pickle = pickles_usage
+    self.load_pickle = pickles_usage
+
+  def set_pickles_usage(self, pickles_usage_state):
+    self.save_pickle = pickles_usage_state
+    self.load_pickle = pickles_usage_state
+
+  def set_pickle_loading(self, load_pickle_state):
+    self.load_pickle = load_pickle_state
+
+  def set_pickle_saving(self, save_pickle_state):
+    self.save_pickle = save_pickle_state
 
   def _get_template_save_path(self) -> str:
     """get name of final saved file to check if it's been already generated"""
@@ -60,7 +72,7 @@ class HiTSOutlierLoader(object):
     # check if preprocessing has already been done
     unsplitted_data_path = utils.add_text_to_beginning_of_file_path(
         self.template_save_path, 'unsplitted')
-    if os.path.exists(unsplitted_data_path):
+    if os.path.exists(unsplitted_data_path) and self.load_pickle:
       return pd.read_pickle(unsplitted_data_path)
     # params for hits loader, it performs an by sample 0-1 norm that I think
     # is not useful, becuse data is already 0-1
@@ -75,13 +87,14 @@ class HiTSOutlierLoader(object):
                              test_size=None, validation_size=None,
                              channels_to_get=self.used_channels)
     dataset = data_loader.get_single_dataset()
-    utils.save_pickle(dataset, unsplitted_data_path)
+    if self.save_pickle:
+      utils.save_pickle(dataset, unsplitted_data_path)
     return dataset
 
   def get_preprocessed_unsplitted_dataset(self):
     preproc_data_path = utils.add_text_to_beginning_of_file_path(
         self.template_save_path, 'preproc')
-    if os.path.exists(preproc_data_path):
+    if os.path.exists(preproc_data_path) and self.load_pickle:
       return pd.read_pickle(preproc_data_path)
 
     dataset = self.get_unsplitted_dataset()
@@ -92,7 +105,8 @@ class HiTSOutlierLoader(object):
                       :, np.newaxis, np.newaxis, :]
     images = 2 * images - 1
     dataset.data_array = images
-    utils.save_pickle(dataset, preproc_data_path)
+    if self.save_pickle:
+      utils.save_pickle(dataset, preproc_data_path)
     return dataset
 
   # TODO: check what happens inside here, particularly correct label consistency when new_labels are defined
@@ -101,7 +115,7 @@ class HiTSOutlierLoader(object):
     set of only inliers, while a test set with half-half inliers and outliers"""
     outlier_data_path = utils.add_text_to_beginning_of_file_path(
         self.template_save_path, 'outlier')
-    if os.path.exists(outlier_data_path):
+    if os.path.exists(outlier_data_path) and self.load_pickle:
       return pd.read_pickle(outlier_data_path)
 
     dataset = self.get_preprocessed_unsplitted_dataset()
@@ -146,7 +160,8 @@ class HiTSOutlierLoader(object):
     print('val: ', np.unique(y_val, return_counts=True))
     print('test: ', np.unique(y_test, return_counts=True))
     sets_tuple = ((X_train, y_train), (X_val, y_val), (X_test, y_test))
-    utils.save_pickle(sets_tuple, outlier_data_path)
+    if self.save_pickle:
+      utils.save_pickle(sets_tuple, outlier_data_path)
     return sets_tuple
 
   # TODO: implement transformation loading
@@ -154,7 +169,7 @@ class HiTSOutlierLoader(object):
     """transform daa and save to avoid doin it over and over again"""
     transformed_data_path = utils.add_text_to_beginning_of_file_path(
         self.template_save_path, '%s_outlier' % transformer.name)
-    if os.path.exists(transformed_data_path):
+    if os.path.exists(transformed_data_path) and self.load_pickle:
       return pd.read_pickle(transformed_data_path)
     (x_train, y_train), (x_val, y_val), (
       x_test, y_test) = self.get_outlier_detection_datasets()
@@ -170,7 +185,8 @@ class HiTSOutlierLoader(object):
     sets_tuple = ((x_train_transformed, train_transform_inds),
                   (x_val_transformed, val_transform_inds),
                   (x_test_transformed, test_transform_inds))
-    utils.save_pickle(sets_tuple, transformed_data_path)
+    if self.save_pickle:
+      utils.save_pickle(sets_tuple, transformed_data_path)
     return sets_tuple
 
   def plot_image(self, image, save_path=None, show=True, title=None,
