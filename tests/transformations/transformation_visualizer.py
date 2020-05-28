@@ -14,6 +14,7 @@ from parameters import loader_keys
 from modules.data_loaders.hits_outlier_loader import HiTSOutlierLoader
 from modules.geometric_transform.transformer_no_compositions import \
   NoCompositionTransformer
+from modules.geometric_transform.transformer_for_ranking import RankingTransformer
 from modules.data_loaders.ztf_small_outlier_loader import ZTFSmallOutlierLoader
 
 if __name__ == "__main__":
@@ -71,7 +72,8 @@ if __name__ == "__main__":
   data_loader.plot_image(outlier_image, show=SHOW_PLOT,
                          title=outliers_title)
 
-  transformer = NoCompositionTransformer()
+  # transformer = NoCompositionTransformer()
+  transformer = RankingTransformer()
   for i in range(transformer.n_transforms):
     trf_tuple = transformer.transformation_tuples[i]
     inlier_image_trf = transformer.apply_transforms(inlier_image[None, ...],
