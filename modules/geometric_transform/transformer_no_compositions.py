@@ -37,6 +37,8 @@ class NoCompositionTransformer(AbstractTransformer):
       (0, 0, 0, 3 * self.rotations, 0, 0),
       (0, 0, 0, 0, 1 * self.gauss, 0), (0, 0, 0, 0, 0, 1 * self.log)
     )
+    # if some of the parameters is st to zero, avoid transformation redundance,
+    # because original would appear more than once
     if self.translation_y * self.translation_x * self.rotations * \
         self.flips * self.gauss * self.log == 0:
       self.transformation_tuples = tuple(

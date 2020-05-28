@@ -10,7 +10,7 @@ import sys
 PROJECT_PATH = os.path.abspath(
     os.path.join(os.path.dirname(__file__), '..', '..', '..'))
 sys.path.append(PROJECT_PATH)
-from modules.transform_selection.artificial_dataset_factory import \
+from modules.data_loaders.artificial_dataset_factory import \
   CirclesFactory
 from modules.transform_selection.mutual_info.mi_image_calculator import \
   MIImageCalculator

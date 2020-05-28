@@ -139,7 +139,7 @@ class MIImageCalculator(object):
 
 
 if __name__ == '__main__':
-  from modules.transform_selection.artificial_dataset_factory import CirclesFactory
+  from modules.data_loaders.artificial_dataset_factory import CirclesFactory
 
   gpus = tf.config.experimental.list_physical_devices('GPU')
   for gpu in gpus:
