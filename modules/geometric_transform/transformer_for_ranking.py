@@ -49,11 +49,12 @@ class RankingTransformation(object):
         res_x = tf.image.rot90(res_x, k=self.k_90_rotate)
     if self.mixed != 0:
       perm_x = tf.transpose(x, [1, 2, 0, 3])
-      perm_x = tf.random.shuffle(perm_x)
-      perm_x = tf.transpose(perm_x, [1, 0, 2, 3])
-      perm_x = tf.random.shuffle(perm_x)
-      perm_x = tf.transpose(perm_x, [1, 0, 2, 3])
-      res_x = tf.transpose(perm_x, [2, 0, 1, 3])
+      to_shuffle_x = tf.reshape(x, [perm_x.shape[0] * perm_x.shape[1],
+                                    perm_x.shape[2], perm_x.shape[3]])
+      shufled_x = tf.random.shuffle(to_shuffle_x)
+      reshaped_x = tf.reshape(shufled_x, [perm_x.shape[0], perm_x.shape[1],
+                                    perm_x.shape[2], perm_x.shape[3]])
+      res_x = tf.transpose(reshaped_x, [2, 0, 1, 3])
     if self.trivial != 0:
       res_x = x * 0 + tf.random.normal(x.shape)
     return res_x
@@ -98,6 +99,7 @@ class RankingTransformer(AbstractTransformer):
 
     self._transformation_ops = transformation_list
 
+
 def test_visualize_transforms():
   import imageio
   import glob
@@ -108,7 +110,7 @@ def test_visualize_transforms():
 
   im = imageio.imread(im_path)
 
-  im = im[np.newaxis, :150, :150, :]
+  im = im[np.newaxis, :150, :150, :3]
   im = im / np.max(im)
   print(im.shape)
   plt.imshow(im[0])
@@ -117,8 +119,9 @@ def test_visualize_transforms():
   transformer = RankingTransformer()
   transformations_inds = np.arange(transformer.n_transforms)
 
-  transformed_batch = transformer.transform_batch(im,
-                                                  transformations_inds)
+  transformed_batch = transformer.transform_batch(
+      tf.convert_to_tensor(im, dtype=tf.float32),
+      transformations_inds)
 
   print(transformed_batch.shape)
 
@@ -128,6 +131,7 @@ def test_visualize_transforms():
     plt.title(str(transformer.transformation_tuples[i]))
     plt.axis('off')
     plt.show()
+
 
 if __name__ == "__main__":
   test_visualize_transforms()
