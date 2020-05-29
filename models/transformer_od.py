@@ -47,6 +47,7 @@ class TransformODModel(tf.keras.Model):
       widen_factor=4, results_folder_name='', name='Transformer_OD_Model',
       **kwargs):
     super().__init__(name=name)
+    self._init_gpu_usage()
     self.data_loader = data_loader
     self.transformer = transformer
     self.date = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
@@ -59,6 +60,11 @@ class TransformODModel(tf.keras.Model):
         depth=depth, widen_factor=widen_factor,
         model_path=self.specific_model_folder, **kwargs)
     self.percentile = 97.73#95.45
+
+  def _init_gpu_usage(self):
+    gpus = tf.config.experimental.list_physical_devices('GPU')
+    for gpu in gpus:
+      tf.config.experimental.set_memory_growth(gpu, True)
 
   # TODO: do a param dict
   def get_network(self, input_shape, n_classes,
