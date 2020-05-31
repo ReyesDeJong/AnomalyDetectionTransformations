@@ -8,16 +8,16 @@ import os
 import sys
 
 PROJECT_PATH = os.path.abspath(
-    os.path.join(os.path.dirname(__file__), '..', '..', '..'))
+    os.path.join(os.path.dirname(__file__), '..', '..'))
 sys.path.append(PROJECT_PATH)
 
 from modules.geometric_transform.transformer_for_ranking import \
   RankingTransformer
-from modules.data_loaders.artificial_dataset_factory import CirclesFactory
 from itertools import chain, combinations
-from models.transformer_od_simple_net import TransformODSimpleModel
 from modules.data_loaders.hits_outlier_loader import HiTSOutlierLoader
 from parameters import loader_keys, general_keys
+import pandas as pd
+import numpy as np
 
 
 # class ResultDictGeneratorRawFID(object):
@@ -58,15 +58,58 @@ if __name__ == "__main__":
   (x_train, y_train), (x_val, y_val), (
     x_test, y_test) = data_loader.get_outlier_detection_datasets()
   results_dict = {}
-  for trforms_indx_set in power_set_clean[:2]:
-    trf_to_perform = aux_transformer.transformation_tuples[
-      power_set_clean[trforms_indx_set]]
-    trfer = RankingTransformer()
-    trfer.set_transformations_to_perform(trf_to_perform)
-    model = TransformODSimpleModel(
-        data_loader, trfer, input_shape=x_train.shape[1:],
-        results_folder_name=RESULT_PATH)
-    model.fit(x_train, x_val, epochs=1e100)
-    results = model.evaluate_od(x_train, x_test, y_test, data_loader.name,
-                                'real', x_val)
-    results_dict[trf_to_perform] = results
+  # for j in range(5):
+  #   pickle_name = 'rank_%i.pkl' % j
+  #   for i, trforms_indx_set in enumerate(power_set_clean):
+  #     if not os.path.exists(pickle_name):
+  #       print(np.array(aux_transformer.transformation_tuples).shape)
+  #       trf_to_perform = np.array(aux_transformer.transformation_tuples)[
+  #         np.array(trforms_indx_set)]
+  #       print(trf_to_perform)
+  #       trfer = RankingTransformer()
+  #       trfer.set_transformations_to_perform(trf_to_perform.tolist())
+  #       model = TransformODSimpleModel(
+  #           data_loader, trfer, input_shape=x_train.shape[1:],
+  #           results_folder_name=RESULT_PATH)
+  #       model.fit(x_train, x_val, epochs=1000, patience=0)
+  #       results = model.evaluate_od(x_train, x_test, y_test, data_loader.name,
+  #                                   'real', x_val)
+  #       results_dict[i] = [trf_to_perform, results]
+  #       save_pickle(results_dict[i], 'rank_%i.pkl' % j)
+  #     else:
+  #       results_dict[i] = pd.read_pickle(pickle_name)
+  key_to_get = 'roc_auc'
+  # key_to_get = 'pr_auc_anom'
+  # key_to_get = 'acc_at_percentil'
+  results_dict = pd.read_pickle('rank_3.pkl')
+  print(results_dict.keys())
+  print(results_dict[0][1]['dirichlet'].keys())
+  results_stats = {}
+
+  for key_i in results_dict.keys():
+    results_stats[key_i] = [results_dict[key_i][0], []]
+    for j in range(5):
+      results_dict = pd.read_pickle('rank_%i.pkl' % j)
+      results_stats[key_i][1].append(
+          results_dict[key_i][1]['dirichlet'][key_to_get])
+
+  print(key_to_get)
+  means = []
+  stds = []
+  trfs_list = []
+  for key_i in results_stats.keys():
+    mean_i =np.mean(results_stats[key_i][1])
+    std_i = np.std(results_stats[key_i][1])
+    trf_i = results_stats[key_i][0]
+    means.append(mean_i)
+    stds.append(std_i)
+    trfs_list.append(trf_i)
+
+  sort_idxs = np.argsort(means)
+  sort_means = np.array(means)[sort_idxs]
+  sort_stds = np.array(stds)[sort_idxs]
+  sort_trf_list = np.array(trfs_list)[sort_idxs]
+
+  for i in range(len(sort_trf_list)):
+    print(sort_trf_list[i],
+            'len %i: %.5f +/- %.5f' % (len(sort_trf_list[i]), sort_means[i], sort_stds[i]))

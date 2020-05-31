@@ -27,6 +27,7 @@ class TransformODSimpleModel(TransformODModel):
       name='Transformer_OD_Simple_Model',
       **kwargs):
     super(TransformODModel, self).__init__(name=name)
+    self._init_gpu_usage()
     self.data_loader = data_loader
     self.transformer = transformer
     self.date = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
@@ -37,6 +38,7 @@ class TransformODSimpleModel(TransformODModel):
     self.network = self.get_network(
         input_shape=input_shape, n_classes=self.transformer.n_transforms,
         model_path=self.specific_model_folder, **kwargs)
+    self.percentile = 97.73  # 95.45
 
   # TODO: do a param dict
   def get_network(self, input_shape, n_classes, model_path, **kwargs):
