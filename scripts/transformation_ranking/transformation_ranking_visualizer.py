@@ -11,12 +11,48 @@ PROJECT_PATH = os.path.abspath(
     os.path.join(os.path.dirname(__file__), '..', '..'))
 sys.path.append(PROJECT_PATH)
 
+import numpy as np
 import pandas as pd
 
 if __name__ == "__main__":
-  results_all_runs = pd.read_pickle('rank_small_ztf.pkl')
+
+  # results_all_runs = pd.read_pickle('rank_small_ztf.pkl')
+  results_all_runs = pd.read_pickle('simple_rank_small_ztf.pkl')
   # results_all_runs = pd.read_pickle('rank_hits_4_channels.pkl')
+  # results_all_runs = pd.read_pickle('simple_rank_hits_4_channels.pkl')
   n_runs = list(results_all_runs.keys())
   trf_idxs = list(results_all_runs[0].keys())
-  for trf_i in trf_idxs:
-    print(len(results_all_runs[0][trf_i][0]), results_all_runs[0][trf_i][1]['dirichlet']['roc_auc'])
+  # for trf_i in trf_idxs:
+  #   print(len(results_all_runs[0][trf_i][0]), results_all_runs[0][trf_i][1]['dirichlet']['roc_auc'])
+
+  key_to_get = 'roc_auc'
+  # key_to_get = 'pr_auc_anom'
+  # key_to_get = 'acc_at_percentil'
+  results_stats = {}
+
+  for trf_idx_i in trf_idxs:
+    results_stats[trf_idx_i] = [results_all_runs[0][trf_idx_i][0], []]
+    for run_i in n_runs:
+      results_stats[trf_idx_i][1].append(
+          results_all_runs[run_i][trf_idx_i][1]['dirichlet'][key_to_get])
+
+  means = []
+  stds = []
+  trfs_list = []
+  for trf_idx_i in results_stats.keys():
+    mean_i =np.mean(results_stats[trf_idx_i][1])
+    std_i = np.std(results_stats[trf_idx_i][1])
+    trf_i = results_stats[trf_idx_i][0]
+    means.append(mean_i)
+    stds.append(std_i)
+    trfs_list.append(trf_i)
+
+  sort_idxs = np.argsort(means)
+  sort_means = np.array(means)[sort_idxs]
+  sort_stds = np.array(stds)[sort_idxs]
+  sort_trf_list = np.array(trfs_list)[sort_idxs]
+
+  for i in range(len(sort_trf_list)):
+    print(
+        sort_trf_list[i],
+            'len %i: %.5f +/- %.5f' % (len(sort_trf_list[i]), sort_means[i], sort_stds[i]))
