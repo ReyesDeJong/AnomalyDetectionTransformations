@@ -27,7 +27,7 @@ class TransformODSimpleModel(TransformODModel):
       name='Transformer_OD_Simple_Model',
       **kwargs):
     super(TransformODModel, self).__init__(name=name)
-    self._init_gpu_usage()
+    # self._init_gpu_usage()
     self.data_loader = data_loader
     self.transformer = transformer
     self.date = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")

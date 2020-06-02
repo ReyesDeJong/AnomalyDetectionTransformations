@@ -174,6 +174,13 @@ def normalize_sum1(array, axis=-1):
   sums = np.sum(array, axis=axis)
   return array / np.expand_dims(sums, axis)
 
+def normalize_by_channel_1_1(images):
+  images -= np.nanmin(images, axis=(1, 2))[:, np.newaxis, np.newaxis, :]
+  images = images / np.nanmax(images, axis=(1, 2))[
+                    :, np.newaxis, np.newaxis, :]
+  images = 2 * images - 1
+  return images
+
 
 def delta_timer(delta_time):
   hours, rem = divmod(delta_time, 3600)

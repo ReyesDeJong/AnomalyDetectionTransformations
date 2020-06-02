@@ -47,7 +47,7 @@ class TransformODModel(tf.keras.Model):
       widen_factor=4, results_folder_name='', name='Transformer_OD_Model',
       **kwargs):
     super().__init__(name=name)
-    self._init_gpu_usage()
+    # self._init_gpu_usage()
     self.data_loader = data_loader
     self.transformer = transformer
     self.date = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
