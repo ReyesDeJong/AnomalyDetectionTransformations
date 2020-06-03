@@ -60,7 +60,7 @@ def main():
   }
   ztf_loader = ZTFSmallOutlierLoader(ztf_params)
 
-  data_loaders = (hits_loader, ztf_loader)
+  data_loaders = (ztf_loader,hits_loader)
 
   for loader_i in data_loaders:
     (x_train, y_train), (x_val, y_val), (
@@ -106,6 +106,9 @@ def main():
         model.fit(x_train, x_val, epochs=1000, patience=0)
         results = model.evaluate_od(x_train, x_test, y_test, loader_i.name,
                                     'real', x_val)
+        print('%i %s %.5f' % (
+          len(trf_to_perform), loader_i.name,
+          results['dirichlet']['roc_auc']))
         result_each_trf[power_set_idx] = [trf_to_perform, results]
       result_all_runs[run_i] = result_each_trf
     save_pickle(result_all_runs, pickle_name)

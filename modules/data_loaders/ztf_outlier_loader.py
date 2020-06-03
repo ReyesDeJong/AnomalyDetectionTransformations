@@ -114,7 +114,11 @@ class ZTFOutlierLoader(object):
     outlier_data_path = utils.add_text_to_beginning_of_file_path(
         self.template_save_path, 'outlier')
     if os.path.exists(outlier_data_path) and self.load_pickle:
-      return pd.read_pickle(outlier_data_path)
+      (x_train, y_train), (x_val, y_val), (
+        x_test, y_test) = pd.read_pickle(outlier_data_path)
+      x_test, y_test = self.shuffle_x_y(x_test, y_test)
+      sets_tuple = ((x_train, y_train), (x_val, y_val), (x_test, y_test))
+      return sets_tuple
 
     dataset = self.get_unsplitted_dataset()
     # labels from 5 classes to 0-1 as bogus-real
@@ -154,6 +158,7 @@ class ZTFOutlierLoader(object):
         [dataset.data_array[test_inlier_idxs],
          dataset.data_array[outlier_indexes]]), np.concatenate(
         [new_labels[test_inlier_idxs], new_labels[outlier_indexes]])
+    X_test, y_test = self.shuffle_x_y(X_test, y_test)
     print('train: ', np.unique(y_train, return_counts=True))
     print('val: ', np.unique(y_val, return_counts=True))
     print('test: ', np.unique(y_test, return_counts=True))
@@ -161,6 +166,13 @@ class ZTFOutlierLoader(object):
     if self.save_pickle:
       utils.save_pickle(sets_tuple, outlier_data_path)
     return sets_tuple
+
+  def shuffle_x_y(self, x, y):
+    indxs_shuffle = np.arange(len(x))
+    np.random.RandomState(self.random_seed).shuffle(indxs_shuffle)
+    x_shuf = x[indxs_shuffle]
+    y_shuf = y[indxs_shuffle]
+    return x_shuf, y_shuf
 
   # TODO: implement transformation loading
   def get_transformed_datasets(self, transformer: AbstractTransformer):

@@ -14,7 +14,7 @@ sys.path.append(PROJECT_PATH)
 
 from modules.geometric_transform.transformer_for_ranking import \
   RankingTransformer
-from modules.geometric_transform.transformer_for_ranking_old_bugged_but_gold import \
+from modules.geometric_transform.transformer_for_ranking_old_bugged import \
   RankingTransformerOld
 from models.transformer_od_simple_net import TransformODSimpleModel
 from models.transformer_od import TransformODModel

@@ -18,7 +18,7 @@ PROJECT_PATH = os.path.abspath(
 sys.path.append(PROJECT_PATH)
 
 from modules.data_set_generic import Dataset
-from parameters import loader_keys
+from parameters import loader_keys, general_keys
 from modules.data_loaders.ztf_outlier_loader import ZTFOutlierLoader
 from modules import utils
 import matplotlib.pyplot as plt
@@ -36,12 +36,14 @@ class ZTFSmallOutlierLoader(ZTFOutlierLoader):
     self.crop_size = self.params[loader_keys.CROP_SIZE]
     self.save_pickle = pickles_usage
     self.load_pickle = pickles_usage
+    self.random_seed = self.params[general_keys.RANDOM_SEED]
 
   def get_default_params(self) -> dict:
     default_params = {
       loader_keys.USED_CHANNELS: [0, 1, 2],
       loader_keys.DATA_PATH: None,
       loader_keys.CROP_SIZE: 21,
+      general_keys.RANDOM_SEED: 42,
     }
     return default_params
 
@@ -58,7 +60,11 @@ class ZTFSmallOutlierLoader(ZTFOutlierLoader):
 
   def get_outlier_detection_datasets(self):
     """directly load dataset tuples"""
-    return pd.read_pickle(self.data_path)
+    (x_train, y_train), (x_val, y_val), (
+      x_test, y_test) = pd.read_pickle(self.data_path)
+    x_test, y_test = self.shuffle_x_y(x_test, y_test)
+    sets_tuple = ((x_train, y_train), (x_val, y_val), (x_test, y_test))
+    return sets_tuple
 
   def plot_image(self, image, save_path=None, show=True, title=None,
       figsize=3):
