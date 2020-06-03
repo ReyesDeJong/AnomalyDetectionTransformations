@@ -1,6 +1,5 @@
 """
-Transformer object that performs 4 Rot; 4 Translations; Flip; Kernel Ops
-without their composition
+Badly done, shuffle across batch dimensions
 """
 
 import os
@@ -47,40 +46,20 @@ class RankingTransformation(object):
     if self.k_90_rotate != 0:
       with tf.name_scope("rotation"):
         res_x = tf.image.rot90(res_x, k=self.k_90_rotate)
-    if self.mixed:
-      # print('mixed')
-      # print(x.shape)
-      # print(tf.reduce_mean(x[0,:,:,0]))
-      flatten_img_x = tf.reshape(x, [x.shape[0], x.shape[1]*x.shape[2], x.shape[3]])
-      # print(flatten_img_x.shape)
-      # print(tf.reduce_mean(flatten_img_x[0, :, 0]))
-      perm_x = tf.transpose(flatten_img_x, [1, 0, 2])
-      # print(perm_x.shape)
-      # print(tf.reduce_mean(perm_x[:, 0, 0]))
-      shufled_x = tf.random.shuffle(perm_x)
-      # print(shufled_x.shape)
-      # print(tf.reduce_mean(shufled_x[:, 0, 0]))
-      perm2_x = tf.transpose(shufled_x, [1,0,2])
-      # print(perm2_x.shape)
-      # print(tf.reduce_mean(perm2_x[0, :, 0]))
-      reshaped_x = tf.reshape(perm2_x, [x.shape[0], x.shape[1],
-                                          x.shape[2], x.shape[3]])
-      # print(reshaped_x.shape)
-      # print(tf.reduce_mean(reshaped_x[0, :, :, 0]))
-      res_x = reshaped_x
-      # print(res_x.shape)
-      # print(tf.reduce_mean(res_x[0, :, :, 0]))
-      #OLD
-      # reshaped_x = tf.reshape(shufled_x, [perm_x.shape[0], perm_x.shape[1],
-      #                               perm_x.shape[2], perm_x.shape[3]])
-      # res_x = tf.transpose(reshaped_x, [2, 0, 1, 3])
-    if self.trivial:
-      # print('trivial')
+    if self.mixed != 0:
+      perm_x = tf.transpose(x, [1, 2, 0, 3])
+      to_shuffle_x = tf.reshape(x, [perm_x.shape[0] * perm_x.shape[1],
+                                    perm_x.shape[2], perm_x.shape[3]])
+      shufled_x = tf.random.shuffle(to_shuffle_x)
+      reshaped_x = tf.reshape(shufled_x, [perm_x.shape[0], perm_x.shape[1],
+                                    perm_x.shape[2], perm_x.shape[3]])
+      res_x = tf.transpose(reshaped_x, [2, 0, 1, 3])
+    if self.trivial != 0:
       res_x = x * 0 + tf.random.normal(x.shape)
     return res_x
 
 
-class RankingTransformer(AbstractTransformer):
+class RankingTransformerOld(AbstractTransformer):
   def __init__(self, translation_x=8, translation_y=8, rotations=True,
       flips=True, gauss=True, log=True, mixed=1, trivial=1,
       transform_batch_size=512, name='Ranking_Transformer'):
@@ -136,7 +115,7 @@ def test_visualize_transforms():
   plt.imshow(im[0])
   plt.show()
 
-  transformer = RankingTransformer()
+  transformer = RankingTransformerOld()
   transformations_inds = np.arange(transformer.n_transforms)
 
   transformed_batch = transformer.transform_batch(

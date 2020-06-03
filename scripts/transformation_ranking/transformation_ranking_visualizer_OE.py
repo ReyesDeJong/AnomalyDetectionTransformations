@@ -16,14 +16,16 @@ import pandas as pd
 
 if __name__ == "__main__":
 
-  # results_all_runs = pd.read_pickle('rank_small_ztf.pkl')
-  # results_all_runs = pd.read_pickle('simple_rank_small_ztf.pkl')
-  results_all_runs = pd.read_pickle('rank_hits_4_channels.pkl')
-  # results_all_runs = pd.read_pickle('simple_rank_hits_4_channels.pkl')
+  results_all_runs = pd.read_pickle('aux_results/small_rank_small_ztf.pkl')
+  # results_all_runs = pd.read_pickle('aux_results/small_rank_hits_4_channels.pkl')
   n_runs = list(results_all_runs.keys())
   trf_idxs = list(results_all_runs[0].keys())
-  # for trf_i in trf_idxs:
-  #   print(len(results_all_runs[0][trf_i][0]), results_all_runs[0][trf_i][1]['dirichlet']['roc_auc'])
+  outlier_types = results_all_runs[0][0].keys()
+  print(outlier_types)
+  outlier_to_see = 'cifar10'
+  for trf_i in trf_idxs:
+    print(len(results_all_runs[0][trf_i][outlier_to_see][0]),
+          results_all_runs[0][trf_i][outlier_to_see][1]['dirichlet']['roc_auc'])
 
   key_to_get = 'roc_auc'
   # key_to_get = 'pr_auc_anom'
@@ -31,10 +33,10 @@ if __name__ == "__main__":
   results_stats = {}
 
   for trf_idx_i in trf_idxs:
-    results_stats[trf_idx_i] = [results_all_runs[0][trf_idx_i][0], []]
+    results_stats[trf_idx_i] = [results_all_runs[0][trf_idx_i][outlier_to_see][0], []]
     for run_i in n_runs:
       results_stats[trf_idx_i][1].append(
-          results_all_runs[run_i][trf_idx_i][1]['dirichlet'][key_to_get])
+          results_all_runs[run_i][trf_idx_i][outlier_to_see][1]['dirichlet'][key_to_get])
 
   means = []
   stds = []

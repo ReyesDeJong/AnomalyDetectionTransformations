@@ -29,7 +29,7 @@ from sklearn.svm import OneClassSVM
 import matplotlib
 import time
 
-matplotlib.use('Agg')
+
 
 """In situ transformation perform"""
 
