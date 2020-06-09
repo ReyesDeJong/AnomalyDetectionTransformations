@@ -16,13 +16,17 @@ import pandas as pd
 
 if __name__ == "__main__":
 
-  results_all_runs = pd.read_pickle('aux_results/small_rank_small_ztf.pkl')
-  # results_all_runs = pd.read_pickle('aux_results/small_rank_hits_4_channels.pkl')
+  # results_all_runs = pd.read_pickle('aux_results/small_rank_small_ztf.pkl')
+  results_all_runs = pd.read_pickle('aux_results/small_rank_hits_4_channels.pkl')
   n_runs = list(results_all_runs.keys())
   trf_idxs = list(results_all_runs[0].keys())
   outlier_types = results_all_runs[0][0].keys()
   print(outlier_types)
-  outlier_to_see = 'cifar10'
+  outlier_to_see = 'gt'
+  # outlier_to_see = 'other_astro'
+  # outlier_to_see = 'cifar10'
+  # outlier_to_see = 'shuffle'
+  # outlier_to_see = 'mnist'
   for trf_i in trf_idxs:
     print(len(results_all_runs[0][trf_i][outlier_to_see][0]),
           results_all_runs[0][trf_i][outlier_to_see][1]['dirichlet']['roc_auc'])

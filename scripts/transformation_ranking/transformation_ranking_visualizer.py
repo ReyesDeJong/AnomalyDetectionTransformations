@@ -16,9 +16,9 @@ import pandas as pd
 
 if __name__ == "__main__":
 
-  # results_all_runs = pd.read_pickle('rank_small_ztf.pkl')
+  results_all_runs = pd.read_pickle('rank_small_ztf.pkl')
   # results_all_runs = pd.read_pickle('simple_rank_small_ztf.pkl')
-  results_all_runs = pd.read_pickle('rank_hits_4_channels.pkl')
+  # results_all_runs = pd.read_pickle('rank_hits_4_channels.pkl')
   # results_all_runs = pd.read_pickle('simple_rank_hits_4_channels.pkl')
   n_runs = list(results_all_runs.keys())
   trf_idxs = list(results_all_runs[0].keys())
