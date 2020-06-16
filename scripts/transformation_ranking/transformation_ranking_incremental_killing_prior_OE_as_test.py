@@ -51,10 +51,11 @@ def prepare_images(unprepraed_images, images_example):
 
 
 def main():
-  MODEL_CHKP_PATH = os.path.join(PROJECT_PATH, 'results', 'Trf_Rank')
+  MODEL_CHKP_PATH = os.path.join(PROJECT_PATH, 'results', 'Trf_Rank_Incremental')
   RESULT_PATH = 'aux_results'
   utils.check_paths(RESULT_PATH)
-  N_RUNS = 10
+  METRIC_TO_RANK_ON = 'roc_auc'
+  N_RUNS = 1
 
   aux_transformer = RankingTransformer()
   trf_72 = Transformer()
@@ -82,21 +83,22 @@ def main():
   }
   ztf_loader = ZTFSmallOutlierLoader(ztf_params)
 
-  data_loaders = (hits_loader, ztf_loader)
+  data_loaders = [#hits_loader,
+                  ztf_loader]
 
   for loader_i in data_loaders:
     (x_train, y_train), (x_val, y_val), (
       x_test, y_test) = loader_i.get_outlier_detection_datasets()
     gt_outliers = x_test[y_test != 1]
-    mnist = prepare_images(get_dataset('mnist', int(len(x_test) // 2)), x_train)
+    # mnist = prepare_images(get_dataset('mnist', int(len(x_test) // 2)), x_train)
     # print(mnist.shape)
     # print(np.mean(np.max(mnist, axis=(1, 2)), axis=0))
     # print(np.mean(np.min(mnist, axis=(1, 2)), axis=0))
-    cifar10 = prepare_images(get_dataset('cifar10', int(len(x_test) // 2)),
-                             x_train)
-    shuffle_trf = RankingTransformer(0, 0, 0, 0, 0, 0, 1, 0)
+    # cifar10 = prepare_images(get_dataset('cifar10', int(len(x_test) // 2)),
+    #                          x_train)
+    # shuffle_trf = RankingTransformer(0, 0, 0, 0, 0, 0, 0)
     inliers = x_test[y_test == 1]
-    inliers_shuffle, _ = shuffle_trf.apply_transforms(inliers, [1])
+    # inliers_shuffle, _ = shuffle_trf.apply_transforms(inliers, [1])
     # print(inliers_shuffle.shape)
     if loader_i.name == hits_loader.name:
       _, _, (
@@ -126,56 +128,37 @@ def main():
     # print(other_set_outliers.shape)
 
     outliers_dict = {
-      'gt': gt_outliers,
-      'shuffle': inliers_shuffle,
+      # 'gt': gt_outliers,
+      # 'shuffle': inliers_shuffle,
       'other_astro': other_set_outliers,
-      'mnist': mnist,
-      'cifar10': cifar10
+      # 'mnist': mnist,
+      # 'cifar10': cifar10
     }
 
-    pickle_name = 'small_rank_%s.pkl' % loader_i.name
+    pickle_name = 'rank_incremental_%s_%s.pkl' % (loader_i.name, list(outliers_dict.keys())[0])
     pickle_name = os.path.join(RESULT_PATH, pickle_name)
+    trfer = RankingTransformer()
+    trf_list = trfer.transformation_tuples
+    trf_t0 = [trf_list[0]]
+    trf_to_rank = trf_list[1:]
+    # print(trf_t0)
+    # print(trf_to_rank)
     result_all_runs = {}
     for run_i in range(N_RUNS):
-      indexes_for_power_set = list(
-          range(len(power_set_clean)))  # + [-1, -2, -3,
-      #    -4]
-      # indexes_for_power_set = list(range(len(power_set_clean)))[:3] + [-1]
-      result_each_trf = {}
-      for power_set_idx in indexes_for_power_set:
-        if power_set_idx == -1:
-          model = TransformODModel(
-              loader_i, trf_72, input_shape=x_train.shape[1:],
-              results_folder_name=MODEL_CHKP_PATH)
-          trf_to_perform = np.array(trf_72.transformation_tuples)
-        elif power_set_idx == -2:
-          model = TransformODModel(
-              loader_i, trf_9, input_shape=x_train.shape[1:],
-              results_folder_name=MODEL_CHKP_PATH)
-          trf_to_perform = np.array(trf_9.transformation_tuples)
-        elif power_set_idx == -3:
-          model = TransformODSimpleModel(
-              loader_i, trf_72, input_shape=x_train.shape[1:],
-              results_folder_name=MODEL_CHKP_PATH)
-          trf_to_perform = np.array(trf_72.transformation_tuples)
-        elif power_set_idx == -4:
-          model = TransformODSimpleModel(
-              loader_i, trf_9, input_shape=x_train.shape[1:],
-              results_folder_name=MODEL_CHKP_PATH)
-          trf_to_perform = np.array(trf_9.transformation_tuples)
-        else:
-          trforms_indx_set = power_set_clean[power_set_idx]
-          trf_to_perform = np.array(aux_transformer.transformation_tuples)[
-            np.array(trforms_indx_set)]
+      results_run_i = {}
+      best_rank_metric_so_far = 0
+      for n_transforms_selected_so_far in range(len(trf_to_rank)):
+        best_rank_found = 0
+        for trf_i_idx in range(len(trf_to_rank)):
+          trf_to_perform = trf_t0 + [trf_to_rank[trf_i_idx]]
           print(trf_to_perform)
-          trfer = RankingTransformer()
-          trfer.set_transformations_to_perform(trf_to_perform.tolist())
+          trfer.set_transformations_to_perform(trf_to_perform)
           model = TransformODSimpleModel(
               loader_i, trfer, input_shape=x_train.shape[1:],
               results_folder_name=MODEL_CHKP_PATH)
-        model.fit(x_train, x_val, epochs=1000, patience=0)
-        result_each_outliers = {}
-        for outlier_key in outliers_dict.keys():
+          model.fit(x_train, x_val, epochs=1000, patience=0)
+          result_each_outliers = {}
+          outlier_key = list(outliers_dict.keys())[0]
           current_outliers = outliers_dict[outlier_key]
           # print(inliers.shape)
           # print(current_outliers.shape)
@@ -188,27 +171,39 @@ def main():
           print('%i %s_%s %.5f' % (
             len(trf_to_perform), loader_i.name, outlier_key,
             results['dirichlet']['roc_auc']))
-          result_each_outliers[outlier_key] = [trf_to_perform, results]
-        result_each_trf[power_set_idx] = result_each_outliers
-      result_all_runs[run_i] = result_each_trf
-      save_pickle(result_all_runs, pickle_name)
-    save_pickle(result_all_runs, pickle_name)
+          model_result_metric = results['dirichlet']['roc_auc']
+          if model_result_metric > best_rank_metric_so_far:
+            best_rank_metric_so_far = model_result_metric
+            best_rank_found = 1
+            best_trf = trf_to_perform
+            print('best ', best_trf)
+          results_run_i[trf_i_idx] = [trf_to_perform, results]
+        if best_rank_found == 0:
+          print('Best Trf %s: %f' % (str(best_trf), best_rank_metric_so_far))
+          if 'gtxcvx' not in outlier_key:
+            trfer.set_transformations_to_perform(best_trf)
+            model = TransformODSimpleModel(
+                loader_i, trfer, input_shape=x_train.shape[1:],
+                results_folder_name=MODEL_CHKP_PATH)
+            model.fit(x_train, x_val, epochs=1000, patience=0)
+            current_x_test = np.concatenate([inliers, gt_outliers], axis=0)
+            current_y_test = np.concatenate(
+                [y_test[y_test == 1], y_test[y_test != 1]], axis=0)
+            results = model.evaluate_od(
+                x_train, current_x_test, current_y_test,
+                '%s_%s' % (loader_i.name, outlier_key), 'real', x_val)
+            print('%i %s_%s %.5f' % (
+              len(best_trf), loader_i.name, 'gt_outliers',
+              results['dirichlet']['roc_auc']))
+          break
+        trf_t0 = best_trf
+        print(trf_t0)
+        trf_to_rank = [x for x in trf_to_rank if x not in trf_t0]
+        print(trf_to_rank)
+      result_all_runs[run_i] = results_run_i
+    #   save_pickle(result_all_runs, pickle_name)
+    # save_pickle(result_all_runs, pickle_name)
 
-
-def get_dataset(name, n_samples=3000, random_state=42):
-  image, labels = tfds.as_numpy(tfds.load(
-      name,
-      split='train',
-      batch_size=-1,
-      as_supervised=True,
-  ))
-  indexes = np.arange(len(image))
-  np.random.RandomState(random_state).shuffle(indexes)
-  indexes = indexes[:n_samples]
-  labels = labels[indexes]
-  image = image[indexes]
-  # print(np.unique(labels, return_counts=True))
-  return image
 
 
 if __name__ == "__main__":
