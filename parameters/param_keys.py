@@ -122,6 +122,10 @@ CHANNELS_TO_USE = 'channels_to_use'
 TEST_SIZE = 'test_size'
 VAL_SIZE = 'val_size'
 
+SCORE_NAME = 'score_name'
+METRIC_NAME = 'metric_name'
+EPOCHS = 'epochs'
+
 # Default parameters dictionary
 """
 Usage:

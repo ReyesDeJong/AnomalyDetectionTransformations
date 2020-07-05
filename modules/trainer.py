@@ -9,65 +9,46 @@ PROJECT_PATH = os.path.abspath(
     os.path.join(os.path.dirname(__file__), '..'))
 sys.path.append(PROJECT_PATH)
 
-from modules.geometric_transform.transformer_for_ranking import \
-    RankingTransformer
-from models.transformer_od_simple_net import TransformODSimpleModel
-from modules.data_loaders.ztf_small_outlier_loader import ZTFSmallOutlierLoader
-from itertools import chain, combinations
-from modules.data_loaders.hits_outlier_loader import HiTSOutlierLoader
-from parameters import loader_keys, general_keys
+from parameters import general_keys, param_keys
 import numpy as np
-from modules import utils
-import tensorflow as tf
 
 
+class ODTrainer(object):
 
-class Trainer(object):
-  """
-  Constructor
-  """
+    def __init__(self, input_params=dict()):
+        params = self.get_default_parameters()
+        params.update(input_params)
+        self.score_name = params[param_keys.SCORE_NAME]
+        self.metric_name_to_retrieve = params[param_keys.METRIC_NAME]
+        self.train_epochs = params[param_keys.EPOCHS]
 
-  def __init__(self, params={param_keys.RESULTS_FOLDER_NAME: ''}):
-    self.all_models_acc = {}
-    self.print_manager = PrintManager()
-    self.model_path = os.path.join(PROJECT_PATH, 'results',
-                                   params[param_keys.RESULTS_FOLDER_NAME])
+    def get_default_parameters(self):
+        default_params = {
+            param_keys.SCORE_NAME: general_keys.DIRICHLET,
+            param_keys.METRIC_NAME: general_keys.ROC_AUC,
+        }
+        return default_params
 
-  def train_model_n_times(self, ModelClass, params, train_times,
-      model_name=None):
-    seed_array = np.arange(train_times).tolist()
-    accuracies = []
-    for i in range(len(seed_array)):
-      if model_name is None:
-        aux_model = ModelClass(params)
-        model_name = aux_model.model_name
-        aux_model.close()
-      model = ModelClass(params, model_name + '_%i' % i)
-      metrics = model.fit()
-      model.close()
-      accuracies.append(metrics[general_keys.ACCURACY])
-    self.print_to_log('\n %i %s models Test Accuracy: %.4f +/- %.4f' %
-                      (len(seed_array), model_name, np.mean(accuracies),
-                       np.std(accuracies)), model_name)
-    self.all_models_acc[model_name] = {general_keys.MEAN: np.mean(accuracies),
-                                       general_keys.STD: np.std(accuracies)}
-    return accuracies
+    def train_and_evaluate_model_n_times(
+        self, ModelClass, transformer, x_train, x_val, x_test, y_test,
+        train_times
+    ):
+        self.metric_results = []
+        for i in range(train_times):
+            model = ModelClass(
+                None, transformer, input_shape=x_train.shape[1:])
+            model.fit(x_train, x_val, epochs=self.train_epochs, patience=0)
+            results = model.evaluate_od(
+                x_train, x_test, y_test, '', 'real', x_val)
+            self.metric_results.append(results['dirichlet']['roc_auc'])
+            del model
+        return self.metric_results
 
-  def print_all_accuracies(self):
-    msg = ''
-    for model_name in self.all_models_acc.keys():
-      model_metrics = self.all_models_acc[model_name]
-      msg += "\n %s Test Accuracy: %.4f +/- %.4f" % \
-             (model_name, model_metrics[general_keys.MEAN],
-              model_metrics[general_keys.STD])
-    model_names = list(self.all_models_acc.keys())
-    self.print_to_log(msg, '_'.join(model_names))
+    def print_metric_mean_and_std(self):
+        msg = "%s : %.4f +/- %.4f" % \
+               (self.metric_name_to_retrieve, np.mean(self.metric_results),
+                np.mean(self.metric_results))
+        print(msg)
 
-  def print_to_log(self, msg, log_name):
-    log_file = log_name + '.log'
-    print = self.print_manager.verbose_printing(True)
-    file = open(os.path.join(self.model_path, log_file), 'a')
-    self.print_manager.file_printing(file)
-    print(msg)
-    self.print_manager.close()
-    file.close()
+    def get_metric_mean_and_std(self):
+        return np.mean(self.metric_results), np.mean(self.metric_results)
