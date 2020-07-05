@@ -192,7 +192,7 @@ def main():
       print('Best Trf %s_%s %i %s: %f' % (
       loader_i.name, outlier_key, len(best_trf), str(best_trf),
       best_rank_metric_so_far))
-      if 'gtxcvc' not in outlier_key:
+      if 'gt' not in outlier_key:
         trfer.set_transformations_to_perform(best_trf)
         model = TransformODSimpleModel(
             loader_i, trfer, input_shape=x_train.shape[1:],

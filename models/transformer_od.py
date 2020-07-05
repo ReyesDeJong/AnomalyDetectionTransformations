@@ -232,6 +232,9 @@ class TransformODModel(tf.keras.Model):
       x_eval_p = matrix_scores_eval[:, :, t_ind]
       diri_scores += dirichlet_utils.dirichlet_score(
           observed_dirichlet, x_eval_p)
+      assert np.isfinite(diri_scores).all()
+      # if np.isfinite(diri_scores).all():
+      #   print('')
     diri_scores /= n_transforms
     return matrix_scores_eval, diri_scores
 

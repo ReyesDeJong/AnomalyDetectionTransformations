@@ -180,7 +180,7 @@ def main():
           results_run_i[trf_i_idx] = [trf_to_perform, results]
         if best_rank_found == 0:
           print('Best Trf %s: %f' % (str(best_trf), best_rank_metric_so_far))
-          if 'gtxcvx' not in outlier_key:
+          if 'gt' not in outlier_key:
             trfer.set_transformations_to_perform(best_trf)
             model = TransformODSimpleModel(
                 loader_i, trfer, input_shape=x_train.shape[1:],
