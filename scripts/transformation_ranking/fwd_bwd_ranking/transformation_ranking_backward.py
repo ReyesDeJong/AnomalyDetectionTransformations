@@ -33,7 +33,7 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 
 class BackwardsTransformRanker(object):
 
-    def __init__(self, input_params=dict(), verbose_training=False):
+    def __init__(self, input_params=dict, verbose_training=False):
         params = self._get_default_parameters()
         params.update(input_params)
         self.score_name = params[param_keys.SCORE_NAME]
