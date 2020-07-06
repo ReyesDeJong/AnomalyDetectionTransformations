@@ -24,10 +24,11 @@ import datetime
 from tqdm import tqdm
 import matplotlib.pyplot as plt
 from sklearn.model_selection import ParameterGrid
-from sklearn.externals.joblib import Parallel, delayed
+from joblib import Parallel, delayed
 from sklearn.svm import OneClassSVM
 import matplotlib
 import time
+from modules.print_manager import PrintManager
 
 
 
@@ -47,6 +48,7 @@ class TransformODModel(tf.keras.Model):
       widen_factor=4, results_folder_name='', name='Transformer_OD_Model',
       **kwargs):
     super().__init__(name=name)
+    self.print_manager = PrintManager()
     # self._init_gpu_usage()
     self.data_loader = data_loader
     self.transformer = transformer
@@ -100,7 +102,8 @@ class TransformODModel(tf.keras.Model):
         [self.specific_model_folder, self.checkpoint_folder])
 
   def fit(self, x_train, x_val, transform_batch_size=512, train_batch_size=128,
-      epochs=2, patience=0, **kwargs):
+      epochs=2, patience=0, verbose=True, **kwargs):
+    self.print_manager.verbose_printing(verbose)
     if epochs is None:
       epochs = int(np.ceil(200 / self.transformer.n_transforms))
     # ToDo: must be network? or just self.compile???
@@ -132,12 +135,16 @@ class TransformODModel(tf.keras.Model):
                                'final_weights.ckpt')
     del x_train, x_val, x_train_transform, x_val_transform, y_train_transform, y_val_transform
     self.save_weights(weight_path)
+    self.print_manager.close()
 
   def predict_dirichlet_score(self, x_train, x_eval,
-      transform_batch_size=512, predict_batch_size=1024,
+      transform_batch_size=512, predict_batch_size=1024, verbose=True,
       **kwargs):
+    self.print_manager.verbose_printing(verbose)
     _, diri_scores = self.predict_matrix_and_dirichlet_score(
-        x_train, x_eval, transform_batch_size, predict_batch_size, **kwargs)
+        x_train, x_eval, transform_batch_size, predict_batch_size, verbose,
+        **kwargs)
+    self.print_manager.close()
     return diri_scores
 
   # TODO: implement pre-transofrmed, in-situ-all, efficient transforming
@@ -214,7 +221,7 @@ class TransformODModel(tf.keras.Model):
 
   # TODO: implement pre-transofrmed, in-situ-all, efficient transforming
   def predict_matrix_and_dirichlet_score(self, x_train, x_eval,
-      transform_batch_size=512, predict_batch_size=1024,
+      transform_batch_size=512, predict_batch_size=1024, verbose=True,
       **kwargs):
     n_transforms = self.transformer.n_transforms
     if self.matrix_scores_train is None:
@@ -227,7 +234,7 @@ class TransformODModel(tf.keras.Model):
     len_x_eval = self.transformer.get_not_transformed_data_len(len(x_eval))
     diri_scores = np.zeros(len_x_eval)
     del x_eval
-    for t_ind in tqdm(range(n_transforms)):
+    for t_ind in tqdm(range(n_transforms), disable=not verbose):
       observed_dirichlet = self.matrix_scores_train[:, :, t_ind]
       x_eval_p = matrix_scores_eval[:, :, t_ind]
       diri_scores += dirichlet_utils.dirichlet_score(
@@ -239,9 +246,11 @@ class TransformODModel(tf.keras.Model):
     return matrix_scores_eval, diri_scores
 
   def get_scores_dict(self, x_train, x_eval,
-      transform_batch_size=512, predict_batch_size=1024, **kwargs):
+      transform_batch_size=512, predict_batch_size=1024, verbose=True,
+      **kwargs):
     matrix_scores, diri_scores = self.predict_matrix_and_dirichlet_score(
-        x_train, x_eval, transform_batch_size, predict_batch_size, **kwargs)
+        x_train, x_eval, transform_batch_size, predict_batch_size,
+        verbose, **kwargs)
     matrix_scores = matrix_scores / self.transformer.n_transforms
     scores_dict = {
       general_keys.DIRICHLET: diri_scores,
@@ -325,7 +334,9 @@ class TransformODModel(tf.keras.Model):
   def evaluate_od(self, x_train, x_eval, y_eval, dataset_name, class_name,
       x_validation=None, transform_batch_size=512, predict_batch_size=1000,
       additional_score_save_path_list=None, save_hist_folder_path=None,
+      verbose=True,
       **kwargs):
+    self.print_manager.verbose_printing(verbose)
     # TODO: avoid doing this!! need refctoring, but avoid repreedict of training
     self.matrix_scores_train = None
     print('evaluating')
@@ -333,11 +344,12 @@ class TransformODModel(tf.keras.Model):
       x_validation = x_eval
     # print('start eval')
     eval_scores_dict = self.get_scores_dict(
-        x_train, x_eval, transform_batch_size, predict_batch_size, **kwargs)
+        x_train, x_eval, transform_batch_size, predict_batch_size, verbose,
+        **kwargs)
     # print('start val')
     validation_scores_dict = self.get_scores_dict(
         x_train, x_validation, transform_batch_size, predict_batch_size,
-        **kwargs)
+        verbose, **kwargs)
     # del self.matrix_scores_train
     # print('start metric')
     metrics_of_each_score = {}
@@ -353,6 +365,7 @@ class TransformODModel(tf.keras.Model):
       self._save_histogram(metrics_of_each_score[score_name], score_name,
                            dataset_name, class_name, save_hist_folder_path)
     # print('hola')
+    self.print_manager.close()
     return metrics_of_each_score
 
   def _get_score_result_name(self, score_name, dataset_name,
@@ -483,50 +496,51 @@ class TransformODModel(tf.keras.Model):
 
 
 if __name__ == '__main__':
+  from modules.data_loaders.hits_outlier_loader import HiTSOutlierLoader
   from parameters import loader_keys
-  from modules.geometric_transform.transformations_tf import Transformer
+  from modules.geometric_transform.transformer_for_ranking import RankingTransformer
 
 
   gpus = tf.config.experimental.list_physical_devices('GPU')
   for gpu in gpus:
     tf.config.experimental.set_memory_growth(gpu, True)
 
-  data_loader_params = {
-    loader_keys.DATA_PATH: os.path.join(
-        PROJECT_PATH, '../datasets/ztf_v1_bogus_added.pkl'),
-    loader_keys.VAL_SET_INLIER_PERCENTAGE: 0.1,
-    loader_keys.USED_CHANNELS: [0, 1, 2],
-    loader_keys.CROP_SIZE: 21,
-    general_keys.RANDOM_SEED: 42,
-    loader_keys.TRANSFORMATION_INLIER_CLASS_VALUE: 1
-  }
-  outlier_loader = ZTFOutlierLoader(data_loader_params)
-  # hits_params = {
+  # data_loader_params = {
   #   loader_keys.DATA_PATH: os.path.join(
-  #       PROJECT_PATH, '../datasets/HiTS2013_300k_samples.pkl'),
-  #   loader_keys.N_SAMPLES_BY_CLASS: 10000,
-  #   loader_keys.TEST_PERCENTAGE: 0.2,
+  #       PROJECT_PATH, '../datasets/ztf_v1_bogus_added.pkl'),
   #   loader_keys.VAL_SET_INLIER_PERCENTAGE: 0.1,
-  #   loader_keys.USED_CHANNELS: [0, 1, 2, 3],#[2],  #
+  #   loader_keys.USED_CHANNELS: [0, 1, 2],
   #   loader_keys.CROP_SIZE: 21,
   #   general_keys.RANDOM_SEED: 42,
   #   loader_keys.TRANSFORMATION_INLIER_CLASS_VALUE: 1
   # }
-  # outlier_loader = HiTSOutlierLoader(hits_params)
+  # outlier_loader = ZTFOutlierLoader(data_loader_params)
+  hits_params = {
+    loader_keys.DATA_PATH: os.path.join(
+        PROJECT_PATH, '../datasets/HiTS2013_300k_samples.pkl'),
+    loader_keys.N_SAMPLES_BY_CLASS: 10000,
+    loader_keys.TEST_PERCENTAGE: 0.2,
+    loader_keys.VAL_SET_INLIER_PERCENTAGE: 0.1,
+    loader_keys.USED_CHANNELS: [0, 1, 2, 3],#[2],  #
+    loader_keys.CROP_SIZE: 21,
+    general_keys.RANDOM_SEED: 42,
+    loader_keys.TRANSFORMATION_INLIER_CLASS_VALUE: 1
+  }
+  outlier_loader = HiTSOutlierLoader(hits_params)
   (x_train, y_train), (x_val, y_val), (
     x_test, y_test) = outlier_loader.get_outlier_detection_datasets()
-  transformer = Transformer()
+  transformer = RankingTransformer()
   model = TransformODModel(
       data_loader=outlier_loader, transformer=transformer,
       input_shape=x_train.shape[1:])
-  model.build(tuple([None] + list(x_train.shape[1:])))
-  # print(model.network.model().summary())
-  # weight_path = os.path.join(PROJECT_PATH, 'results', model.name,
-  #                            'my_checkpoint.h5')
-  # if os.path.exists(weight_path):
-  #   model.load_weights(weight_path)
-  # else:
-  model.fit(x_train, x_val)
+  # model.build(tuple([None] + list(x_train.shape[1:])))
+  # # print(model.network.model().summary())
+  # # weight_path = os.path.join(PROJECT_PATH, 'results', model.name,
+  # #                            'my_checkpoint.h5')
+  # # if os.path.exists(weight_path):
+  # #   model.load_weights(weight_path)
+  # # else:
+  model.fit(x_train, x_val, epochs=1, patience=0)
 
   start_time = time.time()
   met_dict = model.evaluate_od(
@@ -535,15 +549,15 @@ if __name__ == '__main__':
       "Time model.evaluate_od %s" % utils.timer(
           start_time, time.time()),
       flush=True)
-
-  start_time = time.time()
-  met_svm = model.oc_svm_score(
-      x_train, x_test, y_test, 'ztf-real-bog-v1', 'real', x_val)
-  print(
-      "Time model.oc_svm_score %s" % utils.timer(
-          start_time, time.time()),
-      flush=True)
-  met_dict['svm'] = met_svm
+  #
+  # start_time = time.time()
+  # met_svm = model.oc_svm_score(
+  #     x_train, x_test, y_test, 'ztf-real-bog-v1', 'real', x_val)
+  # print(
+  #     "Time model.oc_svm_score %s" % utils.timer(
+  #         start_time, time.time()),
+  #     flush=True)
+  # met_dict['svm'] = met_svm
 
   print('\nroc_auc')
   for key in met_dict.keys():

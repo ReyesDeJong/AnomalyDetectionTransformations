@@ -17,6 +17,7 @@ from parameters import general_keys
 from modules import utils
 import datetime
 from models.transformer_od import TransformODModel
+from modules.print_manager import PrintManager
 
 """In situ transformation perform"""
 
@@ -27,6 +28,7 @@ class TransformODSimpleModel(TransformODModel):
       name='Transformer_OD_Simple_Model',
       **kwargs):
     super(TransformODModel, self).__init__(name=name)
+    self.print_manager = PrintManager()
     # self._init_gpu_usage()
     self.data_loader = data_loader
     self.transformer = transformer

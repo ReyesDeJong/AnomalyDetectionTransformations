@@ -125,6 +125,7 @@ VAL_SIZE = 'val_size'
 SCORE_NAME = 'score_name'
 METRIC_NAME = 'metric_name'
 EPOCHS = 'epochs'
+TRAIN_N_TIMES = 'train_n_times'
 
 # Default parameters dictionary
 """

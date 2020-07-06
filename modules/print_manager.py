@@ -19,16 +19,19 @@ class PrintManager(object):
     self.original_stdout = sys.stdout
 
   def verbose_printing(self, verbose=True):
-    return self.original_print if verbose else lambda *a, **k: None
+    sys.stdout = self.original_stdout if verbose else None
 
   def file_printing(self, file):
-    sys.stdout = Tee(sys.stdout, file)
+    if sys.stdout is None:
+      sys.stdout = Tee(file)
+    else:
+      sys.stdout = Tee(sys.stdout, file)
 
-  def stop_print_in_file(self):
+  def sys_std_out_to_original(self):
     sys.stdout = self.original_stdout
 
   def close(self):
-    self.stop_print_in_file()
+    self.sys_std_out_to_original()
 
 
 class Tee(object):
