@@ -115,7 +115,7 @@ class ForwardsTransformRanker(BackwardsTransformRanker):
 
 def main():
     # METRIC_TO_RANK_ON = 'roc_auc'
-    N_TRAIN_RUNS = 5
+    N_TRAIN_RUNS = 10
     EPOCHS_TO_USE = 1000
     VERBOSE_TRAINING = False
     VERBOSE = False

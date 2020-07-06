@@ -144,8 +144,9 @@ class BackwardsTransformRanker(object):
         file = self._get_log_file(data_loader, outliers_data_loader,
                                   transformer)
         self.print_manager.file_printing(file)
-        print('Inliers data_loader: %s\nOutlier data_loader: %s' % (
-            data_loader.name, outliers_data_loader.name))
+        print('Ranking Transformations\nInliers data_loader:'
+              ' %s\nOutlier data_loader: %s' % (
+                  data_loader.name, outliers_data_loader.name))
         x_train, x_val = self._get_training_data(data_loader)
         x_test, y_test = self._get_test_data(data_loader, outliers_data_loader)
         best_rank_metric = self._init_best_ran_metric(
@@ -211,8 +212,74 @@ class BackwardsTransformRanker(object):
         file.close()
         return self._best_transformations, self._best_rank_metric
 
-    def get_best_transformations_and_metric(self):
-        return self._best_transformations, self._best_rank_metric
+    def _get_rank_already_performed_file_path(
+        self, data_loader: HiTSOutlierLoader,
+        outliers_data_loader: HiTSOutlierLoader,
+        transformer: RankingTransformer):
+        file_names = [f for f in os.listdir(self.results_path) if
+                      os.path.isfile(os.path.join(self.results_path, f))]
+        log_file_name_acronym = '%s_%s_OE%s_%s%i_' % (
+            self._get_default_results_folder_name(), data_loader.name,
+            outliers_data_loader.name, transformer.name,
+            transformer.n_transforms
+        )
+        wanted_rank_file_name_list = [name for name in file_names if
+                                      log_file_name_acronym in name]
+        if len(wanted_rank_file_name_list) == 0:
+            return None
+        assert len(wanted_rank_file_name_list) == 1
+        return os.path.join(self.results_path, wanted_rank_file_name_list[0])
+
+    def get_best_transformations_and_metric(
+        self, data_loader: HiTSOutlierLoader,
+        outliers_data_loader: HiTSOutlierLoader,
+        transformer: RankingTransformer):
+        rank_file_path = self._get_rank_already_performed_file_path(
+            data_loader, outliers_data_loader, transformer)
+        if rank_file_path is None:
+            self.verbose_training = False
+            self.rank_transformations(
+                data_loader, outliers_data_loader, TransformODSimpleModel,
+                transformer, verbose=True)
+            return self._best_transformations, self._best_rank_metric
+        else:
+            return self._get_best_tranforms_from_file_line(rank_file_path)
+
+    def _get_best_tranforms_from_file_line(self, file_path):
+        with open(file_path) as f:
+            content = f.readlines()
+        # you may also want to remove whitespace characters like `\n` at the end of each line
+        line_with_transforms = [
+            x.strip() for x in content if 'Best Trf' in x][0]
+        begining_of_trf_pos = [
+            pos for pos, char in enumerate(line_with_transforms) if
+            char == '('][0]
+        end_of_trf_pos = [
+            pos for pos, char in enumerate(line_with_transforms) if
+            char == ')'][-1]
+        best_transform_as_txt = line_with_transforms[
+                                begining_of_trf_pos:end_of_trf_pos + 1]
+        return self._best_tranform_txt_to_tuple(best_transform_as_txt)
+
+    def _best_tranform_txt_to_tuple(self, best_trf_txt):
+        remove_begin_end = best_trf_txt[1:-1]
+        tuples_non_formated_splitted = remove_begin_end.split(')')
+        individual_transform_tuples = []
+        for non_formated_tuple_i in tuples_non_formated_splitted:
+            ints_list = [int(char_i) for char_i in non_formated_tuple_i if
+                         self._string_is_digit(char_i)]
+            individual_transform_tuples.append(tuple(ints_list))
+        individual_transform_tuples = [tuple_i for tuple_i in
+                                       individual_transform_tuples if
+                                       len(tuple_i) != 0]
+        return individual_transform_tuples
+
+    def _string_is_digit(self, s: str):
+        try:
+            int(s)
+            return True
+        except ValueError:
+            return False
 
     def get_ground_truth_metric_from_transformations(
         self, data_loader: HiTSOutlierLoader,
@@ -235,7 +302,7 @@ class BackwardsTransformRanker(object):
 
 def main():
     # METRIC_TO_RANK_ON = 'roc_auc'
-    N_TRAIN_RUNS = 5
+    N_TRAIN_RUNS = 10
     EPOCHS_TO_USE = 1000
     VERBOSE_TRAINING = False
     VERBOSE = False
@@ -276,6 +343,8 @@ def main():
     print(bwd_ranker.rank_transformations(
         ztf_loader, ztf_loader, TransformODSimpleModel, transformer,
         verbose=VERBOSE))
+    print(bwd_ranker.get_best_transformations_and_metric(
+        ztf_loader, ztf_loader, transformer))
 
 
 if __name__ == "__main__":
