@@ -210,7 +210,7 @@ class BackwardsTransformRanker(object):
         print('Total time usage: %s' % utils.timer(start_time, time.time()))
         self.print_manager.close()
         file.close()
-        return self._best_transformations, self._best_rank_metric
+        return self._best_transformations
 
     def _get_rank_already_performed_file_path(
         self, data_loader: HiTSOutlierLoader,
@@ -230,18 +230,18 @@ class BackwardsTransformRanker(object):
         assert len(wanted_rank_file_name_list) == 1
         return os.path.join(self.results_path, wanted_rank_file_name_list[0])
 
-    def get_best_transformations_and_metric(
+    def get_best_transformations(
         self, data_loader: HiTSOutlierLoader,
         outliers_data_loader: HiTSOutlierLoader,
-        transformer: RankingTransformer):
+        transformer: RankingTransformer, ModelClass=TransformODSimpleModel):
         rank_file_path = self._get_rank_already_performed_file_path(
             data_loader, outliers_data_loader, transformer)
         if rank_file_path is None:
             self.verbose_training = False
             self.rank_transformations(
-                data_loader, outliers_data_loader, TransformODSimpleModel,
+                data_loader, outliers_data_loader, ModelClass,
                 transformer, verbose=True)
-            return self._best_transformations, self._best_rank_metric
+            return self._best_transformations
         else:
             return self._get_best_tranforms_from_file_line(rank_file_path)
 
@@ -343,7 +343,7 @@ def main():
     print(bwd_ranker.rank_transformations(
         ztf_loader, ztf_loader, TransformODSimpleModel, transformer,
         verbose=VERBOSE))
-    print(bwd_ranker.get_best_transformations_and_metric(
+    print(bwd_ranker.get_best_transformations(
         ztf_loader, ztf_loader, transformer))
 
 

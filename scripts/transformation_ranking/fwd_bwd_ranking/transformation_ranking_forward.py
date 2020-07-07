@@ -48,7 +48,7 @@ class ForwardsTransformRanker(BackwardsTransformRanker):
         file = self._get_log_file(data_loader, outliers_data_loader,
                                   transformer)
         self.print_manager.file_printing(file)
-        print('Inliers data_loader: %s\nOutlier data_loader: %s' % (
+        print('Ranking Transformations\nInliers data_loader: %s\nOutlier data_loader: %s' % (
             data_loader.name, outliers_data_loader.name))
         x_train, x_val = self._get_training_data(data_loader)
         x_test, y_test = self._get_test_data(data_loader, outliers_data_loader)
@@ -110,7 +110,7 @@ class ForwardsTransformRanker(BackwardsTransformRanker):
         print('Total time usage: %s' % utils.timer(start_time, time.time()))
         self.print_manager.close()
         file.close()
-        return self._best_transformations, self._best_rank_metric
+        return self._best_transformations
 
 
 def main():
