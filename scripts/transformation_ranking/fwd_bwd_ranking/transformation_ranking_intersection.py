@@ -77,19 +77,20 @@ def main():
         param_keys.TRAIN_N_TIMES: N_TRAIN_RUNS
     }, verbose_training=VERBOSE_TRAINING)
     transformer = RankingTransformer()
-    print(inter_ranker.rank_transformations(
-        hits_loader, ztf_loader, TransformODSimpleModel, transformer,
-        verbose=VERBOSE))
-    print(inter_ranker.rank_transformations(
-        hits_loader, hits_loader, TransformODSimpleModel, transformer,
-        verbose=VERBOSE))
-    print(inter_ranker.rank_transformations(
-        ztf_loader, hits_loader, TransformODSimpleModel, transformer,
-        verbose=VERBOSE))
-    print(inter_ranker.rank_transformations(
-        ztf_loader, ztf_loader, TransformODSimpleModel, transformer,
-        verbose=VERBOSE))
-
+    # print(inter_ranker.rank_transformations(
+    #     hits_loader, ztf_loader, TransformODSimpleModel, transformer,
+    #     verbose=VERBOSE))
+    # print(inter_ranker.rank_transformations(
+    #     hits_loader, hits_loader, TransformODSimpleModel, transformer,
+    #     verbose=VERBOSE))
+    # print(inter_ranker.rank_transformations(
+    #     ztf_loader, hits_loader, TransformODSimpleModel, transformer,
+    #     verbose=VERBOSE))
+    # print(inter_ranker.rank_transformations(
+    #     ztf_loader, ztf_loader, TransformODSimpleModel, transformer,
+    #     verbose=VERBOSE))
+    print(inter_ranker.get_best_transformations(
+        ztf_loader, ztf_loader, transformer))
 
 if __name__ == "__main__":
     main()

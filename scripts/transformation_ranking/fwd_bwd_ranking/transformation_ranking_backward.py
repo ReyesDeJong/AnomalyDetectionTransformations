@@ -236,8 +236,8 @@ class BackwardsTransformRanker(object):
         transformer: RankingTransformer, ModelClass=TransformODSimpleModel):
         rank_file_path = self._get_rank_already_performed_file_path(
             data_loader, outliers_data_loader, transformer)
-        if rank_file_path is None:
-            self.verbose_training = False
+        if rank_file_path is None or self._get_best_tranforms_from_file_line(
+            rank_file_path) is None:
             self.rank_transformations(
                 data_loader, outliers_data_loader, ModelClass,
                 transformer, verbose=True)
@@ -249,8 +249,11 @@ class BackwardsTransformRanker(object):
         with open(file_path) as f:
             content = f.readlines()
         # you may also want to remove whitespace characters like `\n` at the end of each line
-        line_with_transforms = [
-            x.strip() for x in content if 'Best Trf' in x][0]
+        line_with_transforms_list = [
+            x.strip() for x in content if 'Best Trf' in x]
+        if len(line_with_transforms_list) == 0:
+            return None
+        line_with_transforms = line_with_transforms_list[-1]
         begining_of_trf_pos = [
             pos for pos, char in enumerate(line_with_transforms) if
             char == '('][0]

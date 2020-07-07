@@ -12,9 +12,9 @@ sys.path.append(PROJECT_PATH)
 
 from modules.geometric_transform. \
   transformations_tf import AbstractTransformer, cnn2d_depthwise_tf, \
-  makeGaussian, makeLoG, check_shape_kernel, apply_affine_transform
+  makeGaussian, makeLoG, check_shape_kernel, apply_affine_transform, PlusKernelTransformer
 import tensorflow as tf
-
+import itertools
 import numpy as np
 
 
@@ -108,6 +108,69 @@ class RankingTransformer(AbstractTransformer):
         self.flips * self.gauss * self.log * self.trivial * self.mixed == 0:
       self.transformation_tuples = tuple(
           np.unique(self.transformation_tuples, axis=0))
+
+  def _create_transformation_op_list(self):
+    transformation_list = []
+    for is_flip, tx, ty, k_rotate, is_gauss, is_log, is_mixed, is_trivial, in \
+        self.transformation_tuples:
+      transformation = RankingTransformation(
+          is_flip, tx, ty, k_rotate, is_gauss, is_log, is_mixed, is_trivial)
+      transformation_list.append(transformation)
+
+    self._transformation_ops = transformation_list
+
+# TODO: see if can do some refactoring here
+class PlusKernelShuffleNoiseTransformer(PlusKernelTransformer):
+  def __init__(self, translation_x=8, translation_y=8, rotations=True,
+      flips=True, gauss=True, log=True, mixed=1, trivial=1,
+      transform_batch_size=512,
+      name='PlusKernelShuffleNoise_Transformer'):
+    self.mixed = mixed
+    self.trivial = trivial
+    super().__init__(
+        translation_x, translation_y, rotations,
+        flips, gauss, log, transform_batch_size, name)
+
+
+  def _create_transformation_tuples_list(self):
+    self.transformation_tuples = list(itertools.product(
+        self.iterable_flips,
+        self.iterable_tx,
+        self.iterable_ty,
+        self.iterable_rot,
+        [0],
+        [0],
+        [0],
+        [0]))
+    self.transformation_tuples += list(itertools.product(
+        [0],
+        self.iterable_tx,
+        self.iterable_ty,
+        [0],
+        [1],
+        [0],
+        [0],
+        [0]))
+    self.transformation_tuples += list(itertools.product(
+        [0],
+        self.iterable_tx,
+        self.iterable_ty,
+        [0],
+        [0],
+        [1],
+        [0],
+        [0]))
+    self.transformation_tuples += list(itertools.product(
+        [0],
+        self.iterable_tx,
+        self.iterable_ty,
+        [0],
+        [1],
+        [1],
+        [0],
+        [0]))
+    self.transformation_tuples += ((0, 0, 0, 0, 0, 0, self.mixed, 0),
+                                   (0, 0, 0, 0, 0, 0, 0, self.trivial))
 
   def _create_transformation_op_list(self):
     transformation_list = []
