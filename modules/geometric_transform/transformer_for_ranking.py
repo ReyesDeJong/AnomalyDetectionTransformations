@@ -98,6 +98,7 @@ class RankingTransformer(AbstractTransformer):
     self.transformation_tuples = (
       (0, 0, 0, 0, 0, 0, 0, 0), (1 * self.flips, 0, 0, 0, 0, 0, 0, 0),
       (0, self.translation_x, 0, 0, 0, 0, 0, 0),
+      (0, 0, 0, self.rotations*1, 0, 0, 0, 0),
       (0, 0, 0, 0, 1 * self.gauss, 0, 0, 0),
       (0, 0, 0, 0, 0, 1 * self.log, 0, 0),
       (0, 0, 0, 0, 0, 0, self.mixed, 0), (0, 0, 0, 0, 0, 0, 0, self.trivial),

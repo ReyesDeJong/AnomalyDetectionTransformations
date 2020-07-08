@@ -82,7 +82,7 @@ class UnionTransformRanker(BackwardsTransformRanker):
     def operate_both_lists(self, best_fwd_transforms, best_bwd_transforms):
         # union
         union_transformations = np.array(
-            best_fwd_transforms+best_bwd_transforms)
+            tuple(best_fwd_transforms)+tuple(best_bwd_transforms))
         union_transformations = np.unique(
             union_transformations, axis=0).tolist()
         return union_transformations
@@ -135,4 +135,6 @@ def main():
 
 
 if __name__ == "__main__":
+    from scripts.transformation_ranking.fwd_bwd_ranking import transformation_ranking_intersection
     main()
+    transformation_ranking_intersection.main()

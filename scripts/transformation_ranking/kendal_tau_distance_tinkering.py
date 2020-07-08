@@ -27,4 +27,4 @@ if __name__ == "__main__":
   print(a)
   print(b)
   # print(kendall_tau_distance(b.tolist(), a.tolist()))
-  print(kendall_tau_distance([1,3,2], [1,2,3]))
+  print(kendall_tau_distance([1,2,3], [1,3,2]))
