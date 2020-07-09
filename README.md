@@ -22,3 +22,7 @@ If you use the ideas or method presented in the paper, please cite:
   year={2018}
 }
 ```
+
+## Version 0.1.0
+It contain thesis work before start modification of Discrimination Matrix Method, which 
+is contained in scripts/transformation_clean/training_transformation_selection.py
