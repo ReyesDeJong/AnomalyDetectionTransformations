@@ -6,6 +6,8 @@ the idea is to return a new transformer object, which only contains the
 distinguishable transformations
 
 Tp see transformation set verbose to 1
+
+This module gives transformer with selected transforms, given an accuracy matrix
 """
 
 import os
@@ -44,8 +46,8 @@ class TransformSelectorByOVO(tf.keras.Model):
       for conflicting_tuple in self.redundant_transforms_tuples:
         print('(%i,%i): %s ; %s' % (
           conflicting_tuple[0], conflicting_tuple[1],
-          str(transformer.tranformation_tuples[conflicting_tuple[0]]),
-          str(transformer.tranformation_tuples[conflicting_tuple[1]])))
+          str(transformer.transformation_tuples[conflicting_tuple[0]]),
+          str(transformer.transformation_tuples[conflicting_tuple[1]])))
     # TODO: do a random selection and, selection_accuracy_tolerance=accuracy_selection_tolerance) a most repeated based. THIS is first
     #  chosen
     transforms_to_delete = [x_y_tuple[1] for x_y_tuple in
@@ -55,11 +57,12 @@ class TransformSelectorByOVO(tf.keras.Model):
       print(transforms_to_delete)
       print(unique_transforms_to_delete)
     reversed_unique_transfors_to_delete = unique_transforms_to_delete[::-1]
+    transformer.transformation_tuples = list(transformer.transformation_tuples)
     for i in reversed_unique_transfors_to_delete:
-      del transformer.tranformation_tuples[i]
-      del transformer._transformation_list[i]
+      del transformer.transformation_tuples[i]
+      del transformer._transformation_ops[i]
     if verbose:
       print(
-        'Left Transformations %i' % len(transformer.tranformation_tuples))
-      print(transformer.tranformation_tuples)
+        'Left Transformations %i' % len(transformer.transformation_tuples))
+      print(transformer.transformation_tuples)
     return transformer

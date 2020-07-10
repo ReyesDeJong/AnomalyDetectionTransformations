@@ -9,10 +9,12 @@ PROJECT_PATH = os.path.abspath(
     os.path.join(os.path.dirname(__file__), '..'))
 sys.path.append(PROJECT_PATH)
 
-from parameters import general_keys, param_keys
-import numpy as np
+from parameters import param_keys, general_keys
 from typing import Callable
+from modules.data_loaders.hits_outlier_loader import HiTSOutlierLoader
 from models.transformer_od import TransformODModel
+from modules.geometric_transform.transformations_tf import AbstractTransformer
+import numpy as np
 
 
 class ODTrainer(object):
@@ -32,11 +34,13 @@ class ODTrainer(object):
         return default_params
 
     def train_and_evaluate_model_n_times(
-        self, ModelClass: Callable[[], TransformODModel], transformer,
-        x_train, x_val, x_test, y_test, train_times, verbose=False
+        self, ModelClass: Callable[[], TransformODModel], transformer: AbstractTransformer,
+        x_train, x_val, x_test, y_test, train_times, verbose=False,
+        data_loader:HiTSOutlierLoader=None
     ):
         self.metric_results = []
         for i in range(train_times):
+            print('Training Model %i/%i' % (i+1, train_times))
             model = ModelClass(
                 None, transformer, input_shape=x_train.shape[1:])
             model.fit(x_train, x_val, epochs=self.train_epochs, patience=0,
@@ -45,25 +49,32 @@ class ODTrainer(object):
                 x_train, x_test, y_test, '', 'real', x_val, verbose=verbose)
             self.metric_results.append(results['dirichlet']['roc_auc'])
             del model
+        self.n_transforms = transformer.n_transforms
+        self.data_loader_name = ''
+        if data_loader:
+            self.data_loader_name = data_loader.name
         # print(self.metric_results)
         return self.metric_results
 
     def print_metric_mean_and_std(self):
-        msg = "%s : %.4f +/- %.4f" % \
-               (self.metric_name_to_retrieve, np.mean(self.metric_results),
-                np.mean(self.metric_results))
+        msg = "%i TIMES RESULTS %s n_trf%i %s : %.4f +/- %.4f" % \
+              (len(self.metric_results), self.data_loader_name,
+               self.n_transforms,
+               self.metric_name_to_retrieve,
+               np.mean(self.metric_results),
+               np.std(self.metric_results))
         print(msg)
 
     def get_metric_mean_and_std(self):
         return np.mean(self.metric_results), np.std(self.metric_results)
+
 
 if __name__ == "__main__":
     from modules.geometric_transform.transformer_for_ranking import \
         RankingTransformer
     from models.transformer_od_simple_net import TransformODSimpleModel
     from modules.data_loaders.hits_outlier_loader import HiTSOutlierLoader
-    from parameters import loader_keys, general_keys
-    import numpy as np
+    from parameters import loader_keys
 
     hits_params = {
         loader_keys.DATA_PATH: os.path.join(

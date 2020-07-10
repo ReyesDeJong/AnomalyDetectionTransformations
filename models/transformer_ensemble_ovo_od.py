@@ -130,7 +130,7 @@ class EnsembleOVOTransformODModel(TransformODModel):
     return data_binary, labels_binary
 
   def _large_model_fit(self, x_train, x_val, transform_batch_size,
-      train_batch_size, epochs, **kwargs):
+      train_batch_size, epochs, save_weights_in_common_path, **kwargs):
     print('Fit')
     x_train_transform, y_train_transform = \
       self.transformer.apply_all_transforms(
@@ -187,17 +187,19 @@ class EnsembleOVOTransformODModel(TransformODModel):
       # print(os.path.abspath(weight_path))
       # TODO: what happens if y do self.save_weights??
       model.save_weights(weight_path)
-      model.save_weights(common_to_all_models_weight_path)
+      if save_weights_in_common_path:
+        model.save_weights(common_to_all_models_weight_path)
       del model, validation_data, val_x_binary, val_y_binary, train_y_binary, train_x_binary
     self.load_model_weights(self.checkpoint_folder)
 
   def fit(self, x_train, x_val, transform_batch_size=512, train_batch_size=128,
-      epochs=2, **kwargs):
+      epochs=2, save_weights_in_common_path=True, **kwargs):
     """Large fit always happens"""
     self.create_specific_model_paths()
     if len(self.models_index_tuples) > 0:
       return self._large_model_fit(
           x_train, x_val, transform_batch_size, train_batch_size, epochs,
+          save_weights_in_common_path,
           **kwargs)
     # # transforming data
     # x_train_transform, y_train_transform = \

@@ -27,10 +27,12 @@ TRANSFORM_SELECTION_RESULTS_FOLDER = os.path.join(PROJECT_PATH, 'results',
 TRANSFORM_SELECTION_RESULTS_FILENAME = 'discrepancies_between_val_train_transform_selection.txt'
 
 
-def try_to_load_model_weights(model: EnsembleOVOTransformODSimpleModel):
+def try_to_load_model_weights(model: EnsembleOVOTransformODSimpleModel, path=None):
+  if path is None:
+    path = model.common_to_all_models_transform_selection_checkpoints_folder
   try:
-    model.load_model_weights(
-        model.common_to_all_models_transform_selection_checkpoints_folder)
+
+    model.load_model_weights(path)
     return True
   except Exception as e:
     print(e)
@@ -54,7 +56,7 @@ def check_for_discrepancies_between_train_and_val_acc_matrix(
       selection_accuracy_tolerance=accuracy_selection_tolerance)
   transform_selection_results_path = os.path.join(
     TRANSFORM_SELECTION_RESULTS_FOLDER, TRANSFORM_SELECTION_RESULTS_FILENAME)
-  if val_transformer.tranformation_tuples == train_transformer.tranformation_tuples:
+  if val_transformer.transformation_tuples == train_transformer.transformation_tuples:
     with open(transform_selection_results_path, "a") as myfile:
       myfile.write(
           "\n" + model.name + '\n' + transformer.name + '\n' + data_loader.name)
@@ -67,8 +69,8 @@ def check_for_discrepancies_between_train_and_val_acc_matrix(
           "\n" + model.name + '\n' + transformer.name + '\n' + data_loader.name)
       myfile.write(
           '[DISCREPANCY] Train and Val Transforms selected are NOT equal')
-      myfile.write('Train:\n' + str(train_transformer.tranformation_tuples))
-      myfile.write('VAL:\n' + str(val_transformer.tranformation_tuples))
+      myfile.write('Train:\n' + str(train_transformer.transformation_tuples))
+      myfile.write('VAL:\n' + str(val_transformer.transformation_tuples))
 
 
 # TODO: move this and above to methods of model
