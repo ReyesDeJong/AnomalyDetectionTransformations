@@ -108,8 +108,27 @@ class HistogramPlotterResultDict(object):
     ax.set_xticklabels(self._transformation_names_list)
     plt.show()
 
+  def get_result_name_values_lists(self, regex: str, exlude_list: list):
+    dict_expname_result = self. \
+      _get_dict_expname_results_grouped_by_regex(regex, exlude_list)
+    # print(list(dict_expname_result.keys()))
+    fig, ax = plt.subplots(1, 1, figsize=(12, 5))
+    exp_name_list = []
+    norm_result_list = []
+    for exp_name in dict_expname_result.keys():
+      # print(exp_name)
+      results_dict = dict_expname_result[exp_name]
+      # print(results_dict)
+      results_list = self._get_result_in_order_of_trf_names(results_dict)
+      # print(results_list)
+      aux_idxs = list(range(len(results_list)))
+      norm_results = self._0_1_norm_list(results_list)
+      norm_result_list.append(norm_results)
+      exp_name_list.append(exp_name)
+    return exp_name_list, norm_result_list
+
 
 if __name__ == "__main__":
   hist_plotter = HistogramPlotterResultDict()
-  hist_plotter.plot_histograms_by_regex('MII', exlude_list=['Rdm'],
+  hist_plotter.plot_histograms_by_regex('RawFID', exlude_list=['Rdm'],
                                         log_scale=False)
