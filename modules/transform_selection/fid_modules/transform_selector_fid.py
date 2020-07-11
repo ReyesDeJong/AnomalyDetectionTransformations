@@ -20,6 +20,7 @@ from modules import utils
 from tqdm import tqdm
 from sklearn.cluster import KMeans
 import matplotlib.pyplot as plt
+from parameters import loader_keys, general_keys
 
 
 class TransformSelectorFRawLogFID(object):
@@ -87,14 +88,14 @@ class TransformSelectorFRawLogFID(object):
         kmeans = KMeans(n_clusters=2)
         kmeans.fit(transformation_scores)
         y_kmeans = kmeans.predict(transformation_scores)
-        if verbose:
-            plt.plot([1] * len(transformation_scores),
-                     transformation_scores[:, 0],
-                     'o')
-            plt.show()
-            plt.scatter([1] * len(transformation_scores),
-                        transformation_scores[:, 0], c=y_kmeans)
-            plt.show()
+        # if verbose:
+        #     plt.plot([1] * len(transformation_scores),
+        #              transformation_scores[:, 0],
+        #              'o')
+        #     plt.show()
+        #     plt.scatter([1] * len(transformation_scores),
+        #                 transformation_scores[:, 0], c=y_kmeans)
+        #     plt.show()
         return y_kmeans
 
     def _get_usefull_transformations(self, transformation_tuples,
@@ -131,7 +132,6 @@ class TransformSelectorFRawLogFID(object):
 
 
 if __name__ == "__main__":
-    from parameters import loader_keys, general_keys
     from modules.geometric_transform.transformer_for_ranking import \
         RankingTransformer
     from modules.data_loaders.ztf_small_outlier_loader import ZTFSmallOutlierLoader
