@@ -13,6 +13,7 @@ sys.path.append(PROJECT_PATH)
 
 from modules.utils import delta_timer
 import time
+import datetime
 import numpy as np
 from parameters import loader_keys, general_keys
 from modules import utils
@@ -26,10 +27,11 @@ class DeepHits(tf.keras.Model):
         self, n_classes, drop_rate=0.5, final_activation='softmax',
         name='deep_hits_refactored', results_path=''):
         super().__init__(name=name)
-        self.model_path = results_path
         self._init_layers(n_classes, drop_rate, final_activation)
         self._init_builds()
         self.print_manager = PrintManager()
+        self.model_weights_folder, self.best_model_weights_path = \
+            self._create_model_paths(results_path)
 
     def _init_layers(self, n_classes, drop_rate, final_activation):
         self.zp = tf.keras.layers.ZeroPadding2D(padding=(3, 3))
@@ -134,7 +136,6 @@ class DeepHits(tf.keras.Model):
             general_keys.LOSS: 1e100,
             general_keys.NOT_IMPROVED_COUNTER: 0,
         }
-        self.check_best_model_save(iteration=0)
         self.n_iterations_in_epoch = (len(y) // batch_size)
         if validation_data is None:
             return self._fit_without_validation(x, y, batch_size, epochs)
@@ -158,9 +159,12 @@ class DeepHits(tf.keras.Model):
                         return
                     for validation_images, validation_labels in validation_ds:
                         self.eval_step(validation_images, validation_labels)
-                    template = 'Epoch {}, Loss: {}, Acc: {}, Val loss: {}, Val acc: {}, Time: {}'
+                    template = 'Iter {}, Patience {}, Epoch {}, Loss: {}, Acc: {}, Val loss: {}, Val acc: {}, Time: {}'
                     print(
                         template.format(
+                            it_i,
+                            patience-self.best_model_so_far[
+                                general_keys.NOT_IMPROVED_COUNTER],
                             epoch + 1,
                             self.train_loss.result(),
                             self.train_accuracy.result() * 100,
@@ -183,7 +187,7 @@ class DeepHits(tf.keras.Model):
 
     def check_early_stopping(self, patience):
         if self.best_model_so_far[
-            general_keys.NOT_IMPROVED_COUNTER] >= patience + 1:
+            general_keys.NOT_IMPROVED_COUNTER] > patience:
             # print(self.best_model_weights_path)
             self.load_weights(
                 self.best_model_weights_path)
@@ -196,16 +200,28 @@ class DeepHits(tf.keras.Model):
             return True
         return False
 
+    # TODO: refactor on a better saving result manner
+    def _create_model_paths(self, results_path):
+        model_weights_folder = os.path.join(results_path, 'aux_weights')
+        utils.check_path(model_weights_folder)
+        best_model_weights_path = os.path.join(model_weights_folder,
+                                                    'best_weights.ckpt')
+        return model_weights_folder, best_model_weights_path
+    #     results_folder_path = os.path.join(
+    #         PROJECT_PATH, 'results', 'results_refactored', results_folder_name)
+    #     date = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
+    #     self.model_path = os.path.join(PROJECT_PATH, 'results',
+    #                                    self.params[
+    #                                        param_keys.RESULTS_FOLDER_NAME],
+    #                                    '%s_%s' % (self.model_name, date))
+    #     best_model_weights_folder = os.path.join(self.model_path,
+    #                                              'aux_weights')
+    #     utils.check_path(best_model_weights_folder)
+    #     self.best_model_weights_path = os.path.join(
+    #         best_model_weights_folder,
+    #         'best_weights.ckpt')
+
     def check_best_model_save(self, iteration):
-        if iteration == 0:
-            best_model_weights_folder = os.path.join(self.model_path,
-                                                     'aux_weights')
-            utils.check_path(best_model_weights_folder)
-            self.best_model_weights_path = os.path.join(
-                best_model_weights_folder,
-                'best_weights.ckpt')
-            self.save_weights(self.best_model_weights_path)
-            return
         self.best_model_so_far[general_keys.NOT_IMPROVED_COUNTER] += 1
         if self.eval_loss.result() < self.best_model_so_far[general_keys.LOSS]:
             self.best_model_so_far[general_keys.LOSS] = self.eval_loss.result()
@@ -263,7 +279,9 @@ if __name__ == '__main__':
     from modules.geometric_transform import transformations_tf
     from modules.data_loaders.hits_outlier_loader import HiTSOutlierLoader
     from tensorflow.keras.utils import to_categorical
-    EPOCHS = 100
+    EPOCHS = 1000
+    ITERATIONS_TO_VALIDATE = 1000 # None
+    PATIENCE = 5 # 0
 
     gpus = tf.config.experimental.list_physical_devices('GPU')
     for gpu in gpus:
@@ -283,7 +301,9 @@ if __name__ == '__main__':
     data_loader = HiTSOutlierLoader(hits_params)
     (x_train, y_train), (x_val, y_val), (
         x_test, y_test) = data_loader.get_outlier_detection_datasets()
-    transformer = transformations_tf.TransTransformer()
+
+    transformer = transformations_tf.Transformer()#TransTransformer()
+
     x_train_transformed, transformations_inds = transformer.apply_all_transforms(
         x_train)
     x_val_transformed, transformations_inds_val = transformer.apply_all_transforms(
@@ -295,12 +315,13 @@ if __name__ == '__main__':
         epochs=EPOCHS,
         validation_data=(
         x_val_transformed, to_categorical(transformations_inds_val)),
-        batch_size=128, patience=0)
+        batch_size=128, patience=PATIENCE,
+        iterations_to_validate=ITERATIONS_TO_VALIDATE)
     mdl.eval_tf(x_train_transformed, to_categorical(transformations_inds),
                 verbose=1)
     mdl.eval_tf(x_val_transformed, to_categorical(transformations_inds_val),
                 verbose=1)
-    print('\n Results with random Initial Weights')
+    print('\nResults with random Initial Weights')
     mdl.load_weights('aux_weights/init.ckpt')
     mdl.eval_tf(x_train_transformed, to_categorical(transformations_inds),
                 verbose=1)
@@ -311,7 +332,8 @@ if __name__ == '__main__':
         epochs=EPOCHS,
         validation_data=(
         x_val_transformed, to_categorical(transformations_inds_val)),
-        batch_size=128, patience=0)
+        batch_size=128, patience=PATIENCE,
+        iterations_to_validate=ITERATIONS_TO_VALIDATE)
     mdl.eval_tf(x_train_transformed, to_categorical(transformations_inds),
                 verbose=1)
     mdl.eval_tf(x_val_transformed, to_categorical(transformations_inds_val),
@@ -320,7 +342,7 @@ if __name__ == '__main__':
     del mdl
     mdl = DeepHits(n_classes=transformer.n_transforms)
     mdl.load_weights('aux_weights/best_weights.ckpt')
-    print('\n Results with model loaded')
+    print('\nResults with model loaded')
     mdl.eval_tf(x_train_transformed, to_categorical(transformations_inds),
                 verbose=1)
     mdl.eval_tf(x_val_transformed, to_categorical(transformations_inds_val),
