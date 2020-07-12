@@ -51,21 +51,62 @@ class AbstractTransformer(abc.ABC):
         self.transformation_tuples = transformation_list
         self._create_transformation_op_list()
 
-    def _apply_transformation(self, tuple_x_transformation_index):
+    # This cannot be used, because of probles inside dataset since
+    # transformation_index cannot be tensor
+    # def _apply_transformation(self, tuple_x_transformation_index):
+    #     x_single_image = tuple_x_transformation_index[0]
+    #     transformation_index = tuple_x_transformation_index[1]
+    #     x_transformed = self._transformation_ops[transformation_index](
+    #         x_single_image[None, ...]
+    #     )[0]
+    #     return (x_transformed, transformation_index)
+
+    # @tf.function
+    def _apply_transformation_v2(self, tuple_x_transformation_index):
         x_single_image = tuple_x_transformation_index[0]
         transformation_index = tuple_x_transformation_index[1]
-        x_transformed = self._transformation_ops[transformation_index](
-            x_single_image[None, ...]
-        )[0]
+        list_trfs = []
+        for i in range(self.n_transforms):
+            x_transformed = self._transformation_ops[i](
+                x_single_image[None, ...])[0]
+            list_trfs.append(x_transformed)
+        list_trfs = tf.convert_to_tensor(list_trfs)
+        x_transformed = list_trfs[transformation_index]
         return (x_transformed, transformation_index)
+
+    # @tf.function
+    def transform_batch_with_random_indexes(self, x_batch) -> (
+    tf.Tensor, tf.Tensor):
+        random_transformation_indexes = tf.random.uniform(
+            shape=[x_batch.shape[0]], minval=0, maxval=self.n_transforms,
+            dtype=tf.int32)
+        x_transformed = self.transform_batch_given_indexes(
+            x_batch, random_transformation_indexes)
+        return x_transformed, random_transformation_indexes
+
+    def transform_batch_with_random_categorical_indexes_for_dataset_map(
+        self, x_batch, dummy_labels):
+        x_transformed, transformation_indexes = \
+            self.transform_batch_with_random_indexes(x_batch)
+        categorical_transformation_indexes = tf.one_hot(
+            transformation_indexes, depth=self.n_transforms)
+        return x_transformed, categorical_transformation_indexes
 
     # @tf.function
     def transform_batch_given_indexes(self, x_batch,
         transformation_indexes) -> (tf.Tensor, tf.Tensor):
-        x_transformed, transformation_index = tf.map_fn(
-            self._apply_transformation, (x_batch, transformation_indexes))
+        x_transformed, _ = tf.map_fn(
+            self._apply_transformation_v2, (x_batch, transformation_indexes))
         x_transformed_normalize = self._normalize_1_1_by_image(x_transformed)
-        return x_transformed_normalize, transformation_index
+        return x_transformed_normalize
+
+    # @tf.function
+    def apply_specific_transform(self, x_batch,
+        single_transformation_index) -> (tf.Tensor, tf.Tensor):
+            x_transformed = self._transformation_ops[single_transformation_index](
+                x_batch)
+            x_transformed_normalize = self._normalize_1_1_by_image( x_transformed)
+            return x_transformed_normalize
 
     # TODO
     def apply_all_transforms(self, x, batch_size=None):

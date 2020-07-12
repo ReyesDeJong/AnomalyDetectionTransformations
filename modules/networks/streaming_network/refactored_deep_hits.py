@@ -102,6 +102,7 @@ class DeepHits(tf.keras.Model):
         self.eval_loss(t_loss)
         self.eval_accuracy(labels, predictions)
 
+    # TODO: do something to keep model with best weights
     def _fit_without_validation(self, x, y, batch_size, epochs):
         self.evaluation_set_name = 'train'
         train_ds = tf.data.Dataset.from_tensor_slices(
@@ -152,9 +153,8 @@ class DeepHits(tf.keras.Model):
         for epoch in range(epochs):
             for it_i, (images, labels) in enumerate(train_ds):
                 self.train_step(images, labels)
-                it_i = it_i + (epoch * self.n_iterations_in_epoch) + (
-                    epoch != 0)
-                if it_i % iterations_to_validate == 0 and it_i != 0:
+                it_i = it_i + (epoch * self.n_iterations_in_epoch)
+                if it_i % iterations_to_validate == 0:
                     if self.check_early_stopping(patience):
                         return
                     for validation_images, validation_labels in validation_ds:
@@ -277,10 +277,11 @@ class DeepHits(tf.keras.Model):
 
 if __name__ == '__main__':
     from modules.geometric_transform import transformations_tf
+    from modules.geometric_transform.transformer_for_ranking import RankingTransformer
     from modules.data_loaders.hits_outlier_loader import HiTSOutlierLoader
     from tensorflow.keras.utils import to_categorical
-    EPOCHS = 1000
-    ITERATIONS_TO_VALIDATE = 1000 # None
+    EPOCHS = 100
+    ITERATIONS_TO_VALIDATE = None #1000 # None
     PATIENCE = 5 # 0
 
     gpus = tf.config.experimental.list_physical_devices('GPU')
@@ -302,7 +303,12 @@ if __name__ == '__main__':
     (x_train, y_train), (x_val, y_val), (
         x_test, y_test) = data_loader.get_outlier_detection_datasets()
 
-    transformer = transformations_tf.Transformer()#TransTransformer()
+    # transformer = transformations_tf.Transformer()
+    # transformer = transformations_tf.TransTransformer()
+    transformer = RankingTransformer()
+    transformer.set_transformations_to_perform(
+        transformer.transformation_tuples * 40)
+    print(transformer.n_transforms)
 
     x_train_transformed, transformations_inds = transformer.apply_all_transforms(
         x_train)

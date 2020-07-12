@@ -33,7 +33,7 @@ class ResultDictGeneratorClfRdmWRNFID(ResultDictGeneratorClfWRNFID):
     return model
 
   def _get_measures_from_data(self, data):
-    activations = self._model.network.get_activations(data, batch_size=128)
+    activations = self._model.classifier.get_activations(data, batch_size=128)
     mu, sigma = fid. \
       calculate_activation_statistics_from_activation_array(activations)
     return (mu, sigma)

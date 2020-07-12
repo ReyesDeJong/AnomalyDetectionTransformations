@@ -32,7 +32,7 @@ def check_visualize_transforms():
 
 
 
-    transformed_batch, transform_idxs = \
+    transformed_batch = \
         transformer.transform_batch_given_indexes(
         tf.convert_to_tensor(im, dtype=tf.float32),
         tf.convert_to_tensor(transformations_inds, dtype=tf.int32))
@@ -60,5 +60,5 @@ def check_memory_usage_when_changing_transforms(iterations=int(1e10)):
         transformer.set_transformations_to_perform(trf_tuples_to_use)
 
 if __name__ == "__main__":
-    # check_visualize_transforms()
-    check_memory_usage_when_changing_transforms()
+    check_visualize_transforms()
+    # check_memory_usage_when_changing_transforms()
