@@ -53,16 +53,16 @@ class AbstractTransformer(abc.ABC):
 
     # This cannot be used, because of probles inside dataset since
     # transformation_index cannot be tensor
-    # def _apply_transformation(self, tuple_x_transformation_index):
-    #     x_single_image = tuple_x_transformation_index[0]
-    #     transformation_index = tuple_x_transformation_index[1]
-    #     x_transformed = self._transformation_ops[transformation_index](
-    #         x_single_image[None, ...]
-    #     )[0]
-    #     return (x_transformed, transformation_index)
+    def _apply_transformation_v2(self, tuple_x_transformation_index):
+        x_single_image = tuple_x_transformation_index[0]
+        transformation_index = tuple_x_transformation_index[1]
+        x_transformed = self._transformation_ops[transformation_index](
+            x_single_image[None, ...]
+        )[0]
+        return (x_transformed, transformation_index)
 
     # @tf.function
-    def _apply_transformation_v2(self, tuple_x_transformation_index):
+    def _apply_transformation(self, tuple_x_transformation_index):
         x_single_image = tuple_x_transformation_index[0]
         transformation_index = tuple_x_transformation_index[1]
         list_trfs = []
@@ -96,7 +96,8 @@ class AbstractTransformer(abc.ABC):
     def transform_batch_given_indexes(self, x_batch,
         transformation_indexes) -> (tf.Tensor, tf.Tensor):
         x_transformed, _ = tf.map_fn(
-            self._apply_transformation_v2, (x_batch, transformation_indexes))
+            self._apply_transformation_v2, (x_batch, transformation_indexes),
+            parallel_iterations=10)
         x_transformed_normalize = self._normalize_1_1_by_image(x_transformed)
         return x_transformed_normalize
 

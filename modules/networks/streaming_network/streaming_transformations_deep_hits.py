@@ -40,7 +40,7 @@ class StreamingTransformationsDeepHits(DeepHits):
             epoch_start_time = time.time()
             for it_i, (images, labels) in enumerate(train_ds):
                 self.train_step(images, labels)
-                self.eval_step(images, labels)
+                # self.eval_step(images, labels)
             template = 'Epoch {}, Loss: {}, Acc: {}, Time: {}'
             print(template.format(epoch + 1,
                                   self.eval_loss.result(),
@@ -59,10 +59,20 @@ class StreamingTransformationsDeepHits(DeepHits):
         dummy_labels = np.zeros(shape=len(x_train))
         train_ds = tf.data.Dataset.from_tensor_slices(
             (x_train, dummy_labels)).shuffle(10000).batch(
-            batch_size, drop_remainder=True).map(
-            self.transformer.
-                transform_batch_with_random_categorical_indexes_for_dataset_map)
+            batch_size, drop_remainder=True)#.map(
+            # self.transformer.
+            #     transform_batch_with_random_categorical_indexes_for_dataset_map)
         return train_ds
+
+    @tf.function
+    def train_step(self, images, labels):
+        with tf.GradientTape() as tape:
+            predictions = self.call(images, training=True)
+            loss = self.loss_object(labels, predictions)
+        gradients = tape.gradient(loss, self.trainable_variables)
+        self.optimizer.apply_gradients(zip(gradients, self.trainable_variables))
+        self.train_loss(loss)
+        self.train_accuracy(labels, predictions)
 
     # TODO: implement some kind of train_loggin
     def fit(self, x, epochs, x_validation=None, batch_size=128,
@@ -93,6 +103,15 @@ class StreamingTransformationsDeepHits(DeepHits):
         for epoch in range(epochs):
             for trf_i in range(self.transformer.n_transforms):
                 for it_i, (images, labels) in enumerate(train_ds):
+                    random_transformation_indexes = tf.random.uniform(
+                        shape=[images.shape[0]], minval=0,
+                        maxval=self.transformer.n_transforms,
+                        dtype=tf.int32)
+                    labels = random_transformation_indexes
+                    labels = tf.one_hot(
+                        labels, depth=self.transformer.n_transforms)
+                    images = self.transformer.transform_batch_given_indexes(
+                        images, random_transformation_indexes)
                     self.train_step(images, labels)
                     # (epoch !=0) is becaus at beggining o epochs after 1
                     it_i = it_i + (epoch * self.n_iterations_in_epoch) + (
@@ -214,7 +233,7 @@ if __name__ == '__main__':
 
     # transformer = transformations_tf.Transformer()
     transformer = RankingTransformer()
-    transformer.set_transformations_to_perform(transformer.transformation_tuples*10)
+    transformer.set_transformations_to_perform(transformer.transformation_tuples*100)
     print(transformer.n_transforms)
 
     mdl = StreamingTransformationsDeepHits(transformer)
