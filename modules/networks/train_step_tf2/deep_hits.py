@@ -229,19 +229,23 @@ class DeepHits(tf.keras.Model):
           self.best_model_so_far[general_keys.LOSS],
           self.best_model_so_far[general_keys.ITERATION]), flush=True)
 
-  def predict(self, x, batch_size=1000):
-    if len(x)%batch_size!=0:
-      #TODO: check memory leakage of appen, if it creates copy of array or not
-      extras_x = np.zeros(((batch_size-(len(x)%batch_size),)+ x.shape[1:]))
-      extras_x = np.append(x, extras_x, 0)
-      extras_pred = super().predict(extras_x, batch_size)
-      return extras_pred[:len(x)]
-    return super().predict(x, batch_size)
-    # eval_ds = tf.data.Dataset.from_tensor_slices((x)).batch(batch_size)
-    # predictions = []
-    # for images in eval_ds:
-    #   predictions.append(self.call(images))
-    # return np.concatenate(predictions, axis=0)
+  @tf.function
+  def call_wrapper_to_predict(self, x):
+    return self.call(x)
+
+  def predict(self, x, batch_size=1024):
+    # if len(x)%batch_size!=0:
+    #   #TODO: check memory leakage of appen, if it creates copy of array or not
+    #   extras_x = np.zeros(((batch_size-(len(x)%batch_size),)+ x.shape[1:]))
+    #   extras_x = np.append(x, extras_x, 0)
+    #   extras_pred = super().predict(extras_x, batch_size)
+    #   return extras_pred[:len(x)]
+    # return super().predict(x, batch_size)
+    eval_ds = tf.data.Dataset.from_tensor_slices((x)).batch(batch_size)
+    predictions = []
+    for images in eval_ds:
+      predictions.append(self.call_wrapper_to_predict(images))
+    return np.concatenate(predictions, axis=0)
 
 
   def eval_tf(self, x, y, batch_size=1024, verbose=1):
