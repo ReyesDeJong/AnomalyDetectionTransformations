@@ -11,12 +11,15 @@
 *.svg
 *.pdf
 *.ckpt
+*.index
+checkpoint
 *.data-00000-of-00002
 *.data-00001-of-00002
 *.zip
 *.txt
 *.iml
 *.xml
+aux_weights/
 .idea/
 /.idea
 
