@@ -85,17 +85,17 @@ class TransformSelectorFRawLogFID(object):
 
     def _cluster_fid_scores_in_two_groups(self, transformation_scores, verbose):
         transformation_scores = transformation_scores[..., None]
-        kmeans = KMeans(n_clusters=2)
+        kmeans = KMeans( n_clusters=2)
         kmeans.fit(transformation_scores)
         y_kmeans = kmeans.predict(transformation_scores)
-        # if verbose:
-        #     plt.plot([1] * len(transformation_scores),
-        #              transformation_scores[:, 0],
-        #              'o')
-        #     plt.show()
-        #     plt.scatter([1] * len(transformation_scores),
-        #                 transformation_scores[:, 0], c=y_kmeans)
-        #     plt.show()
+        if verbose:
+            plt.plot([1] * len(transformation_scores),
+                     transformation_scores[:, 0],
+                     'o')
+            plt.show()
+            plt.scatter([1] * len(transformation_scores),
+                        transformation_scores[:, 0], c=y_kmeans)
+            plt.show()
         return y_kmeans
 
     def _get_usefull_transformations(self, transformation_tuples,
@@ -134,6 +134,7 @@ class TransformSelectorFRawLogFID(object):
 if __name__ == "__main__":
     from modules.geometric_transform.transformer_for_ranking import \
         RankingTransformer
+    from modules.geometric_transform.transformations_tf import PlusKernelTransformer
     from modules.data_loaders.ztf_small_outlier_loader import ZTFSmallOutlierLoader
 
     utils.init_gpu_soft_growth()
@@ -183,12 +184,13 @@ if __name__ == "__main__":
     ztf_loader = ZTFSmallOutlierLoader(ztf_params)
 
     data_loaders = [
-        ztf_loader,
-        hits_loader,
-        hits_loader_4c,
+        # ztf_loader,
+        # hits_loader,
+        # hits_loader_4c,
         ztf_loader_3c
     ]
     transformer = RankingTransformer()
+    # transformer = PlusKernelTransformer()
     print('Original n transforms %i' % transformer.n_transforms)
 
     fid_selector = TransformSelectorFRawLogFID()
