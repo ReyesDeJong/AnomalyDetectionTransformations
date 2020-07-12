@@ -83,7 +83,7 @@ class DeepHits(tf.keras.Model):
         x = self.act_out(x)
         return x
 
-    # @tf.function
+    @tf.function
     def train_step(self, images, labels):
         with tf.GradientTape() as tape:
             predictions = self.call(images, training=True)
@@ -93,7 +93,7 @@ class DeepHits(tf.keras.Model):
         self.train_loss(loss)
         self.train_accuracy(labels, predictions)
 
-    # @tf.function
+    @tf.function
     def eval_step(self, images, labels):
         predictions = self.call(images, training=False)
         t_loss = self.loss_object(labels, predictions)
@@ -103,7 +103,7 @@ class DeepHits(tf.keras.Model):
     def _fit_without_validation(self, x, y, batch_size, epochs):
         self.evaluation_set_name = 'train'
         train_ds = tf.data.Dataset.from_tensor_slices(
-            (x, y)).shuffle(10000).batch(batch_size)
+            (x, y)).shuffle(10000).batch(batch_size, drop_remainder=True)
         for epoch in range(epochs):
             epoch_start_time = time.time()
             for it_i, (images, labels) in enumerate(train_ds):
@@ -140,18 +140,19 @@ class DeepHits(tf.keras.Model):
             return self._fit_without_validation(x, y, batch_size, epochs)
         assert patience is not None
         self.evaluation_set_name = 'validation'
-
         # check if validate at end of epoch
         if iterations_to_validate is None:
-            iterations_to_validate = self.n_iterations_in_epoch
+            # -1 comes from fact that iterations start at 0
+            iterations_to_validate = self.n_iterations_in_epoch - 1
         train_ds = tf.data.Dataset.from_tensor_slices(
-            (x, y)).shuffle(10000).batch(batch_size)
+            (x, y)).shuffle(10000).batch(batch_size, drop_remainder=True)
         validation_ds = tf.data.Dataset.from_tensor_slices(
             (validation_data[0], validation_data[1])).batch(1024)
         for epoch in range(epochs):
             for it_i, (images, labels) in enumerate(train_ds):
                 self.train_step(images, labels)
-                print(it_i)
+                it_i = it_i + (epoch * self.n_iterations_in_epoch) + (
+                    epoch != 0)
                 if it_i % iterations_to_validate == 0 and it_i != 0:
                     if self.check_early_stopping(patience):
                         return
@@ -169,14 +170,13 @@ class DeepHits(tf.keras.Model):
                                 time.time() - self.training_star_time)
                         )
                     )
-                    self.check_best_model_save(
-                        it_i + ((epoch + 1) * self.n_iterations_in_epoch))
+                    self.check_best_model_save(it_i)
                     self.eval_loss.reset_states()
                     self.eval_accuracy.reset_states()
                     self.train_loss.reset_states()
                     self.train_accuracy.reset_states()
         self.load_weights(
-            self.best_model_weights_path).expect_partial()
+            self.best_model_weights_path)
         print('Total Training Time: {}'.format(
             delta_timer(time.time() - self.training_star_time)))
         self.print_manager.close()
@@ -186,7 +186,7 @@ class DeepHits(tf.keras.Model):
             general_keys.NOT_IMPROVED_COUNTER] >= patience + 1:
             # print(self.best_model_weights_path)
             self.load_weights(
-                self.best_model_weights_path).expect_partial()
+                self.best_model_weights_path)
             self.eval_loss.reset_states()
             self.eval_accuracy.reset_states()
             self.train_loss.reset_states()
@@ -217,7 +217,7 @@ class DeepHits(tf.keras.Model):
                 self.best_model_so_far[general_keys.LOSS],
                 self.best_model_so_far[general_keys.ITERATION]), flush=True)
 
-    # @tf.function
+    @tf.function
     def call_wrapper_to_predict(self, x):
         return self.call(x)
 
@@ -251,11 +251,19 @@ class DeepHits(tf.keras.Model):
         self.print_manager.close()
         return results_dict
 
+    def load_weights(self, filepath, by_name=False):
+        super().load_weights(filepath, by_name).expect_partial()
+
+    def save_initial_weights(self, x, folder_path):
+        self.call(x[0][None, ...])
+        self.save_weights(os.path.join(folder_path, 'init.ckpt'))
+
 
 if __name__ == '__main__':
     from modules.geometric_transform import transformations_tf
     from modules.data_loaders.hits_outlier_loader import HiTSOutlierLoader
     from tensorflow.keras.utils import to_categorical
+    EPOCHS = 100
 
     gpus = tf.config.experimental.list_physical_devices('GPU')
     for gpu in gpus:
@@ -281,26 +289,39 @@ if __name__ == '__main__':
     x_val_transformed, transformations_inds_val = transformer.apply_all_transforms(
         x_val)
     mdl = DeepHits(n_classes=transformer.n_transforms)
+    mdl.save_initial_weights(x_train, 'aux_weights')
     mdl.fit(
-        x_train_transformed, to_categorical(transformations_inds), epochs=100,
+        x_train_transformed, to_categorical(transformations_inds),
+        epochs=EPOCHS,
         validation_data=(
         x_val_transformed, to_categorical(transformations_inds_val)),
-        batch_size=128)
-    # mdl.eval_tf(x_train_transformed, to_categorical(transformations_inds),
-    #             verbose=1)
-    # mdl.eval_tf(x_val_transformed, to_categorical(transformations_inds_val),
-    #             verbose=1)
-    # mdl.save_weights('dummy.ckpt')
-    # # print(mdl.layers)
-    # del mdl
-    # mdl = DeepHits(input_shape=x_train.shape[1:],
-    #                n_classes=transformer.n_transforms)
-    # # # mdl.build((None,) + x_train.shape[1:])
-    # # print(mdl.layers)
-    # # mdl.eval_tf(x_train_transformed, to_categorical(transformations_inds),
-    # #             verbose=1)
-    # mdl.load_weights('dummy.ckpt').expect_partial()
-    # mdl.eval_tf(x_train_transformed, to_categorical(transformations_inds),
-    #             verbose=1)
-    # mdl.eval_tf(x_val_transformed, to_categorical(transformations_inds_val),
-    #             verbose=1)
+        batch_size=128, patience=0)
+    mdl.eval_tf(x_train_transformed, to_categorical(transformations_inds),
+                verbose=1)
+    mdl.eval_tf(x_val_transformed, to_categorical(transformations_inds_val),
+                verbose=1)
+    print('\n Results with random Initial Weights')
+    mdl.load_weights('aux_weights/init.ckpt')
+    mdl.eval_tf(x_train_transformed, to_categorical(transformations_inds),
+                verbose=1)
+    mdl.eval_tf(x_val_transformed, to_categorical(transformations_inds_val),
+                verbose=1)
+    mdl.fit(
+        x_train_transformed, to_categorical(transformations_inds),
+        epochs=EPOCHS,
+        validation_data=(
+        x_val_transformed, to_categorical(transformations_inds_val)),
+        batch_size=128, patience=0)
+    mdl.eval_tf(x_train_transformed, to_categorical(transformations_inds),
+                verbose=1)
+    mdl.eval_tf(x_val_transformed, to_categorical(transformations_inds_val),
+                verbose=1)
+
+    del mdl
+    mdl = DeepHits(n_classes=transformer.n_transforms)
+    mdl.load_weights('aux_weights/best_weights.ckpt')
+    print('\n Results with model loaded')
+    mdl.eval_tf(x_train_transformed, to_categorical(transformations_inds),
+                verbose=1)
+    mdl.eval_tf(x_val_transformed, to_categorical(transformations_inds_val),
+                verbose=1)
