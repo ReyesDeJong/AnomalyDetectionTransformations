@@ -28,6 +28,8 @@ class TransformSelectorFRawLogFID(object):
     def __init__(self):
         self._generator_name = 'RawLogFID'
         self._dict_trf_scores = None
+        self.verbose = False
+        self.show = False
 
     def _get_fid_moments_from_data(self, data):
         mu, sigma = fid. \
@@ -43,7 +45,7 @@ class TransformSelectorFRawLogFID(object):
         return log_fid_value
 
     def _create_dict_with_scores_for_each_transform(
-        self, x_dataset, transformer: AbstractTransformer, verbose):
+        self, x_dataset, transformer: AbstractTransformer):
         # doesn't include score on T0
         self._dict_trf_scores = {}
         x_dataset = \
@@ -52,7 +54,8 @@ class TransformSelectorFRawLogFID(object):
         n_transforms = transformer.n_transforms
         transformations_idxs_to_evaluate = np.arange(n_transforms)[1:]
         for transform_idx_i in tqdm(
-            range(len(transformations_idxs_to_evaluate)), disable=not verbose):
+            range(len(transformations_idxs_to_evaluate)),
+            disable=not self.verbose):
             transform_idx = transformations_idxs_to_evaluate[transform_idx_i]
             features_trf = \
                 transformer.apply_transforms(x_dataset, [transform_idx])[0]
@@ -68,9 +71,9 @@ class TransformSelectorFRawLogFID(object):
             }
 
     def get_all_transformation_tuples_and_scores(
-        self, x_dataset, transformer: AbstractTransformer, verbose=False):
+        self, x_dataset, transformer: AbstractTransformer):
         self._create_dict_with_scores_for_each_transform(
-            x_dataset, transformer, verbose)
+            x_dataset, transformer)
         transformation_indexes = np.sort(list(self._dict_trf_scores.keys()))
         transformation_tuples = []
         transformation_scores = []
@@ -83,19 +86,23 @@ class TransformSelectorFRawLogFID(object):
                                              general_keys.SCORE])
         return transformation_tuples, np.array(transformation_scores)
 
-    def _cluster_fid_scores_in_two_groups(self, transformation_scores, verbose):
-        transformation_scores = transformation_scores[..., None]
-        kmeans = KMeans( n_clusters=2)
-        kmeans.fit(transformation_scores)
-        y_kmeans = kmeans.predict(transformation_scores)
-        if verbose:
+    def plot_clusters(self, transformation_scores, y_labels):
+        if self.show:
+            print('Transformation scores:', transformation_scores)
             plt.plot([1] * len(transformation_scores),
                      transformation_scores[:, 0],
                      'o')
             plt.show()
             plt.scatter([1] * len(transformation_scores),
-                        transformation_scores[:, 0], c=y_kmeans)
+                        transformation_scores[:, 0], c=y_labels)
             plt.show()
+
+    def _cluster_fid_scores_in_two_groups(self, transformation_scores):
+        transformation_scores = transformation_scores[..., None]
+        kmeans = KMeans(n_clusters=2)
+        kmeans.fit(transformation_scores)
+        y_kmeans = kmeans.predict(transformation_scores)
+        self.plot_clusters(transformation_scores, y_kmeans)
         return y_kmeans
 
     def _get_usefull_transformations(self, transformation_tuples,
@@ -114,15 +121,27 @@ class TransformSelectorFRawLogFID(object):
             selected_transforms_idexes = cluster_1_idexes
         selected_transform_tuples = np.array(transformation_tuples)[
             selected_transforms_idexes].tolist()
+        eliminted_transforms_idexes = \
+            list(set(transformation_aux_idxs.tolist()).
+                 difference(set(selected_transforms_idexes.tolist())))
+        eliminated_transform_tuple = np.array(transformation_tuples)[
+            eliminted_transforms_idexes].tolist()
+        if self.verbose:
+            print('eliminated tuples %i %s' % (
+                len(eliminated_transform_tuple),
+                str(eliminated_transform_tuple)))
         return selected_transform_tuples
 
     def get_selected_transformations(
-        self, x_dataset, transformer: AbstractTransformer, verbose=False):
+        self, x_dataset, transformer: AbstractTransformer, verbose=False,
+        show=False):
+        self.verbose = verbose
+        self.show = show
         transformation_tuples, transformation_scores = \
             self.get_all_transformation_tuples_and_scores(
-                x_dataset, transformer, verbose)
+                x_dataset, transformer)
         transformations_predictions = self._cluster_fid_scores_in_two_groups(
-            transformation_scores, verbose)
+            transformation_scores)
         useful_transforms = self._get_usefull_transformations(
             transformation_tuples, transformation_scores,
             transformations_predictions)
@@ -132,10 +151,13 @@ class TransformSelectorFRawLogFID(object):
 
 
 if __name__ == "__main__":
-    from modules.geometric_transform.transformer_for_ranking import \
-        RankingTransformer
-    from modules.geometric_transform.transformations_tf import PlusKernelTransformer
-    from modules.data_loaders.ztf_small_outlier_loader import ZTFSmallOutlierLoader
+    from modules.geometric_transform.transformations_tf import \
+        PlusKernelTransformer
+    from modules.data_loaders.ztf_small_outlier_loader import \
+        ZTFSmallOutlierLoader
+
+    VERBOSE = True
+    SHOW = True
 
     utils.init_gpu_soft_growth()
     # data loaders
@@ -189,8 +211,9 @@ if __name__ == "__main__":
         # hits_loader_4c,
         ztf_loader_3c
     ]
-    transformer = RankingTransformer()
-    # transformer = PlusKernelTransformer()
+    # transformer = RankingTransformer()
+    transformer = PlusKernelTransformer()
+    # transformer = Transformer()
     print('Original n transforms %i' % transformer.n_transforms)
 
     fid_selector = TransformSelectorFRawLogFID()
@@ -198,9 +221,8 @@ if __name__ == "__main__":
     for data_loader_i in data_loaders:
         x_train = data_loader_i.get_outlier_detection_datasets()[0][0]
         print(x_train.shape)
-        selected_trfs = fid_selector.get_selected_transformations(x_train,
-                                                                  transformer,
-                                                                  verbose=True)
+        selected_trfs = fid_selector.get_selected_transformations(
+            x_train, transformer, verbose=VERBOSE, show=SHOW)
         print('%i %s' % (len(selected_trfs), str(selected_trfs)))
         print('')
     print('Original n transforms %i' % transformer.n_transforms)
