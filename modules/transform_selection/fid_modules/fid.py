@@ -21,7 +21,6 @@ import warnings
 
 import numpy as np
 import tensorflow as tf
-from imageio import imread
 from scipy import linalg
 
 
@@ -213,6 +212,8 @@ def calculate_activation_statistics_from_activation_array(act):
 
 
 def load_image_batch(files):
+  from imageio import imread
+
   """Convenience method for batch-loading images
   Params:
   -- files    : list of paths to image files. Images need to have same dimensions for all files.
