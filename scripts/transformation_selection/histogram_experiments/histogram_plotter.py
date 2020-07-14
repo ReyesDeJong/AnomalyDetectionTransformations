@@ -82,7 +82,7 @@ class HistogramPlotterResultDict(object):
     return norm_list
 
   def plot_histograms_by_regex(self, regex: str, exlude_list: list,
-      log_scale=False):
+      log_scale=False, normalize_list=True):
     dict_expname_result = self. \
       _get_dict_expname_results_grouped_by_regex(regex, exlude_list)
     # print(list(dict_expname_result.keys()))
@@ -94,7 +94,9 @@ class HistogramPlotterResultDict(object):
       results_list = self._get_result_in_order_of_trf_names(results_dict)
       # print(results_list)
       aux_idxs = list(range(len(results_list)))
-      norm_results = self._0_1_norm_list(results_list)
+      norm_results = results_list
+      if normalize_list:
+        norm_results = self._0_1_norm_list(results_list)
       ax.plot(aux_idxs, norm_results, label=exp_name)
     if log_scale:
       ax.set_yscale('log')
@@ -108,7 +110,8 @@ class HistogramPlotterResultDict(object):
     ax.set_xticklabels(self._transformation_names_list)
     plt.show()
 
-  def get_result_name_values_lists(self, regex: str, exlude_list: list):
+  def get_result_name_values_lists(self, regex: str, exlude_list: list,
+      normalize_list=True):
     dict_expname_result = self. \
       _get_dict_expname_results_grouped_by_regex(regex, exlude_list)
     # print(list(dict_expname_result.keys()))
@@ -122,7 +125,9 @@ class HistogramPlotterResultDict(object):
       results_list = self._get_result_in_order_of_trf_names(results_dict)
       # print(results_list)
       aux_idxs = list(range(len(results_list)))
-      norm_results = self._0_1_norm_list(results_list)
+      norm_results = results_list
+      if normalize_list:
+        norm_results = self._0_1_norm_list(results_list)
       norm_result_list.append(norm_results)
       exp_name_list.append(exp_name)
     return exp_name_list, norm_result_list
@@ -130,5 +135,5 @@ class HistogramPlotterResultDict(object):
 
 if __name__ == "__main__":
   hist_plotter = HistogramPlotterResultDict()
-  hist_plotter.plot_histograms_by_regex('RawFID', exlude_list=['Rdm'],
-                                        log_scale=False)
+  hist_plotter.plot_histograms_by_regex('DiscMat', exlude_list=['Rdm'],
+                                        log_scale=False, normalize_list=False)

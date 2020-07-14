@@ -132,6 +132,23 @@ def get_transform_selection_transformer(data_loader: HiTSOutlierLoader,
       model, acc_matrix, transformer, accuracy_selection_tolerance)
   return transformer_selected
 
+def get_acc_matrix(data_loader: HiTSOutlierLoader,
+    model: EnsembleOVOTransformODSimpleModel,
+    transformer: AbstractTransformer, accuracy_selection_tolerance=0.01,
+    acc_matrix_to_use_name='val'):
+  acc_matrix_index_dict = {'train': 0, 'val': 1}
+  acc_matrix_path = os.path.join(
+      model.common_to_all_models_transform_selection_results_folder,
+      '%s_acc_matrix.pkl' % acc_matrix_to_use_name)
+  if os.path.exists(acc_matrix_path):
+    acc_matrix = pd.read_pickle(acc_matrix_path)
+  else:
+    both_acc_matrices = generate_transform_selector_acc_matrices(
+        data_loader, model, transformer, accuracy_selection_tolerance)
+    acc_matrix = both_acc_matrices[
+      acc_matrix_index_dict[acc_matrix_to_use_name]]
+  return acc_matrix
+
 
 def plot_n_matrices(matrix_scores, N_to_plot):
   for i in range(N_to_plot):
