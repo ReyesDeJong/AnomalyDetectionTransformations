@@ -26,6 +26,7 @@ from modules.print_manager import PrintManager
 import datetime
 import time
 import copy
+from models.transformer_od import TransformODModel
 
 # TF logging control
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
@@ -227,7 +228,7 @@ class BackwardsTransformRanker(object):
                                       log_file_name_acronym in name]
         if len(wanted_rank_file_name_list) == 0:
             return None
-        assert len(wanted_rank_file_name_list) == 1
+        wanted_rank_file_name_list = np.sort(wanted_rank_file_name_list)
         return os.path.join(self.results_path, wanted_rank_file_name_list[0])
 
     def get_best_transformations(
@@ -294,9 +295,10 @@ class BackwardsTransformRanker(object):
         model_trainer = ODTrainer(
             {param_keys.EPOCHS: self.train_epochs})
         model_trainer.train_and_evaluate_model_n_times(
-            ModelClass, transformer, x_train, x_val, x_test, y_test,
+            TransformODModel, transformer, x_train, x_val, x_test, y_test,
             self.train_n_times, self.verbose_training)
         result_mean, result_var = model_trainer.get_metric_mean_and_std()
+        print('Hardcoded WRN model usage')
         print('\nGround truth %i %s_%s %.5f+/-%.5f' % (
             len(transformation_list), data_loader.name, 'gt_outliers',
             result_mean, result_var))
