@@ -25,8 +25,8 @@ if __name__ == '__main__':
   random_seed = 4
   n_samples_batch = 512
   sigma_zero = 2.0
-  show = False
-  as_images = False
+  show = True
+  as_images = True
 
   hits_params = {
     loader_keys.DATA_PATH: os.path.join(
@@ -48,7 +48,7 @@ if __name__ == '__main__':
   }
   ztf_loader = ZTFSmallOutlierLoader(ztf_params)
 
-  data_loader = hits_loader  # ztf_loader  #
+  data_loader = ztf_loader  #hits_loader  #
 
   (x_train, y_train), (
     x_val, y_val), _ = data_loader.get_outlier_detection_datasets()
@@ -57,7 +57,8 @@ if __name__ == '__main__':
   transformer = RankingTransformer()
   print(transformer.transformation_tuples)
   n_transforms = transformer.n_transforms
-  for transformation_i in range(n_transforms):
+  trfs_idexes = list(range(n_transforms))
+  for transformation_i in trfs_idexes:
     print(transformer.transformation_tuples[transformation_i])
     x_transformed, y_transformed = transformer.apply_transforms(
         x_samples, [transformation_i])
@@ -75,6 +76,10 @@ if __name__ == '__main__':
     self_mi_list = []
     start_time = time.time()
     for x_orig, x_trans in estimation_ds:
+      # x_trans = np.random.normal(size=x_trans.shape)
+      # if np.mean(np.max(x_trans, axis=(1,2)))!=1 or np.mean(np.min(x_trans, axis=(1, 2))) != -1:
+      #   print(np.max(x_trans, axis=(1,2))[np.max(x_trans, axis=(1,2))!=1])
+      #   print(np.min(x_trans, axis=(1, 2))[np.min(x_trans, axis=(1, 2)) != -1])
       mi_estimation = estimator.mutual_information(
           x_orig, x_trans, x_is_image=as_images, y_is_image=as_images)
       self_mi_estimation = estimator.mutual_information(
