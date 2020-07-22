@@ -3,7 +3,8 @@ import itertools
 
 import numpy as np
 import tensorflow as tf
-
+import os
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 """There is a small discrepancy between original and his transformer, 
 due the fact that padding reflects wiithouy copying the edge pixels"""
 

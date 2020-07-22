@@ -25,7 +25,7 @@ from tqdm import tqdm
 
 class TrivialTransformationSelector(AbstractTransformationSelector):
     def __init__(self, random_seed=42, n_samples_batch=512, sigma_zero=2.0,
-        as_image=True, name='C0_MI',
+        as_image=True, name='C1_MI',
         verbose=False):
         super().__init__(
             verbose=verbose, name=name)
@@ -63,6 +63,11 @@ class TrivialTransformationSelector(AbstractTransformationSelector):
     def get_selection_score_array(self, transformer: AbstractTransformer,
         x_data: np.array, dataset_name: str):
         return self.get_MI_array(transformer, x_data)
+
+    def get_selected_transformer(self,
+        transformer: AbstractTransformer, x_data: np.array, dataset_name=''):
+        return super().get_selected_transformer(
+            transformer, x_data, dataset_name)
 
 
 if __name__ == '__main__':
@@ -104,7 +109,7 @@ if __name__ == '__main__':
     trf_selector = TrivialTransformationSelector(verbose=VERBOSE)
     print('Init N transforms %i\n%s' % (
         transformer.n_transforms, str(transformer.transformation_tuples)))
-    transformer = trf_selector.get_selected_transformater_from_data(transformer,
-                                                                    x_train)
+    transformer = trf_selector.get_selected_transformer(transformer,
+                                                        x_train)
     print('Final N transforms %i\n%s' % (
         transformer.n_transforms, str(transformer.transformation_tuples)))
