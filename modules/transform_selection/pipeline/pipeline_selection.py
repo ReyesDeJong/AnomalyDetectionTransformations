@@ -74,13 +74,14 @@ class PipelineTransformationSelection(object):
         transformer: AbstractTransformer, x_data: np.array,
         dataset_loader: HiTSOutlierLoader):
         for selector in self.pipeline_transformation_selectors:
+            print('Transform Selection %s' % selector.name)
             transformer = selector.get_selected_transformer(
                 transformer, x_data, dataset_loader)
         return transformer
 
 
 if __name__ == '__main__':
-    VERBOSE = False
+    VERBOSE = True
     from parameters import loader_keys, general_keys
     from modules.geometric_transform.transformer_for_ranking import \
         RankingTransformer
@@ -121,6 +122,7 @@ if __name__ == '__main__':
     trf_selector_pipeline = \
         PipelineTransformationSelection(
             pipeline_verbose=VERBOSE,
+            selectors_verbose=VERBOSE,
             selection_pipeline= [
                 TrivialTransformationSelector(),
                 FIDTransformationSelector()

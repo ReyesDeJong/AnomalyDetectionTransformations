@@ -25,6 +25,7 @@ from modules.transform_selection.fid_modules.\
     transform_selector_fid_different_data_for_x import \
     TransformSelectorFRawLogFIDOtherDatAsX
 from modules.data_loaders.hits_outlier_loader import HiTSOutlierLoader
+from parameters import loader_keys, general_keys
 
 
 class FIDTransformationSelector(AbstractTransformationSelector):
@@ -103,7 +104,6 @@ class FIDTransformationSelector(AbstractTransformationSelector):
 
 if __name__ == '__main__':
     VERBOSE = True
-    from parameters import loader_keys, general_keys
     from modules.geometric_transform.transformer_for_ranking import \
         RankingTransformer
     from modules.data_loaders.ztf_small_outlier_loader import \

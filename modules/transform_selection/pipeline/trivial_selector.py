@@ -40,7 +40,6 @@ class TrivialTransformationSelector(AbstractTransformationSelector):
         #      (n_transforms, str(transformer.transformation_tuples)))
         trfs_idexes = list(range(n_transforms))
         mean_mi_list = []
-        print('Transform Selection C0 MI')
         for transformation_i in tqdm(trfs_idexes, disable=not self.verbose):
             # start_time = time.time()
             # print('Current processed tranformation %s' %
