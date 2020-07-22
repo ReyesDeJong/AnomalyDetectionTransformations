@@ -22,13 +22,20 @@ from scripts.transform_selection_disc_mat.training_transform_selection import \
     get_transform_selection_transformer
 from modules.transform_selection.pipeline.identity_selector import \
     IdentityTransformationSelector
+from modules.transform_selection.pipeline.abstract_selector import \
+    AbstractTransformationSelector
 from modules.utils import check_path
+from typing import List
+
 
 # TODO: disentangle mess with other functions and methods, and matrix savers
-class TransformationSelectionPipeline(object):
-    def __init__(self, verbose=False):
+class PipelineTransformationSelection(object):
+    def __init__(
+        self, verbose=False,
+        selection_pipeline: List[AbstractTransformationSelector] = None):
         self.verbose = verbose
-        self.preprocessing_pipeline = [IdentityTransformationSelector(verbose)]
+        self.pipeline_transformation_selectors = selection_pipeline
+        self.set_pipeline_verbose(verbose)
         self.results_folder_path = \
             self._create_selected_transformation_tuples_save_folder()
 
@@ -40,44 +47,31 @@ class TransformationSelectionPipeline(object):
 
     def get_pipeline_name(
         self, transformer: AbstractTransformer, data_loader: HiTSOutlierLoader):
-        pipeline_name = 'pipeline_'
+        pipeline_name = 'pipeline_%_%%i' % (
+            data_loader.name, transformer.name, transformer.n_transforms)
+        for selector in self.pipeline_transformation_selectors:
+            pipeline_name += '_%s' % selector.name
+        return pipeline_name
 
-    def _list_of_lists_to_tuple_of_tuple(self, list_of_lists):
-        tuple_of_tuples = tuple(tuple(x) for x in list_of_lists)
-        return tuple_of_tuples
+    def set_pipeline_verbose(self, verbose):
+        for selector in self.pipeline_transformation_selectors:
+            selector.verbose = verbose
 
-    def get_binary_array_of_rejected_transformations_by_disc_matrix(
-        self, transformer: AbstractTransformer, x_data: np.array,
+    def append_to_pipeline(self, selector: AbstractTransformationSelector):
+        self.pipeline_transformation_selectors.append(selector)
+        return self
+
+    def set_pipeline(self, pipeline: List[AbstractTransformationSelector]):
+        self.pipeline_transformation_selectors = pipeline
+        self.set_pipeline_verbose(self.verbose)
+
+    def get_selected_transformer(self,
+        transformer: AbstractTransformer, x_data: np.array,
         dataset_loader: HiTSOutlierLoader):
-        orig_trfs = transformer.transformation_tuples[:]
-        # print('\nInit Trf Name %s %i' % (
-        #     transformer.name, len(transformer.transformation_tuples)))
-        mdl = EnsembleOVOTransformODSimpleModel(
-            data_loader=dataset_loader, transformer=transformer,
-            input_shape=x_data.shape, verbose=self.verbose)
-        transformer = get_transform_selection_transformer(data_loader, mdl,
-                                                          transformer)
-        selected_trfs = tuple(transformer.transformation_tuples)
-        # TODO: fix this, to non in place transformer tuples modification
-        transformer.set_transformations_to_perform(orig_trfs)
-        # print('Selected Trf %i %s' % (len(selected_trfs), str(selected_trfs)))
-        n_orig_transforms = len(orig_trfs)
-        redundant_transforms = np.ones(n_orig_transforms)
-        for trf_idx in range(len(orig_trfs)):
-            # check if not redundant (not redundant transforms are 0)
-            if orig_trfs[trf_idx] in selected_trfs:
-                redundant_transforms[trf_idx] = 0
-        return redundant_transforms
-
-    def _get_binary_array_of_transformations_to_remove(self,
-        fid_rejected_transformation_array: np.array):
-        return fid_rejected_transformation_array
-
-
-    def get_selection_score_array(self, transformer: AbstractTransformer,
-        x_data: np.array, dataset_loader: HiTSOutlierLoader):
-        return self.get_binary_array_of_rejected_transformations_by_disc_matrix(
-            transformer, x_data, dataset_loader)
+        for selector in self.pipeline_transformation_selectors:
+            transformer = selector.get_selected_transformer(
+                transformer, x_data, dataset_loader)
+        return transformer
 
 
 if __name__ == '__main__':
@@ -87,6 +81,10 @@ if __name__ == '__main__':
         RankingTransformer
     from modules.data_loaders.ztf_small_outlier_loader import \
         ZTFSmallOutlierLoader
+    from modules.transform_selection.pipeline.trivial_selector import \
+        TrivialTransformationSelector
+    from modules.transform_selection.pipeline.fid_selector import \
+        FIDTransformationSelector
 
     hits_params = {
         loader_keys.DATA_PATH: os.path.join(
@@ -115,10 +113,17 @@ if __name__ == '__main__':
     x_samples = x_train  # [...,-1][...,None]
 
     transformer = RankingTransformer()
-    trf_selector = DiscriminationMatrixTransformationSelector(verbose=VERBOSE)
+    trf_selector_pipeline = \
+        PipelineTransformationSelection(
+            verbose=VERBOSE,
+            selection_pipeline= [
+                TrivialTransformationSelector(),
+                FIDTransformationSelector()
+            ]
+        )
     print('Init N transforms %i\n%s' % (
         transformer.n_transforms, str(transformer.transformation_tuples)))
-    transformer = trf_selector.get_selected_transformer(
+    transformer = trf_selector_pipeline.get_selected_transformer(
         transformer, x_train, data_loader)
     print('Final N transforms %i\n%s' % (
         transformer.n_transforms, str(transformer.transformation_tuples)))
