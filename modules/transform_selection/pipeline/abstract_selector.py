@@ -27,7 +27,9 @@ from modules.geometric_transform.transformations_tf import AbstractTransformer
 # TODO: instead of order index base transformation selection, make tuple with
 #  transformation to modify, it is more robust, otherwise indexes may get
 #  through blind to the transformations available and erase unwantedthings,
-#  it'sno robust
+#  it's no robust
+
+# TODO: Name should be a property, not a contructor's input
 class AbstractTransformationSelector(abc.ABC):
     def __init__(self, verbose=False, name=''):
         self.verbose = verbose
