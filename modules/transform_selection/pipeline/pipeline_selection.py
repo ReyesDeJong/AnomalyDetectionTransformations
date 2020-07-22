@@ -70,12 +70,21 @@ class PipelineTransformationSelection(object):
         self.pipeline_transformation_selectors = pipeline
         self.set_selectors_verbose(self.selectors_verbose)
 
+    def _save_selected_transformations(
+        self, step: int, transformer: AbstractTransformer,
+        dataset_loader: HiTSOutlierLoader):
+        pipeline_name = self.get_pipeline_name(transformer, dataset_loader)
+
+
     def get_selected_transformer(self,
         transformer: AbstractTransformer, x_data: np.array,
         dataset_loader: HiTSOutlierLoader):
-        for selector in self.pipeline_transformation_selectors:
+        for step_i, selector in enumerate(
+            self.pipeline_transformation_selectors):
             transformer = selector.get_selected_transformer(
                 transformer, x_data, dataset_loader)
+            self._save_selected_transformations(step_i, transformer,
+                                                dataset_loader)
         return transformer
 
 
@@ -121,7 +130,7 @@ if __name__ == '__main__':
     trf_selector_pipeline = \
         PipelineTransformationSelection(
             pipeline_verbose=VERBOSE,
-            selection_pipeline= [
+            selection_pipeline=[
                 TrivialTransformationSelector(),
                 FIDTransformationSelector()
             ]
