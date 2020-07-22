@@ -31,11 +31,12 @@ from typing import List
 # TODO: disentangle mess with other functions and methods, and matrix savers
 class PipelineTransformationSelection(object):
     def __init__(
-        self, verbose=False,
+        self, pipeline_verbose=False, selectors_verbose=False,
         selection_pipeline: List[AbstractTransformationSelector] = None):
-        self.verbose = verbose
+        self.pipeline_verbose = pipeline_verbose
+        self.selectors_verbose = selectors_verbose
         self.pipeline_transformation_selectors = selection_pipeline
-        self.set_pipeline_verbose(verbose)
+        self.set_selectors_verbose(selectors_verbose)
         self.results_folder_path = \
             self._create_selected_transformation_tuples_save_folder()
 
@@ -53,9 +54,13 @@ class PipelineTransformationSelection(object):
             pipeline_name += '_%s' % selector.name
         return pipeline_name
 
-    def set_pipeline_verbose(self, verbose):
+    def set_selectors_verbose(self, verbose):
+        self.selectors_verbose = verbose
         for selector in self.pipeline_transformation_selectors:
             selector.verbose = verbose
+
+    def set_pipeline_verbose(self, verbose):
+        self.pipeline_verbose = verbose
 
     def append_to_pipeline(self, selector: AbstractTransformationSelector):
         self.pipeline_transformation_selectors.append(selector)
@@ -63,7 +68,7 @@ class PipelineTransformationSelection(object):
 
     def set_pipeline(self, pipeline: List[AbstractTransformationSelector]):
         self.pipeline_transformation_selectors = pipeline
-        self.set_pipeline_verbose(self.verbose)
+        self.set_selectors_verbose(self.selectors_verbose)
 
     def get_selected_transformer(self,
         transformer: AbstractTransformer, x_data: np.array,
@@ -115,7 +120,7 @@ if __name__ == '__main__':
     transformer = RankingTransformer()
     trf_selector_pipeline = \
         PipelineTransformationSelection(
-            verbose=VERBOSE,
+            pipeline_verbose=VERBOSE,
             selection_pipeline= [
                 TrivialTransformationSelector(),
                 FIDTransformationSelector()
