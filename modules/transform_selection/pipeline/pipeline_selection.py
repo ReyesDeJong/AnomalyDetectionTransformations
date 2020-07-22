@@ -13,32 +13,26 @@ PROJECT_PATH = os.path.abspath(
 sys.path.append(PROJECT_PATH)
 
 from modules.geometric_transform.transformations_tf import AbstractTransformer
-from modules.transform_selection.pipeline.abstract_selector import \
-    AbstractTransformationSelector
 from modules.data_loaders.hits_outlier_loader import HiTSOutlierLoader
-from models.transformer_ensemble_ovo_simple_net_od import \
-    EnsembleOVOTransformODSimpleModel
-from scripts.transform_selection_disc_mat.training_transform_selection import \
-    get_transform_selection_transformer
-from modules.transform_selection.pipeline.identity_selector import \
-    IdentityTransformationSelector
 from modules.transform_selection.pipeline.abstract_selector import \
     AbstractTransformationSelector
 from modules.utils import check_path
 from typing import List
+from modules.print_manager import PrintManager
 
 
 # TODO: disentangle mess with other functions and methods, and matrix savers
 class PipelineTransformationSelection(object):
     def __init__(
-        self, pipeline_verbose=False, selectors_verbose=False,
+        self, verbose_pipeline=False, verbose_selectors=False,
         selection_pipeline: List[AbstractTransformationSelector] = None):
-        self.pipeline_verbose = pipeline_verbose
-        self.selectors_verbose = selectors_verbose
+        self.verbose_pipeline = verbose_pipeline
+        self.verbose_selectors = verbose_selectors
         self.pipeline_transformation_selectors = selection_pipeline
-        self.set_selectors_verbose(selectors_verbose)
+        self.set_selectors_verbose(verbose_selectors)
         self.results_folder_path = \
             self._create_selected_transformation_tuples_save_folder()
+        self.print_manager = PrintManager()
 
     def _create_selected_transformation_tuples_save_folder(self):
         results_folder_path = os.path.join(
@@ -48,19 +42,19 @@ class PipelineTransformationSelection(object):
 
     def get_pipeline_name(
         self, transformer: AbstractTransformer, data_loader: HiTSOutlierLoader):
-        pipeline_name = 'pipeline_%_%%i' % (
+        pipeline_name = 'pipeline_%s_%s%i' % (
             data_loader.name, transformer.name, transformer.n_transforms)
         for selector in self.pipeline_transformation_selectors:
             pipeline_name += '_%s' % selector.name
         return pipeline_name
 
     def set_selectors_verbose(self, verbose):
-        self.selectors_verbose = verbose
+        self.verbose_selectors = verbose
         for selector in self.pipeline_transformation_selectors:
             selector.verbose = verbose
 
     def set_pipeline_verbose(self, verbose):
-        self.pipeline_verbose = verbose
+        self.verbose_pipeline = verbose
 
     def append_to_pipeline(self, selector: AbstractTransformationSelector):
         self.pipeline_transformation_selectors.append(selector)
@@ -68,28 +62,32 @@ class PipelineTransformationSelection(object):
 
     def set_pipeline(self, pipeline: List[AbstractTransformationSelector]):
         self.pipeline_transformation_selectors = pipeline
-        self.set_selectors_verbose(self.selectors_verbose)
+        self.set_selectors_verbose(self.verbose_selectors)
 
     def _save_selected_transformations(
         self, step: int, transformer: AbstractTransformer,
         dataset_loader: HiTSOutlierLoader):
         pipeline_name = self.get_pipeline_name(transformer, dataset_loader)
 
-
     def get_selected_transformer(self,
         transformer: AbstractTransformer, x_data: np.array,
         dataset_loader: HiTSOutlierLoader):
+        self.print_manager.verbose_printing(self.verbose_pipeline)
         for step_i, selector in enumerate(
             self.pipeline_transformation_selectors):
+            print('Transform Selection %s' % selector.name)
             transformer = selector.get_selected_transformer(
                 transformer, x_data, dataset_loader)
             self._save_selected_transformations(step_i, transformer,
                                                 dataset_loader)
+            print('n selected transforms %i' % (transformer.n_transforms))
+        self.print_manager.close()
         return transformer
 
 
 if __name__ == '__main__':
-    VERBOSE = False
+    VERBOSE_PIPELINE = True
+    VERBOSE_SELECTORS = False
     from parameters import loader_keys, general_keys
     from modules.geometric_transform.transformer_for_ranking import \
         RankingTransformer
@@ -129,7 +127,8 @@ if __name__ == '__main__':
     transformer = RankingTransformer()
     trf_selector_pipeline = \
         PipelineTransformationSelection(
-            pipeline_verbose=VERBOSE,
+            verbose_pipeline=VERBOSE_PIPELINE,
+            verbose_selectors=VERBOSE_SELECTORS,
             selection_pipeline=[
                 TrivialTransformationSelector(),
                 FIDTransformationSelector()

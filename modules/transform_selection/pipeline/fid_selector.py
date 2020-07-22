@@ -25,6 +25,7 @@ from modules.transform_selection.fid_modules.\
     transform_selector_fid_different_data_for_x import \
     TransformSelectorFRawLogFIDOtherDatAsX
 from modules.data_loaders.hits_outlier_loader import HiTSOutlierLoader
+from parameters import loader_keys, general_keys
 
 
 class FIDTransformationSelector(AbstractTransformationSelector):
@@ -93,17 +94,18 @@ class FIDTransformationSelector(AbstractTransformationSelector):
 
     def get_selection_score_array(self, transformer: AbstractTransformer,
         x_data: np.array, dataset_loader: HiTSOutlierLoader):
+        self.print_manager.verbose_printing(False)
         if 'hits' in dataset_loader.name:
             x_data = self._get_large_hits_data()
         elif 'ztf' in dataset_loader.name:
             x_data = self._get_large_ztf_data()
+        self.print_manager.verbose_printing(self.verbose)
         return self.get_binary_array_of_rejected_transformations_by_FID(
             transformer, x_data)
 
 
 if __name__ == '__main__':
     VERBOSE = True
-    from parameters import loader_keys, general_keys
     from modules.geometric_transform.transformer_for_ranking import \
         RankingTransformer
     from modules.data_loaders.ztf_small_outlier_loader import \
