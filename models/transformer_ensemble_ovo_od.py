@@ -31,8 +31,10 @@ class EnsembleOVOTransformODModel(TransformODModel):
   def __init__(self, data_loader: ZTFOutlierLoader,
       transformer: AbstractTransformer, input_shape, depth=10,
       widen_factor=4, results_folder_name='',
-      name='Ensemble_OVO_Transformer_OD_Model', build=True, **kwargs):
+      name='Ensemble_OVO_Transformer_OD_Model', build=True, verbose=True,
+      **kwargs):
     super(TransformODModel, self).__init__(name=name)
+    self.verbose = verbose
     self.builder_input_shape = input_shape
     self.depth = 10
     self.widen_factor = widen_factor

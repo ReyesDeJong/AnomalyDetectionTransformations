@@ -14,12 +14,20 @@ PROJECT_PATH = os.path.abspath(
     os.path.join(os.path.dirname(__file__), '..', '..', '..'))
 sys.path.append(PROJECT_PATH)
 
+from modules.data_loaders.hits_outlier_loader import HiTSOutlierLoader
 from modules.geometric_transform.transformations_tf import AbstractTransformer
-from modules.utils import check_path
+# from modules.utils import check_path
+
 
 # TODO: to avoid bad practice of different constructor signature, create params
-# TODO:
-#  Transformation selection loading and saving, better to be relegated to pipeline as a whole
+
+# TODO: Transformation selection loading and saving,
+#  better to be relegated to pipeline as a whole
+
+# TODO: instead of order index base transformation selection, make tuple with
+#  transformation to modify, it is more robust, otherwise indexes may get
+#  through blind to the transformations available and erase unwantedthings,
+#  it'sno robust
 class AbstractTransformationSelector(abc.ABC):
     def __init__(self, verbose=False, name=''):
         self.verbose = verbose
@@ -35,7 +43,7 @@ class AbstractTransformationSelector(abc.ABC):
 
     @abc.abstractmethod
     def get_selection_score_array(self, transformer: AbstractTransformer,
-        x_data: np.array, dataset_name: str):
+        x_data: np.array, dataset_loader: HiTSOutlierLoader):
         return
 
     def _get_selected_transformations_tuples(
@@ -66,9 +74,10 @@ class AbstractTransformationSelector(abc.ABC):
 
 
     def get_selected_transformer(self,
-        transformer: AbstractTransformer, x_data: np.array, dataset_name):
+        transformer: AbstractTransformer, x_data: np.array,
+        dataset_loader: HiTSOutlierLoader):
         selection_score = self.get_selection_score_array(transformer, x_data,
-                                                         dataset_name)
+                                                         dataset_loader)
         binary_array_transformations_to_remove = \
             self._get_binary_array_of_transformations_to_remove(
                 selection_score)

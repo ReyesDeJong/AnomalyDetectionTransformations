@@ -61,13 +61,13 @@ class TrivialTransformationSelector(AbstractTransformationSelector):
         return np.abs(mi_array) < 0.001
 
     def get_selection_score_array(self, transformer: AbstractTransformer,
-        x_data: np.array, dataset_name: str):
+        x_data: np.array, dataset_loader: str):
         return self.get_MI_array(transformer, x_data)
 
     def get_selected_transformer(self,
-        transformer: AbstractTransformer, x_data: np.array, dataset_name=''):
+        transformer: AbstractTransformer, x_data: np.array, dataset_loader=None):
         return super().get_selected_transformer(
-            transformer, x_data, dataset_name)
+            transformer, x_data, dataset_loader)
 
 
 if __name__ == '__main__':
