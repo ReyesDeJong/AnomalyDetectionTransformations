@@ -5,17 +5,37 @@ pipeline
 
 import abc
 
-from modules.geometric_transform.transformations_tf import AbstractTransformer
+import os
+import sys
+
 import numpy as np
 
-#TODO: to avoid bad practice of different constructor signature, create params
+PROJECT_PATH = os.path.abspath(
+    os.path.join(os.path.dirname(__file__), '..', '..', '..'))
+sys.path.append(PROJECT_PATH)
+
+from modules.geometric_transform.transformations_tf import AbstractTransformer
+from modules.utils import check_path
+
+# TODO: to avoid bad practice of different constructor signature, create params
+# TODO:
+#  Transformation selection loading and saving, better to be relegated to pipeline as a whole
 class AbstractTransformationSelector(abc.ABC):
-    def __init__(self, transforms_from_file=True, verbose=False):
-        self.transforms_from_file=transforms_from_file
+    def __init__(self, verbose=False, name=''):
         self.verbose = verbose
+        self.name = name
+        # self.results_folder_path = \
+        #     self._create_selected_transformation_tuples_save_folder()
+
+    # def _create_selected_transformation_tuples_save_folder(self):
+    #     results_folder_path = os.path.join(PROJECT_PATH, 'results',
+    #                              'transformation_selectors', self.name)
+    #     check_path(results_folder_path)
+    #     return results_folder_path
 
     @abc.abstractmethod
-    def get_selection_score_array(self, transformer: AbstractTransformer, x_data: np.array):
+    def get_selection_score_array(self, transformer: AbstractTransformer,
+        x_data: np.array, dataset_name: str):
         return
 
     def _get_selected_transformations_tuples(
@@ -36,10 +56,18 @@ class AbstractTransformationSelector(abc.ABC):
         score_array: np.array):
         return
 
+    # def _save_selected_transformaiton_tuples(
+    #     self, selected_transformation_tuples: tuple, dataset_name: str,
+    #     transformer: AbstractTransformer):
+    #     save_file_name = '%s_%s_%i' % (
+    #         dataset_name, transformer.name, transformer.n_transforms)
+    #     save_path = os.p
+
 
     def get_selected_transformater_from_data(self,
         transformer: AbstractTransformer, x_data: np.array, dataset_name=''):
-        selection_score = self.get_selection_score_array(transformer, x_data)
+        selection_score = self.get_selection_score_array(transformer, x_data,
+                                                         dataset_name)
         binary_array_transformations_to_remove = \
             self._get_binary_array_of_transformations_to_remove(
                 selection_score)

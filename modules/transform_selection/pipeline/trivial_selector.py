@@ -18,21 +18,17 @@ sys.path.append(PROJECT_PATH)
 from modules.geometric_transform.transformations_tf import AbstractTransformer
 from modules.transform_selection.pipeline.abstract_selector import \
     AbstractTransformationSelector
-from modules.info_metrics.information_estimator_v2 import InformationEstimator
 from modules.info_metrics.information_estimator_by_batch import \
     InformationEstimatorByBatch
 from tqdm import tqdm
-import tensorflow as tf
-import time
-from modules.utils import timer
 
 
 class TrivialTransformationSelector(AbstractTransformationSelector):
     def __init__(self, random_seed=42, n_samples_batch=512, sigma_zero=2.0,
-        as_image=True, get_transforms_from_file_if_posible=True, verbose=False):
+        as_image=True, name='C0_MI',
+        verbose=False):
         super().__init__(
-            transforms_from_file=get_transforms_from_file_if_posible,
-            verbose=verbose)
+            verbose=verbose, name=name)
         self.mi_estimator = InformationEstimatorByBatch(
             sigma_zero, n_samples_batch, random_seed,
             x_and_y_as_images=as_image)
@@ -40,10 +36,11 @@ class TrivialTransformationSelector(AbstractTransformationSelector):
     def get_MI_array(self, transformer: AbstractTransformer,
         x_data: np.array):
         n_transforms = transformer.n_transforms
-        list('N Trfs to analize: %i\n%s' %
-             (n_transforms, str(transformer.transformation_tuples)))
+        # print('N Trfs to analize: %i\n%s' %
+        #      (n_transforms, str(transformer.transformation_tuples)))
         trfs_idexes = list(range(n_transforms))
         mean_mi_list = []
+        print('Transform Selection C0 MI')
         for transformation_i in tqdm(trfs_idexes, disable=not self.verbose):
             # start_time = time.time()
             # print('Current processed tranformation %s' %
@@ -63,10 +60,9 @@ class TrivialTransformationSelector(AbstractTransformationSelector):
         mi_array: np.array):
         return np.abs(mi_array) < 0.001
 
-    def get_selection_score_array(self, transformer: AbstractTransformer, x_data: np.array):
+    def get_selection_score_array(self, transformer: AbstractTransformer,
+        x_data: np.array, dataset_name: str):
         return self.get_MI_array(transformer, x_data)
-
-
 
 
 if __name__ == '__main__':
@@ -107,7 +103,8 @@ if __name__ == '__main__':
     transformer = RankingTransformer()
     trf_selector = TrivialTransformationSelector(verbose=VERBOSE)
     print('Init N transforms %i\n%s' % (
-    transformer.n_transforms, str(transformer.transformation_tuples)))
-    transformer = trf_selector.get_selected_transformater_from_data(transformer, x_train)
+        transformer.n_transforms, str(transformer.transformation_tuples)))
+    transformer = trf_selector.get_selected_transformater_from_data(transformer,
+                                                                    x_train)
     print('Final N transforms %i\n%s' % (
         transformer.n_transforms, str(transformer.transformation_tuples)))

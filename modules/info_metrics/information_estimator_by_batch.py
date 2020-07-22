@@ -12,7 +12,7 @@ sys.path.append(PROJECT_PATH)
 from modules.info_metrics.information_estimator_v2 import InformationEstimator
 import tensorflow as tf
 import numpy as np
-
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 
 
 class InformationEstimatorByBatch(InformationEstimator):
