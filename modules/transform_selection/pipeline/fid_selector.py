@@ -94,10 +94,12 @@ class FIDTransformationSelector(AbstractTransformationSelector):
 
     def get_selection_score_array(self, transformer: AbstractTransformer,
         x_data: np.array, dataset_loader: HiTSOutlierLoader):
+        self.print_manager.verbose_printing(False)
         if 'hits' in dataset_loader.name:
             x_data = self._get_large_hits_data()
         elif 'ztf' in dataset_loader.name:
             x_data = self._get_large_ztf_data()
+        self.print_manager.verbose_printing(self.verbose)
         return self.get_binary_array_of_rejected_transformations_by_FID(
             transformer, x_data)
 
