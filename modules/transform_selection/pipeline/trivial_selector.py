@@ -24,6 +24,7 @@ from modules.info_metrics.information_estimator_by_batch import \
 from tqdm import tqdm
 import tensorflow as tf
 import time
+from modules.utils import timer
 
 
 class TrivialTransformationSelector(AbstractTransformationSelector):
@@ -32,10 +33,9 @@ class TrivialTransformationSelector(AbstractTransformationSelector):
         super().__init__(
             transforms_from_file=get_transforms_from_file_if_posible,
             verbose=verbose)
-        self.random_seed = random_seed
-        self.n_samples_batch = n_samples_batch
-        self.as_images = as_image
-        self.estimator = InformationEstimator(sigma_zero)
+        self.mi_estimator = InformationEstimatorByBatch(
+            sigma_zero, n_samples_batch, random_seed,
+            x_and_y_as_images=as_image)
 
     def get_MI_array(self, transformer: AbstractTransformer,
         x_data: np.array):
@@ -45,45 +45,23 @@ class TrivialTransformationSelector(AbstractTransformationSelector):
         trfs_idexes = list(range(n_transforms))
         mean_mi_list = []
         for transformation_i in tqdm(trfs_idexes, disable=not self.verbose):
+            # start_time = time.time()
             # print('Current processed tranformation %s' %
             #       str(transformer.transformation_tuples[transformation_i]))
             x_transformed, y_transformed = transformer.apply_transforms(
                 x_data, [transformation_i])
-            estimation_ds = tf.data.Dataset.from_tensor_slices(
-                (x_data, x_transformed)).shuffle(
-                10000, seed=self.random_seed).batch(
-                self.n_samples_batch)
-            batch_mi_list = []
-            start_time = time.time()
-            for x_orig, x_trans in estimation_ds:
-                mi_estimation = self.estimator.mutual_information(
-                    x_orig, x_trans, x_is_image=self.as_images,
-                    y_is_image=self.as_images)
-                batch_mi_list.append(mi_estimation.numpy())
-            mean_mi_list.append(np.mean(batch_mi_list))
-            # print('%s MI: %f+/-%f' % (
+            mean_mi_i = self.mi_estimator.mutual_information_mean_fast(
+                x_transformed, x_data)
+            mean_mi_list.append(mean_mi_i)
+            # print('%s MI: %f' % (
             #     str(transformer.transformation_tuples[transformation_i]),
-            #     np.mean(batch_mi_list),
-            #     np.std(batch_mi_list)))
+            #     mean_mi_i))
             # print(timer(start_time, time.time()))
         return np.array(mean_mi_list)
 
     def _get_binary_array_of_transformations_to_remove(self,
         mi_array: np.array):
         return np.abs(mi_array) < 0.001
-
-    def _get_selected_transformations_tuples(
-        self, transformer: AbstractTransformer,
-        binary_array_transformations_to_remove: np.array):
-        transformation_tuples = list(transformer.transformation_tuples[
-                                     :])
-        n_transformations = transformer.n_transforms
-        for trf_indx in range(n_transformations):
-            if binary_array_transformations_to_remove[trf_indx] == 1:
-                transformation_to_remove = transformation_tuples[trf_indx]
-                transformation_tuples.remove(transformation_to_remove)
-        transformation_tuples = tuple(transformation_tuples)
-        return transformation_tuples
 
     def get_selection_score_array(self, transformer: AbstractTransformer, x_data: np.array):
         return self.get_MI_array(transformer, x_data)

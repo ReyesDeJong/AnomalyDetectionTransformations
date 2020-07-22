@@ -18,11 +18,18 @@ class AbstractTransformationSelector(abc.ABC):
     def get_selection_score_array(self, transformer: AbstractTransformer, x_data: np.array):
         return
 
-    @abc.abstractmethod
     def _get_selected_transformations_tuples(
         self, transformer: AbstractTransformer,
         binary_array_transformations_to_remove: np.array):
-        return
+        transformation_tuples = list(transformer.transformation_tuples[
+                                     :])
+        n_transformations = transformer.n_transforms
+        for trf_indx in range(n_transformations):
+            if binary_array_transformations_to_remove[trf_indx] == 1:
+                transformation_to_remove = transformation_tuples[trf_indx]
+                transformation_tuples.remove(transformation_to_remove)
+        transformation_tuples = tuple(transformation_tuples)
+        return transformation_tuples
 
     @abc.abstractmethod
     def _get_binary_array_of_transformations_to_remove(self,
