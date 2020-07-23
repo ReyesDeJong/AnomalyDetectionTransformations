@@ -31,42 +31,18 @@ class DiscriminationMatrixTransformationSelector(AbstractTransformationSelector)
         super().__init__(
             verbose=verbose, name=name)
 
-    def _list_of_lists_to_tuple_of_tuple(self, list_of_lists):
-        tuple_of_tuples = tuple(tuple(x) for x in list_of_lists)
-        return tuple_of_tuples
-
-    def get_binary_array_of_rejected_transformations_by_disc_matrix(
+    def _get_selected_transformations_tuples(
         self, transformer: AbstractTransformer, x_data: np.array,
         dataset_loader: HiTSOutlierLoader):
         orig_trfs = transformer.transformation_tuples[:]
-        # print('\nInit Trf Name %s %i' % (
-        #     transformer.name, len(transformer.transformation_tuples)))
         mdl = EnsembleOVOTransformODSimpleModel(
             data_loader=dataset_loader, transformer=transformer,
             input_shape=x_data.shape, verbose=self.verbose)
         transformer = get_transform_selection_transformer(data_loader, mdl,
                                                           transformer)
-        selected_trfs = tuple(transformer.transformation_tuples)
-        # TODO: fix this, to non in place transformer tuples modification
+        selected_trfs_tuples = tuple(transformer.transformation_tuples)
         transformer.set_transformations_to_perform(orig_trfs)
-        # print('Selected Trf %i %s' % (len(selected_trfs), str(selected_trfs)))
-        n_orig_transforms = len(orig_trfs)
-        redundant_transforms = np.ones(n_orig_transforms)
-        for trf_idx in range(len(orig_trfs)):
-            # check if not redundant (not redundant transforms are 0)
-            if orig_trfs[trf_idx] in selected_trfs:
-                redundant_transforms[trf_idx] = 0
-        return redundant_transforms
-
-    def _get_binary_array_of_transformations_to_remove(self,
-        fid_rejected_transformation_array: np.array):
-        return fid_rejected_transformation_array
-
-
-    def get_selection_score_array(self, transformer: AbstractTransformer,
-        x_data: np.array, dataset_loader: HiTSOutlierLoader):
-        return self.get_binary_array_of_rejected_transformations_by_disc_matrix(
-            transformer, x_data, dataset_loader)
+        return selected_trfs_tuples
 
 
 if __name__ == '__main__':

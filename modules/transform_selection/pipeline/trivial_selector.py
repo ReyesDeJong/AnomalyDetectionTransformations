@@ -21,6 +21,7 @@ from modules.transform_selection.pipeline.abstract_selector import \
 from modules.info_metrics.information_estimator_by_batch import \
     InformationEstimatorByBatch
 from tqdm import tqdm
+from modules.data_loaders.hits_outlier_loader import HiTSOutlierLoader
 
 
 class TrivialTransformationSelector(AbstractTransformationSelector):
@@ -36,23 +37,14 @@ class TrivialTransformationSelector(AbstractTransformationSelector):
     def get_MI_array(self, transformer: AbstractTransformer,
         x_data: np.array):
         n_transforms = transformer.n_transforms
-        # print('N Trfs to analize: %i\n%s' %
-        #      (n_transforms, str(transformer.transformation_tuples)))
         trfs_idexes = list(range(n_transforms))
         mean_mi_list = []
         for transformation_i in tqdm(trfs_idexes, disable=not self.verbose):
-            # start_time = time.time()
-            # print('Current processed tranformation %s' %
-            #       str(transformer.transformation_tuples[transformation_i]))
             x_transformed, y_transformed = transformer.apply_transforms(
                 x_data, [transformation_i])
             mean_mi_i = self.mi_estimator.mutual_information_mean_fast(
                 x_transformed, x_data)
             mean_mi_list.append(mean_mi_i)
-            # print('%s MI: %f' % (
-            #     str(transformer.transformation_tuples[transformation_i]),
-            #     mean_mi_i))
-            # print(timer(start_time, time.time()))
         return np.array(mean_mi_list)
 
     def _get_binary_array_of_transformations_to_remove(self,
@@ -60,13 +52,31 @@ class TrivialTransformationSelector(AbstractTransformationSelector):
         return np.abs(mi_array) < 0.001
 
     def get_selection_score_array(self, transformer: AbstractTransformer,
-        x_data: np.array, dataset_loader: str):
+        x_data: np.array):
         return self.get_MI_array(transformer, x_data)
 
     def get_selected_transformer(self,
         transformer: AbstractTransformer, x_data: np.array, dataset_loader=None):
         return super().get_selected_transformer(
             transformer, x_data, dataset_loader)
+
+    def _get_selected_transformations_tuples(
+        self, transformer: AbstractTransformer, x_data: np.array,
+        dataset_loader: HiTSOutlierLoader):
+        selection_score = self.get_selection_score_array(transformer, x_data)
+        binary_array_transformations_to_remove = \
+            self._get_binary_array_of_transformations_to_remove(
+                selection_score)
+        transformation_tuples = list(transformer.transformation_tuples[
+                                     :])
+        selected_transformation_list = transformation_tuples[:]
+        n_transformations = transformer.n_transforms
+        for trf_indx in range(n_transformations):
+            if binary_array_transformations_to_remove[trf_indx] == 1:
+                transformation_to_remove = transformation_tuples[trf_indx]
+                selected_transformation_list.remove(transformation_to_remove)
+        selected_transformation_tuples = tuple(selected_transformation_list)
+        return selected_transformation_tuples
 
 
 if __name__ == '__main__':

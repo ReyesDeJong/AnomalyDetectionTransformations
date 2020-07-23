@@ -87,6 +87,18 @@ class PipelineTransformationSelection(object):
                                        pipeline_save_file_name)
         return final_save_path
 
+    def _check_selected_transforms_in_initials(
+                self, selected_transforms, initial_transforms):
+        for selected_transform_i in selected_transforms:
+            if selected_transform_i not in initial_transforms:
+                raise ValueError(
+                    'Transformation %s not contontained' % (
+                        str(selected_transform_i)) +
+                    'in original pool of transformations %s' % (
+                        str(initial_transforms)
+                    ))
+
+
     def get_selected_transformer(self,
         transformer: AbstractTransformer, x_data: np.array,
         dataset_loader: HiTSOutlierLoader, load_from_checkpoint=True):
@@ -102,8 +114,13 @@ class PipelineTransformationSelection(object):
         for step_i, selector in enumerate(
             self.pipeline_transformation_selectors):
             print('Transform Selection %s' % selector.name)
+            initial_transforms = transformer.transformation_tuples[:]
             transformer = selector.get_selected_transformer(
                 transformer, x_data, dataset_loader)
+            selected_transforms = transformer.transformation_tuples[:]
+            print('Step %i transforms %s' % (step_i, selected_transforms))
+            self._check_selected_transforms_in_initials(
+                selected_transforms, initial_transforms)
             print('n selected transforms %i' % (transformer.n_transforms))
         self._save_selected_transformations(
             step_i, transformer, n_transforms_orig, dataset_loader)

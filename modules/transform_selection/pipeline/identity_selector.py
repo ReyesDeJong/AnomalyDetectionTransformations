@@ -26,14 +26,10 @@ class IdentityTransformationSelector(AbstractTransformationSelector):
         super().__init__(
             verbose=verbose, name=name)
 
-    def _get_binary_array_of_transformations_to_remove(self,
-        keep_all_transformations_score: np.array):
-        return keep_all_transformations_score
-
-    def get_selection_score_array(self, transformer: AbstractTransformer,
-        x_data: np.array, dataset_loader: HiTSOutlierLoader):
-        keep_all_transformations_score = np.zeros(transformer.n_transforms)
-        return keep_all_transformations_score
+    def _get_selected_transformations_tuples(
+        self, transformer: AbstractTransformer, x_data: np.array,
+        dataset_loader: HiTSOutlierLoader):
+        return transformer.transformation_tuples
 
 
 if __name__ == '__main__':

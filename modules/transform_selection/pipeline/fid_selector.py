@@ -40,26 +40,18 @@ class FIDTransformationSelector(AbstractTransformationSelector):
         tuple_of_tuples = tuple(tuple(x) for x in list_of_lists)
         return tuple_of_tuples
 
-    def get_binary_array_of_rejected_transformations_by_FID(
-        self, transformer: AbstractTransformer, x_data: np.array):
+    def _get_selected_transformations_tuples(
+        self, transformer: AbstractTransformer, x_data: np.array,
+        dataset_loader: HiTSOutlierLoader):
         orig_trfs = transformer.transformation_tuples[:]
-        # print('\nInit Trf Name %s %i' % (
-        #     transformer.name, len(transformer.transformation_tuples)))
-        selected_trfs = self.fid_selector.get_selected_transformations(
+        x_data = self._get_large_x_data(dataset_loader)
+        selected_trfs_list_of_lists = self.fid_selector.\
+            get_selected_transformations(
             x_data, transformer, verbose=self.verbose)
-        selected_trfs = self._list_of_lists_to_tuple_of_tuple(selected_trfs)
-        # print('Selected Trf %i %s' % (len(selected_trfs), str(selected_trfs)))
-        n_orig_transforms = len(orig_trfs)
-        redundant_transforms = np.ones(n_orig_transforms)
-        for trf_idx in range(len(orig_trfs)):
-            # check if not redundant (not redundant transforms are 0)
-            if orig_trfs[trf_idx] in selected_trfs:
-                redundant_transforms[trf_idx] = 0
-        return redundant_transforms
-
-    def _get_binary_array_of_transformations_to_remove(self,
-        fid_rejected_transformation_array: np.array):
-        return fid_rejected_transformation_array
+        selected_trfs_tuples = self._list_of_lists_to_tuple_of_tuple(
+            selected_trfs_list_of_lists)
+        transformer.set_transformations_to_perform(orig_trfs)
+        return selected_trfs_tuples
 
     def _get_large_hits_data(self):
         hits_params = {
@@ -94,16 +86,16 @@ class FIDTransformationSelector(AbstractTransformationSelector):
             ztf_loader.get_outlier_detection_datasets()[0][0]
         return x_train_fid
 
-    def get_selection_score_array(self, transformer: AbstractTransformer,
-        x_data: np.array, dataset_loader: HiTSOutlierLoader):
+    def _get_large_x_data(self, dataset_loader: HiTSOutlierLoader):
         self.print_manager.verbose_printing(False)
         if 'hits' in dataset_loader.name:
             x_data = self._get_large_hits_data()
         elif 'ztf' in dataset_loader.name:
             x_data = self._get_large_ztf_data()
+        else:
+            x_data = None
         self.print_manager.verbose_printing(self.verbose)
-        return self.get_binary_array_of_rejected_transformations_by_FID(
-            transformer, x_data)
+        return x_data
 
 
 if __name__ == '__main__':

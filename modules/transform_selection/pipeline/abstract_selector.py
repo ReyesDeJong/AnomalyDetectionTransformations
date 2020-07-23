@@ -35,61 +35,20 @@ class AbstractTransformationSelector(abc.ABC):
         self.print_manager = PrintManager()
         self.verbose = verbose
         self.name = name
-        # self.results_folder_path = \
-        #     self._create_selected_transformation_tuples_save_folder()
-
-    # def _create_selected_transformation_tuples_save_folder(self):
-    #     results_folder_path = os.path.join(PROJECT_PATH, 'results',
-    #                              'transformation_selectors', self.name)
-    #     check_path(results_folder_path)
-    #     return results_folder_path
 
     @abc.abstractmethod
-    def get_selection_score_array(self, transformer: AbstractTransformer,
-        x_data: np.array, dataset_loader: HiTSOutlierLoader):
-        return
-
     def _get_selected_transformations_tuples(
-        self, transformer: AbstractTransformer,
-        binary_array_transformations_to_remove: np.array):
-        transformation_tuples = list(transformer.transformation_tuples[
-                                     :])
-        selected_transformation_list = transformation_tuples[:]
-        n_transformations = transformer.n_transforms
-        print(transformation_tuples)
-        print(binary_array_transformations_to_remove)
-        for trf_indx in range(n_transformations):
-            if binary_array_transformations_to_remove[trf_indx] == 1:
-                transformation_to_remove = transformation_tuples[trf_indx]
-                selected_transformation_list.remove(transformation_to_remove)
-        selected_transformation_tuples = tuple(selected_transformation_list)
-        print(selected_transformation_tuples)
-        return selected_transformation_tuples
-
-    @abc.abstractmethod
-    def _get_binary_array_of_transformations_to_remove(self,
-        score_array: np.array):
+        self, transformer: AbstractTransformer, x_data: np.array,
+        dataset_loader: HiTSOutlierLoader):
         return
-
-    # def _save_selected_transformaiton_tuples(
-    #     self, selected_transformation_tuples: tuple, dataset_name: str,
-    #     transformer: AbstractTransformer):
-    #     save_file_name = '%s_%s_%i' % (
-    #         dataset_name, transformer.name, transformer.n_transforms)
-    #     save_path = os.p
 
     def get_selected_transformer(self,
         transformer: AbstractTransformer, x_data: np.array,
         dataset_loader: HiTSOutlierLoader):
         self.print_manager.verbose_printing(self.verbose)
-        selection_score = self.get_selection_score_array(transformer, x_data,
-                                                         dataset_loader)
-        binary_array_transformations_to_remove = \
-            self._get_binary_array_of_transformations_to_remove(
-                selection_score)
         selected_transformation_tuples = \
             self._get_selected_transformations_tuples(
-                transformer, binary_array_transformations_to_remove)
+                transformer, x_data, dataset_loader)
         transformer.set_transformations_to_perform(
             selected_transformation_tuples)
         self.print_manager.close()

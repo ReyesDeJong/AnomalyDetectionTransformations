@@ -49,14 +49,12 @@ class RankingForwardTransformationSelector(AbstractTransformationSelector):
             param_keys.TRAIN_N_TIMES: n_trains
         }, verbose_training=verbose)
 
-    def _list_of_lists_to_tuple_of_tuple(self, list_of_lists):
-        tuple_of_tuples = tuple(tuple(x) for x in list_of_lists)
-        return tuple_of_tuples
 
-    def get_binary_array_of_rejected_transformations_by_ranking(
-        self, dataset_loader: HiTSOutlierLoader,
-        other_dataset_loader: HiTSOutlierLoader,
-        transformer: AbstractTransformer):
+    def _get_selected_transformations_tuples(
+        self, transformer: AbstractTransformer, x_data: np.array,
+        dataset_loader: HiTSOutlierLoader):
+        other_dataset_loader = self._get_other_dataset_loader(
+            transformer, dataset_loader)
         orig_trfs = transformer.transformation_tuples[:]
         if self.transformations_from_scratch:
             selected_trf_list = self.fwd_ranker.rank_transformations(
@@ -68,19 +66,8 @@ class RankingForwardTransformationSelector(AbstractTransformationSelector):
                 self.training_model_constructor)
         #TODO: fix inplace transformation tuples maodification by ranking
         transformer.set_transformations_to_perform(orig_trfs)
-        selected_trfs = tuple(selected_trf_list)
-        n_orig_transforms = len(orig_trfs)
-        redundant_transforms = np.ones(n_orig_transforms)
-        for trf_idx in range(len(orig_trfs)):
-            # check if not redundant (not redundant transforms are 0)
-            if orig_trfs[trf_idx] in selected_trfs:
-                redundant_transforms[trf_idx] = 0
-        print(redundant_transforms)
-        return redundant_transforms
-
-    def _get_binary_array_of_transformations_to_remove(self,
-        rank_rejected_transformation_array: np.array):
-        return rank_rejected_transformation_array
+        selected_trfs_tuples = tuple(selected_trf_list)
+        return selected_trfs_tuples
 
     def _get_hits_dataset(self) -> HiTSOutlierLoader:
         hits_params = {
@@ -106,8 +93,8 @@ class RankingForwardTransformationSelector(AbstractTransformationSelector):
         ztf_loader = ZTFSmallOutlierLoader(ztf_params, pickles_usage=False)
         return ztf_loader
 
-    def get_selection_score_array(self, transformer: AbstractTransformer,
-        x_data: np.array, dataset_loader: HiTSOutlierLoader):
+    def _get_other_dataset_loader(self, transformer: AbstractTransformer,
+        dataset_loader: HiTSOutlierLoader) -> HiTSOutlierLoader:
         self.print_manager.verbose_printing(False)
         if 'hits' in dataset_loader.name:
             other_dataset_loader = self._get_ztf_dataset()
@@ -117,8 +104,7 @@ class RankingForwardTransformationSelector(AbstractTransformationSelector):
         else:
             other_dataset_loader = None
         self.print_manager.verbose_printing(self.verbose)
-        return self.get_binary_array_of_rejected_transformations_by_ranking(
-            dataset_loader, other_dataset_loader, transformer)
+        return other_dataset_loader
 
 
 if __name__ == '__main__':
