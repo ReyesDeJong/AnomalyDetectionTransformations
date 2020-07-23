@@ -33,7 +33,6 @@ from parameters import param_keys, loader_keys
 from typing import Callable
 
 
-# TODO: disentangle mess with other functions and methods, and matrix savers
 class RankingForwardTransformationSelector(AbstractTransformationSelector):
     def __init__(self, train_epochs=1000, n_trains=10,
         transformations_from_scratch=False,
