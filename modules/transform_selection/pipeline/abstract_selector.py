@@ -54,13 +54,16 @@ class AbstractTransformationSelector(abc.ABC):
         binary_array_transformations_to_remove: np.array):
         transformation_tuples = list(transformer.transformation_tuples[
                                      :])
+        selected_transformation_list = transformation_tuples[:]
         n_transformations = transformer.n_transforms
-        print('')
+        print(transformation_tuples)
+        print(binary_array_transformations_to_remove)
         for trf_indx in range(n_transformations):
             if binary_array_transformations_to_remove[trf_indx] == 1:
                 transformation_to_remove = transformation_tuples[trf_indx]
-                transformation_tuples.remove(transformation_to_remove)
-        selected_transformation_tuples = tuple(transformation_tuples)
+                selected_transformation_list.remove(transformation_to_remove)
+        selected_transformation_tuples = tuple(selected_transformation_list)
+        print(selected_transformation_tuples)
         return selected_transformation_tuples
 
     @abc.abstractmethod
@@ -74,7 +77,6 @@ class AbstractTransformationSelector(abc.ABC):
     #     save_file_name = '%s_%s_%i' % (
     #         dataset_name, transformer.name, transformer.n_transforms)
     #     save_path = os.p
-
 
     def get_selected_transformer(self,
         transformer: AbstractTransformer, x_data: np.array,

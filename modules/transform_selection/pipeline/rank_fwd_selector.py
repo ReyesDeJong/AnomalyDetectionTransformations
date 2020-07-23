@@ -66,6 +66,8 @@ class RankingForwardTransformationSelector(AbstractTransformationSelector):
             selected_trf_list = self.fwd_ranker.get_best_transformations(
                 dataset_loader, other_dataset_loader, transformer,
                 self.training_model_constructor)
+        #TODO: fix inplace transformation tuples maodification by ranking
+        transformer.set_transformations_to_perform(orig_trfs)
         selected_trfs = tuple(selected_trf_list)
         n_orig_transforms = len(orig_trfs)
         redundant_transforms = np.ones(n_orig_transforms)
@@ -73,6 +75,7 @@ class RankingForwardTransformationSelector(AbstractTransformationSelector):
             # check if not redundant (not redundant transforms are 0)
             if orig_trfs[trf_idx] in selected_trfs:
                 redundant_transforms[trf_idx] = 0
+        print(redundant_transforms)
         return redundant_transforms
 
     def _get_binary_array_of_transformations_to_remove(self,
