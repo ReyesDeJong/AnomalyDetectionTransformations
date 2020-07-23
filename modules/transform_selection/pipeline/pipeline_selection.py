@@ -123,6 +123,8 @@ if __name__ == '__main__':
         TrivialTransformationSelector
     from modules.transform_selection.pipeline.fid_selector import \
         FIDTransformationSelector
+    from modules.transform_selection.pipeline.rank_fwd_selector import \
+        RankingForwardTransformationSelector
 
     hits_params = {
         loader_keys.DATA_PATH: os.path.join(
@@ -157,7 +159,8 @@ if __name__ == '__main__':
             verbose_selectors=VERBOSE_SELECTORS,
             selection_pipeline=[
                 TrivialTransformationSelector(),
-                FIDTransformationSelector()
+                FIDTransformationSelector(),
+                RankingForwardTransformationSelector()
             ]
         )
     print('Init N transforms %i\n%s' % (

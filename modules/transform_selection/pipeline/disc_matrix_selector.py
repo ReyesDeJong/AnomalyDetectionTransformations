@@ -27,7 +27,7 @@ from scripts.transform_selection_disc_mat.training_transform_selection import \
 
 # TODO: disentangle mess with other functions and methods, and matrix savers
 class DiscriminationMatrixTransformationSelector(AbstractTransformationSelector):
-    def __init__(self, name='C2_A_DM', verbose=False):
+    def __init__(self, name='C2-A-DM', verbose=False):
         super().__init__(
             verbose=verbose, name=name)
 

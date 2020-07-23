@@ -25,7 +25,7 @@ from tqdm import tqdm
 
 class TrivialTransformationSelector(AbstractTransformationSelector):
     def __init__(self, random_seed=42, n_samples_batch=512, sigma_zero=2.0,
-        as_image=True, name='C1_MI',
+        as_image=True, name='C1-MI',
         verbose=False):
         super().__init__(
             verbose=verbose, name=name)
