@@ -24,6 +24,8 @@ from models.transformer_ensemble_ovo_simple_net_od import \
     EnsembleOVOTransformODSimpleModel
 from scripts.transform_selection_disc_mat.training_transform_selection import \
     get_transform_selection_transformer
+import matplotlib
+matplotlib.use('Agg')
 
 # TODO: disentangle mess with other functions and methods, and matrix savers
 class DiscriminationMatrixTransformationSelector(AbstractTransformationSelector):
@@ -39,8 +41,9 @@ class DiscriminationMatrixTransformationSelector(AbstractTransformationSelector)
         mdl = EnsembleOVOTransformODSimpleModel(
             data_loader=dataset_loader, transformer=transformer,
             input_shape=x_data.shape, verbose=self.verbose)
+        print('')
         transformer = get_transform_selection_transformer(
-            data_loader, mdl, transformer, self.from_scratch)
+            dataset_loader, mdl, transformer, from_scratch=self.from_scratch)
         selected_trfs_tuples = tuple(transformer.transformation_tuples)
         transformer.set_transformations_to_perform(orig_trfs)
         return selected_trfs_tuples

@@ -20,8 +20,8 @@ from modules.data_loaders.ztf_small_outlier_loader import \
     ZTFSmallOutlierLoader
 from modules.transform_selection.pipeline.trivial_selector import \
     TrivialTransformationSelector
-from modules.transform_selection.pipeline.fid_selector import \
-    FIDTransformationSelector
+from modules.transform_selection.pipeline.disc_matrix_selector import \
+    DiscriminationMatrixTransformationSelector
 from modules.transform_selection.pipeline.rank_fwd_selector import \
     RankingForwardTransformationSelector
 from modules.transform_selection.pipeline.rank_bwd_selector import \
@@ -57,16 +57,17 @@ def get_dataset_loaders_list():
     return [hits_loader, ztf_loader]
 
 def get_pipelines_list(
-    verbose_pipeline, verbose_selectors, transform_from_scrtch):
+    verbose_pipeline, verbose_selectors, transform_from_scratch):
     pipeline_c1_c2b_c3fwd = \
         PipelineTransformationSelection(
             verbose_pipeline=verbose_pipeline,
             verbose_selectors=verbose_selectors,
             selection_pipeline=[
                 TrivialTransformationSelector(),
-                FIDTransformationSelector(),
+                DiscriminationMatrixTransformationSelector(
+                    from_scartch=False),
                 RankingForwardTransformationSelector(
-                    transformations_from_scratch=transform_from_scrtch)
+                    transformations_from_scratch=transform_from_scratch)
             ]
         )
     pipeline_c1_c2b_c3bwd = \
@@ -75,9 +76,10 @@ def get_pipelines_list(
             verbose_selectors=verbose_selectors,
             selection_pipeline=[
                 TrivialTransformationSelector(),
-                FIDTransformationSelector(),
+                DiscriminationMatrixTransformationSelector(
+                    from_scartch=False),
                 RankingBackwardTransformationSelector(
-                    transformations_from_scratch=transform_from_scrtch)
+                    transformations_from_scratch=transform_from_scratch)
             ]
         )
     return [pipeline_c1_c2b_c3fwd, pipeline_c1_c2b_c3bwd]
