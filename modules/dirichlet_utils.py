@@ -33,8 +33,10 @@ def inv_psi(y, iters=5):
   # psi(1)= -0.5772156649015329
   # y-psi(1) can give 0 and turns divition to NAN, but this divition is only
   # performed when y < -2.22, so in practice y-psi(1) where y=psi(1) never
-  # haṕpens
-  x = cond * (np.exp(y) + 0.5) + (1 - cond) * -1 / ((y + 1e-6) - psi(1))
+  # happens
+  x = (1 - cond) * -1 / (y - psi(1))
+  x[~np.isfinite(x)] = 0
+  x = cond * (np.exp(y) + 0.5) + x
 
   for _ in range(iters):
     x = x - (psi(x) - y) / polygamma(1, x)
