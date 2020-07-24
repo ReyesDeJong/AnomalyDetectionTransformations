@@ -27,9 +27,10 @@ from scripts.transform_selection_disc_mat.training_transform_selection import \
 
 # TODO: disentangle mess with other functions and methods, and matrix savers
 class DiscriminationMatrixTransformationSelector(AbstractTransformationSelector):
-    def __init__(self, name='C2-A-DM', verbose=False):
+    def __init__(self, name='C2-A-DM', verbose=False, from_scartch=False):
         super().__init__(
             verbose=verbose, name=name)
+        self.from_scratch = from_scartch
 
     def _get_selected_transformations_tuples(
         self, transformer: AbstractTransformer, x_data: np.array,
@@ -38,8 +39,8 @@ class DiscriminationMatrixTransformationSelector(AbstractTransformationSelector)
         mdl = EnsembleOVOTransformODSimpleModel(
             data_loader=dataset_loader, transformer=transformer,
             input_shape=x_data.shape, verbose=self.verbose)
-        transformer = get_transform_selection_transformer(data_loader, mdl,
-                                                          transformer)
+        transformer = get_transform_selection_transformer(
+            data_loader, mdl, transformer, self.from_scratch)
         selected_trfs_tuples = tuple(transformer.transformation_tuples)
         transformer.set_transformations_to_perform(orig_trfs)
         return selected_trfs_tuples

@@ -29,7 +29,7 @@ from scripts.transformation_ranking.fwd_bwd_ranking. \
     transformation_ranking_forward import ForwardsTransformRanker
 from modules.data_loaders.ztf_small_outlier_loader import \
     ZTFSmallOutlierLoader
-from parameters import param_keys, loader_keys
+from parameters import param_keys, loader_keys, general_keys
 from typing import Callable
 
 
@@ -111,7 +111,6 @@ if __name__ == '__main__':
     N_TRAINS = 2
     TRAIN_EPOCHS = 1
     FROM_SCRATCH = False
-    from parameters import loader_keys, general_keys
     from modules.geometric_transform.transformer_for_ranking import \
         RankingTransformer
 

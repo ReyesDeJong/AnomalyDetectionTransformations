@@ -94,6 +94,7 @@ class FIDTransformationSelector(AbstractTransformationSelector):
             x_data = self._get_large_ztf_data()
         else:
             x_data = None
+        #TODO: if there where a file printing in this object, there would be problems with this
         self.print_manager.verbose_printing(self.verbose)
         return x_data
 

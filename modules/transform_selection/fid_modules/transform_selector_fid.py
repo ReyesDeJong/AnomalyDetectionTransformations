@@ -109,6 +109,8 @@ class TransformSelectorFRawLogFID(object):
         transformations_scores, transformation_predictions):
         transformation_aux_idxs = np.arange(len(transformations_scores))
         pred_labeles = np.unique(transformation_predictions)
+        if len(pred_labeles)==1:
+            return np.array(transformation_tuples).tolist()
         cluster_1_idexes = transformation_aux_idxs[
             transformation_predictions == pred_labeles[0]]
         cluster_2_idexes = transformation_aux_idxs[

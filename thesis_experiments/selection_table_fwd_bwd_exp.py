@@ -82,10 +82,10 @@ def get_pipelines_list(
         )
     return [pipeline_c1_c2b_c3fwd, pipeline_c1_c2b_c3bwd]
 
-def get_transformers_list():
-    trf_ranking = RankingTransformer()
-    trf_72 = transformations_tf.Transformer()
-    trf_99 = transformations_tf.PlusKernelTransformer()
+def get_transformers_constructors():
+    trf_ranking = RankingTransformer
+    trf_72 = transformations_tf.Transformer
+    trf_99 = transformations_tf.PlusKernelTransformer
     return [trf_ranking, trf_72, trf_99]
 
 
@@ -99,13 +99,16 @@ def main():
         'pipelines', 'logs')
     check_path(results_folder_path)
 
-    for transformer in get_transformers_list():
+    for transformer_constructor in get_transformers_constructors():
         for pipeline in get_pipelines_list(
             VERBOSE_PIPELINE, VERBOSE_SELECTORS, TRANSFORM_FROM_SCRATCH):
             for dataset_loader in get_dataset_loaders_list():
+                transformer = transformer_constructor()
                 print_manager = PrintManager()
                 pipeline_name = pipeline.get_pipeline_name(
                     transformer, dataset_loader, transformer.n_transforms)
+                if 'Bwd' in pipeline_name and transformer.n_transforms > 36:
+                    continue
                 log_file_name = '%s.log' % pipeline_name
                 log_file_path = os.path.join(results_folder_path, log_file_name)
                 log_file = open(log_file_path, 'w')
@@ -118,6 +121,7 @@ def main():
                     get_outlier_detection_datasets()
                 transformer = pipeline.get_selected_transformer(
                     transformer, x_train, dataset_loader)
+                print_manager.file_printing(log_file)
                 print('Final N transforms %i\n%s' % (
                     transformer.n_transforms,
                     str(transformer.transformation_tuples)))
