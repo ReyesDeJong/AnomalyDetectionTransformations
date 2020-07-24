@@ -50,6 +50,11 @@ def fixed_point_dirichlet_mle(alpha_init, log_p_hat, max_iter=1000):
     # if alpha_old_sum%1==0 and alpha_old_sum<0:
     #   alpha_old_sum=+0.5
     alpha_new = inv_psi(psi(alpha_old_sum) + log_p_hat)
+    if not np.isfinite(alpha_new).all():
+      print(log_p_hat)
+      print(alpha_old_sum)
+      print(psi(alpha_old_sum))
+      print(psi(alpha_old_sum) + log_p_hat)
     if np.sqrt(np.sum((alpha_old - alpha_new) ** 2)) < 1e-9:
       break
     # if not np.isfinite(alpha_new).all():
