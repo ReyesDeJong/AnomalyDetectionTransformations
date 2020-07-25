@@ -10,6 +10,7 @@ sys.path.append(PROJECT_PATH)
 from scipy.special import psi, polygamma
 from modules.utils import normalize_sum1
 from modules.utils import check_path
+import warnings
 
 # ToDo: see if this can be done by tf
 
@@ -22,19 +23,33 @@ def calc_approx_alpha_sum(observations):
       f * np.sum(np.log(observations), axis=0)))
 
   if result_alpha < 0:
-    log_file_folder = os.path.join(PROJECT_PATH, 'results', '1a_error_log')
-    check_path(log_file_folder)
-    log_file_path = os.path.join(log_file_folder, 'calc_approx_alpha_sum.log')
-    log_file = open(log_file_path, 'w')
-    log_file.write(str(N) + '\n')
-    log_file.write(str(f) + '\n')
-    log_file.close()
-    np.save(observations, os.path.join(log_file_folder, 'observation.npy'))
-  assert result_alpha<0
+    # Bug happends when i ave trivial transformation, all confidence goes to that
+    # and       N * np.sum(f * np.log(f)) - np.sum(
+    #       f * np.sum(np.log(observations), axis=0))) becomes near -0 so it
+    # generates a negative number
 
-  return (N * (len(f) - 1) * (-psi(1))) / (
-      N * np.sum(f * np.log(f)) - np.sum(
-      f * np.sum(np.log(observations), axis=0)))
+    # print('')
+    # log_file_folder = os.path.join(PROJECT_PATH, 'results', 'error_log')
+    # check_path(log_file_folder)
+    # log_file_path = os.path.join(log_file_folder, 'calc_approx_alpha_sum.log')
+    # log_file = open(log_file_path, 'w')
+    # log_file.write(str(N) + '\n')
+    # log_file.write(str(f) + '\n')
+    # log_file.close()
+    # np.save(os.path.join(log_file_folder, 'observation.npy'), observations)
+    # print('\nHERE ', result_alpha, '\n')
+    # print(np.argmax(f))
+    result_alpha=np.abs(result_alpha)
+    warnings.warn("result_apha was negative %f, at transformation idx %i" % (
+      result_alpha, np.argmax(f)))
+
+  #assert result_alpha<0
+
+  # return (N * (len(f) - 1) * (-psi(1))) / (
+  #     N * np.sum(f * np.log(f)) - np.sum(
+  #     f * np.sum(np.log(observations), axis=0)))
+  # print(result_alpha)
+  return result_alpha
 
 
 def inv_psi(y, iters=5):
