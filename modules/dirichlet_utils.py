@@ -52,15 +52,17 @@ def fixed_point_dirichlet_mle(alpha_init, log_p_hat, max_iter=1000):
     # if alpha_old_sum%1==0 and alpha_old_sum<0:
     #   alpha_old_sum=+0.5
     alpha_new = inv_psi(psi(alpha_old_sum) + log_p_hat)
-    if not np.isfinite(alpha_new).all():
+    if not np.isfinite(alpha_new).all() or np.sum(alpha_new)<0:
       log_file_path = os.path.join(PROJECT_PATH, 'results', '1a_error.log')
       log_file = open(log_file_path, 'w')
-      log_file.write(str(log_p_hat))
-      log_file.write(str(alpha_old_sum))
-      log_file.write(str(psi(alpha_old_sum)))
-      log_file.write(str(psi(alpha_old_sum) + log_p_hat))
+      log_file.write(str(alpha_init)+'\n')
+      log_file.write(str(alpha_old)+'\n')
+      log_file.write(str(log_p_hat)+'\n')
+      log_file.write(str(alpha_old_sum)+'\n')
+      log_file.write(str(psi(alpha_old_sum))+'\n')
+      log_file.write(str(psi(alpha_old_sum) + log_p_hat)+'\n')
       log_file.close()
-      assert np.isfinite(alpha_new).all()
+      assert np.isfinite(alpha_new).all() or np.sum(alpha_new)<0
     if np.sqrt(np.sum((alpha_old - alpha_new) ** 2)) < 1e-9:
       break
     # if not np.isfinite(alpha_new).all():

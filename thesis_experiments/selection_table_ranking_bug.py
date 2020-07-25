@@ -60,8 +60,8 @@ def get_dataset_loaders_list():
     ztf_loader = ZTFSmallOutlierLoader(ztf_params)
 
     return [
-        #hits_loader, 
-        ztf_loader
+        hits_loader, 
+        #ztf_loader
     ]
 
 def get_pipelines_list(
@@ -181,11 +181,10 @@ def get_pipelines_list(
             ]
         )
     return [
-        #pipeline_c1, pipeline_c2a, 
-        #pipeline_c2b, 
-        #pipeline_c1_c2a,
-        #pipeline_c1_c2b, 
-        pipeline_c1_c2a_c3fwd, pipeline_c1_c2b_c3fwd,
+        pipeline_c1, pipeline_c2a, 
+        pipeline_c2b, 
+        pipeline_c1_c2a,
+        pipeline_c1_c2b, pipeline_c1_c2a_c3fwd, pipeline_c1_c2b_c3fwd,
         pipeline_c1_c2a_c3bwd, pipeline_c1_c2b_c3bwd, pipeline_c3fwd,
         pipeline_c3bwd
     ]
@@ -240,8 +239,8 @@ def main():
                     str(transformer.transformation_tuples)))
                 if data_loader_counter<len(get_dataset_loaders_list()):
                     data_loader_counter+=1
-                    #evaluate_pipeline_transformer('INITIAL', transformer,
-                    #                              dataset_loader)
+                    evaluate_pipeline_transformer('INITIAL', transformer,
+                                                  dataset_loader)
                 (x_train, y_train), _, _ = dataset_loader.\
                     get_outlier_detection_datasets()
                 transformer = pipeline.get_selected_transformer(
