@@ -39,6 +39,7 @@ from parameters import param_keys
 # TF logging control
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 
+
 def get_dataset_loaders_list():
     hits_params = {
         loader_keys.DATA_PATH: os.path.join(
@@ -60,9 +61,10 @@ def get_dataset_loaders_list():
     ztf_loader = ZTFSmallOutlierLoader(ztf_params)
 
     return [
-        #hits_loader, 
+        # hits_loader,
         ztf_loader
     ]
+
 
 def get_pipelines_list(
     verbose_pipeline, verbose_selectors, transform_from_scratch):
@@ -190,12 +192,15 @@ def get_pipelines_list(
         pipeline_c3bwd
     ]
 
+
 def get_transformers_constructors():
     trf_ranking = RankingSingleCompositionTransformer
     return [trf_ranking]
 
+
 def evaluate_pipeline_transformer(
-    train_mesage_transformer, transformer: AbstractTransformer, data_loader:HiTSOutlierLoader):
+    train_mesage_transformer, transformer: AbstractTransformer,
+    data_loader: HiTSOutlierLoader):
     (x_train, y_train), (x_val, y_val), (
         x_test, y_test) = data_loader.get_outlier_detection_datasets()
     model_trainer = ODTrainer(
@@ -209,9 +214,6 @@ def evaluate_pipeline_transformer(
         result_mean, result_var))
 
 
-
-
-
 def main():
     VERBOSE_PIPELINE = True
     VERBOSE_SELECTORS = True
@@ -221,7 +223,7 @@ def main():
         PROJECT_PATH, 'results', 'transformation_selection',
         'pipelines', 'logs')
     check_path(results_folder_path)
-    data_loader_counter=0
+    data_loader_counter = 0
     for transformer_constructor in get_transformers_constructors():
         for pipeline in get_pipelines_list(
             VERBOSE_PIPELINE, VERBOSE_SELECTORS, TRANSFORM_FROM_SCRATCH):
@@ -238,11 +240,11 @@ def main():
                 print('Init N transforms %i\n%s' % (
                     transformer.n_transforms,
                     str(transformer.transformation_tuples)))
-                if data_loader_counter<len(get_dataset_loaders_list()):
-                    data_loader_counter+=1
+                if data_loader_counter < len(get_dataset_loaders_list()):
+                    data_loader_counter += 1
                     evaluate_pipeline_transformer('INITIAL', transformer,
                                                   dataset_loader)
-                (x_train, y_train), _, _ = dataset_loader.\
+                (x_train, y_train), _, _ = dataset_loader. \
                     get_outlier_detection_datasets()
                 transformer = pipeline.get_selected_transformer(
                     transformer, x_train, dataset_loader)
@@ -256,6 +258,7 @@ def main():
                                               dataset_loader)
                 print_manager.close()
                 log_file.close()
+
 
 if __name__ == "__main__":
     main()

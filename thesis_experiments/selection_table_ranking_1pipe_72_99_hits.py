@@ -14,6 +14,7 @@ sys.path.append(PROJECT_PATH)
 from models.transformer_od import TransformODModel
 from modules.trainer import ODTrainer
 from modules.geometric_transform.transformations_tf import AbstractTransformer
+from modules.geometric_transform import transformations_tf
 from modules.data_loaders.hits_outlier_loader import HiTSOutlierLoader
 from parameters import loader_keys, general_keys
 from modules.geometric_transform.transformer_for_ranking_with_comp import \
@@ -60,77 +61,13 @@ def get_dataset_loaders_list():
     ztf_loader = ZTFSmallOutlierLoader(ztf_params)
 
     return [
-        #hits_loader, 
-        ztf_loader
+        hits_loader,
+        # ztf_loader
     ]
 
 def get_pipelines_list(
     verbose_pipeline, verbose_selectors, transform_from_scratch):
-    pipeline_c1 = \
-        PipelineTransformationSelection(
-            verbose_pipeline=verbose_pipeline,
-            verbose_selectors=verbose_selectors,
-            selection_pipeline=[
-                TrivialTransformationSelector(),
-            ]
-        )
-    pipeline_c2a = \
-        PipelineTransformationSelection(
-            verbose_pipeline=verbose_pipeline,
-            verbose_selectors=verbose_selectors,
-            selection_pipeline=[
-                DiscriminationMatrixTransformationSelector(
-                    from_scartch=transform_from_scratch)
-            ]
-        )
-    pipeline_c2b = \
-        PipelineTransformationSelection(
-            verbose_pipeline=verbose_pipeline,
-            verbose_selectors=verbose_selectors,
-            selection_pipeline=[
-                FIDTransformationSelector(),
-            ]
-        )
 
-    pipeline_c3fwd = \
-        PipelineTransformationSelection(
-            verbose_pipeline=verbose_pipeline,
-            verbose_selectors=verbose_selectors,
-            selection_pipeline=[
-                RankingForwardTransformationSelector(
-                    transformations_from_scratch=transform_from_scratch)
-            ]
-        )
-
-    pipeline_c3bwd = \
-        PipelineTransformationSelection(
-            verbose_pipeline=verbose_pipeline,
-            verbose_selectors=verbose_selectors,
-            selection_pipeline=[
-                RankingBackwardTransformationSelector(
-                    transformations_from_scratch=transform_from_scratch)
-            ]
-        )
-
-    pipeline_c1_c2a = \
-        PipelineTransformationSelection(
-            verbose_pipeline=verbose_pipeline,
-            verbose_selectors=verbose_selectors,
-            selection_pipeline=[
-                TrivialTransformationSelector(),
-                DiscriminationMatrixTransformationSelector(
-                    from_scartch=transform_from_scratch)
-            ]
-        )
-    pipeline_c1_c2b = \
-        PipelineTransformationSelection(
-            verbose_pipeline=verbose_pipeline,
-            verbose_selectors=verbose_selectors,
-            selection_pipeline=[
-                TrivialTransformationSelector(),
-                FIDTransformationSelector(),
-            ]
-        )
     pipeline_c1_c2a_c3fwd = \
         PipelineTransformationSelection(
             verbose_pipeline=verbose_pipeline,
@@ -138,61 +75,26 @@ def get_pipelines_list(
             selection_pipeline=[
                 TrivialTransformationSelector(),
                 DiscriminationMatrixTransformationSelector(
-                    from_scartch=transform_from_scratch),
+                    from_scartch=False),
                 RankingForwardTransformationSelector(
-                    transformations_from_scratch=transform_from_scratch)
-            ]
-        )
-
-    pipeline_c1_c2b_c3fwd = \
-        PipelineTransformationSelection(
-            verbose_pipeline=verbose_pipeline,
-            verbose_selectors=verbose_selectors,
-            selection_pipeline=[
-                TrivialTransformationSelector(),
-                FIDTransformationSelector(),
-                RankingForwardTransformationSelector(
-                    transformations_from_scratch=transform_from_scratch)
-            ]
-        )
-
-    pipeline_c1_c2a_c3bwd = \
-        PipelineTransformationSelection(
-            verbose_pipeline=verbose_pipeline,
-            verbose_selectors=verbose_selectors,
-            selection_pipeline=[
-                TrivialTransformationSelector(),
-                DiscriminationMatrixTransformationSelector(
-                    from_scartch=transform_from_scratch),
-                RankingBackwardTransformationSelector(
-                    transformations_from_scratch=transform_from_scratch)
-            ]
-        )
-
-    pipeline_c1_c2b_c3bwd = \
-        PipelineTransformationSelection(
-            verbose_pipeline=verbose_pipeline,
-            verbose_selectors=verbose_selectors,
-            selection_pipeline=[
-                TrivialTransformationSelector(),
-                FIDTransformationSelector(),
-                RankingBackwardTransformationSelector(
                     transformations_from_scratch=transform_from_scratch)
             ]
         )
     return [
-        pipeline_c1, pipeline_c2a,
-        pipeline_c2b,
-        pipeline_c1_c2a,
-        pipeline_c1_c2b,
-        pipeline_c1_c2a_c3fwd, pipeline_c1_c2b_c3fwd,
-        pipeline_c1_c2a_c3bwd, pipeline_c1_c2b_c3bwd, pipeline_c3fwd,
-        pipeline_c3bwd
+        # pipeline_c1, pipeline_c2a,
+        # pipeline_c2b,
+        # pipeline_c1_c2a,
+        # pipeline_c1_c2b,
+        pipeline_c1_c2a_c3fwd,
+        # pipeline_c1_c2b_c3fwd,
+        # pipeline_c1_c2a_c3bwd, pipeline_c1_c2b_c3bwd, pipeline_c3fwd,
+        # pipeline_c3bwd
     ]
 
 def get_transformers_constructors():
-    trf_ranking = RankingSingleCompositionTransformer
-    return [trf_ranking]
+    trf_72 = transformations_tf.Transformer
+    trf_99 = transformations_tf.PlusKernelTransformer
+    return [trf_72, trf_99]
 
 def evaluate_pipeline_transformer(
     train_mesage_transformer, transformer: AbstractTransformer, data_loader:HiTSOutlierLoader):
@@ -238,10 +140,10 @@ def main():
                 print('Init N transforms %i\n%s' % (
                     transformer.n_transforms,
                     str(transformer.transformation_tuples)))
-                if data_loader_counter<len(get_dataset_loaders_list()):
-                    data_loader_counter+=1
-                    evaluate_pipeline_transformer('INITIAL', transformer,
-                                                  dataset_loader)
+                # if data_loader_counter<len(get_dataset_loaders_list()):
+                #     data_loader_counter+=1
+                #     evaluate_pipeline_transformer('INITIAL', transformer,
+                #                                   dataset_loader)
                 (x_train, y_train), _, _ = dataset_loader.\
                     get_outlier_detection_datasets()
                 transformer = pipeline.get_selected_transformer(

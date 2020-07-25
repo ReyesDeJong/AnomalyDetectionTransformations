@@ -87,6 +87,15 @@ def dirichlet_score(predict_x_train, predict_x_eval):
   alpha_sum_approx = calc_approx_alpha_sum(
       observed_dirichlet)
   alpha_0 = observed_dirichlet.mean(axis=0) * alpha_sum_approx
+  if np.sum(alpha_0) < 0:
+    log_file_path = os.path.join(PROJECT_PATH, 'results', '1a_error_dirichlet_score.log')
+    log_file = open(log_file_path, 'w')
+    log_file.write(str(alpha_0) + '\n')
+    log_file.write(str(alpha_sum_approx) + '\n')
+    log_file.write(str(observed_dirichlet.mean(axis=0)) + '\n')
+    log_file.write(str(observed_dirichlet) + '\n')
+    log_file.close()
+    assert np.sum(alpha_0) < 0
   mle_alpha_t = fixed_point_dirichlet_mle(alpha_0, log_p_hat_train)
   diri_score = dirichlet_normality_score(mle_alpha_t, x_eval_p)
   return diri_score

@@ -113,7 +113,7 @@ def transformation_cifar10_vs_tinyimagenet():
     transformations_cls_out = Activation('softmax')(dense(transformer.n_transforms)(base_mdl.get_layer(index=-3).output))
 
     mdl = Model(base_mdl.input, [base_mdl.output, transformations_cls_out])
-    mdl.load_weights('cifar10_WRN_doublehead-transformations_{}-{}.h5'.format(n, k))
+    mdl.load_weights('cifar10_WRN_doublehead-transformations_{}-{}.h5'.format(n, k)).expect_partial()
 
     scores_mdl = Model(mdl.input, mdl.output[1])
     x_test_all = np.concatenate((x_test, x_test_out))
