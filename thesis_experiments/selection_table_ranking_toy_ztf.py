@@ -183,12 +183,12 @@ def get_pipelines_list(
             ]
         )
     return [
-        pipeline_c1, pipeline_c2a,
-        pipeline_c2b,
-        pipeline_c1_c2a,
-        pipeline_c1_c2b,
-        pipeline_c1_c2a_c3fwd, pipeline_c1_c2b_c3fwd,
-        pipeline_c1_c2a_c3bwd, pipeline_c1_c2b_c3bwd, pipeline_c3fwd,
+        #pipeline_c1, pipeline_c2a,
+        #pipeline_c2b,
+        #pipeline_c1_c2a,
+        #pipeline_c1_c2b,
+        #pipeline_c1_c2a_c3fwd, pipeline_c1_c2b_c3fwd,
+        #pipeline_c1_c2a_c3bwd, pipeline_c1_c2b_c3bwd, pipeline_c3fwd,
         pipeline_c3bwd
     ]
 
@@ -217,7 +217,7 @@ def evaluate_pipeline_transformer(
 def main():
     VERBOSE_PIPELINE = True
     VERBOSE_SELECTORS = True
-    TRANSFORM_FROM_SCRATCH = True
+    TRANSFORM_FROM_SCRATCH = False
 
     results_folder_path = os.path.join(
         PROJECT_PATH, 'results', 'transformation_selection',
@@ -242,8 +242,8 @@ def main():
                     str(transformer.transformation_tuples)))
                 if data_loader_counter < len(get_dataset_loaders_list()):
                     data_loader_counter += 1
-                    evaluate_pipeline_transformer('INITIAL', transformer,
-                                                  dataset_loader)
+                    #evaluate_pipeline_transformer('INITIAL', transformer,
+                    #                              dataset_loader)
                 (x_train, y_train), _, _ = dataset_loader. \
                     get_outlier_detection_datasets()
                 transformer = pipeline.get_selected_transformer(
