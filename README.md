@@ -23,7 +23,8 @@ If you use the ideas or method presented in the paper, please cite:
 }
 ```
 
-## Version Specifications 0.1.1
+## Version Specifications 0.1.2
 
+r0.1.2 Before including fixes to dirichlet bug; trivial constant transform ruined alpha_0 init
 r0.1.1 Before modification to DeepHits.py. Future will include modifications to predict, to avoid memry leak
 r0.1.0 It contain thesis work before start modification of Discrimination Matrix Method, which is contained in scripts/transformation_clean/training_transformation_selection.py
