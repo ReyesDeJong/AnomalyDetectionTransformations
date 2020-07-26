@@ -13,19 +13,21 @@ sys.path.append(PROJECT_PATH)
 
 import numpy as np
 import pandas as pd
+from modules.utils import save_pickle
 
 if __name__ == "__main__":
-
-  results_all_runs = pd.read_pickle('aux_results/small_rank_small_ztf.pkl')
+  # data_path = 'aux_results/small_rank_small_ztf.pkl'
+  data_path = 'aux_results/small_rank_hits_4_channels.pkl'
+  results_all_runs = pd.read_pickle(data_path)
   # results_all_runs = pd.read_pickle('aux_results/small_rank_hits_4_channels.pkl')
   n_runs = list(results_all_runs.keys())
   trf_idxs = list(results_all_runs[0].keys())
   outlier_types = results_all_runs[0][0].keys()
   print(outlier_types)
-  # outlier_to_see = 'gt'
+  outlier_to_see = 'gt'
   # outlier_to_see = 'other_astro'
   # outlier_to_see = 'mnist'
-  outlier_to_see = 'cifar10'
+  # outlier_to_see = 'cifar10'
   # outlier_to_see = 'shuffle'
   for trf_i in trf_idxs:
     print(len(results_all_runs[0][trf_i][outlier_to_see][0]),
@@ -78,3 +80,14 @@ if __name__ == "__main__":
     print(
         sort_trf_list[i],
             'idx %i len %i: %.4f+/-%.4f' % (sort_trf_idx_list[i], len(sort_trf_list[i]), sort_means[i], sort_stds[i]))
+
+  top_10_trfs = sort_trf_list[-10:]
+  if 'hits' in data_path:
+    set_name = 'hits'
+  elif 'ztf' in data_path:
+    set_name = 'ztf'
+  save_path = os.path.join(
+      PROJECT_PATH, 'scripts/transformation_ranking/calculating_kedall_tau_distance/top10_lists',
+      '%s_%s.pkl' % (set_name, outlier_to_see))
+  save_pickle(top_10_trfs, save_path)
+

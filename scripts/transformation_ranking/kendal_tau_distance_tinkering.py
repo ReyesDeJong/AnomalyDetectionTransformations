@@ -9,6 +9,14 @@ sys.path.append(PROJECT_PATH)
 import numpy as np
 
 def kendall_tau_distance(order_a, order_b):
+    if len(order_a)==1 and len(order_b)==1:
+        if order_a[0]==order_b[0]:
+            return 0
+        else:
+            return 1
+    if len(order_a)==0 and len(order_b)==0:
+        return 1
+
     pairs = itertools.combinations(range(1, len(order_a)+1), 2)
     distance = 0
     for x, y in pairs:
@@ -24,7 +32,7 @@ if __name__ == "__main__":
   a = np.arange(100)+1
   b = a.copy()
   np.random.shuffle(b)
-  print(a)
-  print(b)
+  # print(a)
+  # print(b)
   # print(kendall_tau_distance(b.tolist(), a.tolist()))
-  print(kendall_tau_distance([1,2,3], [1,3,2]))
+  print(kendall_tau_distance([1,3,2,4], [1,3,4,2]))

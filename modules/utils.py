@@ -229,3 +229,8 @@ def init_gpu_soft_growth():
   gpus = tf.config.experimental.list_physical_devices('GPU')
   for gpu in gpus:
     tf.config.experimental.set_memory_growth(gpu, True)
+
+def get_files_in_path(mypath):
+  onlyfiles = [f for f in os.listdir(mypath) if
+               os.path.isfile(os.path.join(mypath, f))]
+  return onlyfiles
