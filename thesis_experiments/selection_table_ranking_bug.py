@@ -60,8 +60,8 @@ def get_dataset_loaders_list():
     ztf_loader = ZTFSmallOutlierLoader(ztf_params)
 
     return [
-        #hits_loader, 
-        ztf_loader
+        hits_loader, 
+        #ztf_loader
     ]
 
 def get_pipelines_list(
@@ -181,11 +181,10 @@ def get_pipelines_list(
             ]
         )
     return [
-        pipeline_c1, pipeline_c2a,
-        pipeline_c2b,
+        pipeline_c1, pipeline_c2a, 
+        pipeline_c2b, 
         pipeline_c1_c2a,
-        pipeline_c1_c2b,
-        pipeline_c1_c2a_c3fwd, pipeline_c1_c2b_c3fwd,
+        pipeline_c1_c2b, pipeline_c1_c2a_c3fwd, pipeline_c1_c2b_c3fwd,
         pipeline_c1_c2a_c3bwd, pipeline_c1_c2b_c3bwd, pipeline_c3fwd,
         pipeline_c3bwd
     ]

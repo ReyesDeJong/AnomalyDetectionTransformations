@@ -52,7 +52,7 @@ def _transformations_experiment(data_loader: ZTFOutlierLoader,
       'final_weights.h5'
   )
   print(os.path.abspath(weights_path))
-  mdl.load_weights(weights_path)
+  mdl.load_weights(weights_path).expect_partial()
 
   metrics_dict = mdl.evaluate_od(
       x_train, x_test, y_test, dataset_name, class_name, x_val,

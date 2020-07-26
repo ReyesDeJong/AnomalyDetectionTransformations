@@ -85,8 +85,8 @@ if __name__ == "__main__":
     transformer_99 = PlusKernelTransformer()
 
     transformers = [
-        transformer_rank,
-        transformer_72,
+        #transformer_rank,
+        #transformer_72,
         transformer_99
     ]
 

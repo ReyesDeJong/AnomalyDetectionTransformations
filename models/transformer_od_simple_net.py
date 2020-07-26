@@ -79,7 +79,7 @@ if __name__ == '__main__':
   weight_path = os.path.join(PROJECT_PATH, 'results', model.name,
                              'my_checkpoint_simple.h5')
   if os.path.exists(weight_path):
-    model.load_weights(weight_path)
+    model.load_weights(weight_path).expect_partial()
   else:
     model.fit(x_train, x_val)
 

@@ -122,8 +122,8 @@ def main():
 
     transformer_list = [
         # plus_kernel_noise_shift,
-        transformer_72,
-        # plus_kernel_transformer
+        # transformer_72,
+        plus_kernel_transformer
     ]
 
     for trf in transformer_list:

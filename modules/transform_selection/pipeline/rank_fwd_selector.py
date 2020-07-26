@@ -23,7 +23,6 @@ from modules.geometric_transform.transformations_tf import AbstractTransformer
 from modules.transform_selection.pipeline.abstract_selector import \
     AbstractTransformationSelector
 from models.transformer_od_simple_net import TransformODSimpleModel
-from models.transformer_od import TransformODModel
 from modules.data_loaders.hits_outlier_loader import HiTSOutlierLoader
 from scripts.transformation_ranking.fwd_bwd_ranking. \
     transformation_ranking_forward import ForwardsTransformRanker
@@ -37,7 +36,7 @@ class RankingForwardTransformationSelector(AbstractTransformationSelector):
     def __init__(self, train_epochs=1000, n_trains=10,
         transformations_from_scratch=False,
         training_model_constructor: Callable[
-            [], TransformODSimpleModel] = TransformODModel,
+            [], TransformODSimpleModel] = TransformODSimpleModel,
         name='C3-Fwd-Rank', verbose=False):
         super().__init__(
             verbose=verbose, name=name)
@@ -47,7 +46,6 @@ class RankingForwardTransformationSelector(AbstractTransformationSelector):
             param_keys.EPOCHS: train_epochs,
             param_keys.TRAIN_N_TIMES: n_trains
         }, verbose_training=verbose)
-
 
     def _get_selected_transformations_tuples(
         self, transformer: AbstractTransformer, x_data: np.array,
@@ -63,7 +61,7 @@ class RankingForwardTransformationSelector(AbstractTransformationSelector):
             selected_trf_list = self.fwd_ranker.get_best_transformations(
                 dataset_loader, other_dataset_loader, transformer,
                 self.training_model_constructor)
-        #TODO: fix inplace transformation tuples maodification by ranking
+        # TODO: fix inplace transformation tuples maodification by ranking
         transformer.set_transformations_to_perform(orig_trfs)
         selected_trfs_tuples = tuple(selected_trf_list)
         return selected_trfs_tuples
@@ -99,7 +97,7 @@ class RankingForwardTransformationSelector(AbstractTransformationSelector):
             other_dataset_loader = self._get_ztf_dataset()
         elif 'ztf' in dataset_loader.name:
             other_dataset_loader = self._get_hits_dataset()
-        #TODO: fix this condition, to work with more than hits or ztf
+        # TODO: fix this condition, to work with more than hits or ztf
         else:
             other_dataset_loader = None
         self.print_manager.verbose_printing(self.verbose)

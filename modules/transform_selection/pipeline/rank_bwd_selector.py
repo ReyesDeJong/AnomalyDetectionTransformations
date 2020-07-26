@@ -20,7 +20,6 @@ from modules.geometric_transform.transformations_tf import AbstractTransformer
 from modules.transform_selection.pipeline.abstract_selector import \
     AbstractTransformationSelector
 from models.transformer_od_simple_net import TransformODSimpleModel
-from models.transformer_od import TransformODModel
 from modules.data_loaders.hits_outlier_loader import HiTSOutlierLoader
 from scripts.transformation_ranking.fwd_bwd_ranking. \
     transformation_ranking_backward import BackwardsTransformRanker
@@ -32,11 +31,12 @@ from modules.transform_selection.pipeline.rank_fwd_selector import \
     RankingForwardTransformationSelector
 
 
-class RankingBackwardTransformationSelector(RankingForwardTransformationSelector):
+class RankingBackwardTransformationSelector(
+    RankingForwardTransformationSelector):
     def __init__(self, train_epochs=1000, n_trains=10,
         transformations_from_scratch=False,
         training_model_constructor: Callable[
-            [], TransformODSimpleModel] = TransformODModel,
+            [], TransformODSimpleModel] = TransformODSimpleModel,
         name='C3-Bwd-Rank', verbose=False):
         super().__init__(
             verbose=verbose, name=name)
