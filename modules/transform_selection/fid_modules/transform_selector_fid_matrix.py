@@ -57,12 +57,13 @@ class TransformSelectorRawLogFIDMatrix(object):
         transformation_index_tuples = self._get_transformations_index_tuples(
             transformer)
         matrix_raw_fid = np.zeros((n_transforms, n_transforms))
-        for x_y_tuple in tqdm(transformation_index_tuples):
+        for x_y_tuple in tqdm(transformation_index_tuples,
+                              disable=not self.verbose):
             trf_ind_x = x_y_tuple[0]
             trf_ind_y = x_y_tuple[1]
             x_transformed_x_ind, x_transformed_y_ind = self._get_binary_data(
                 transformer, x_data, trf_ind_x, trf_ind_y, transform_batch_size)
-            raw_fid_score_x_y = self._get_fid_moments_from_data(
+            raw_fid_score_x_y = self._get_fid_from_two_data_sets(
                 x_transformed_x_ind, x_transformed_y_ind)
             matrix_raw_fid[trf_ind_x, trf_ind_y] += raw_fid_score_x_y
         return self._post_process_fid_matrix(matrix_raw_fid)
@@ -84,7 +85,7 @@ class TransformSelectorRawLogFIDMatrix(object):
                                   self.threshold_magnitud_order
         self._plot_clusters(diff_with_self_log_fid_matrix,
                             useful_transforms_matrix)
-        return self._post_process_fid_matrix(useful_transforms_matrix)
+        return self._post_process_fid_matrix(useful_transforms_matrix*1.0)
 
     def _post_process_fid_matrix(self, matrix_score):
         """fill diagonal with -1, and triangle bottom with reflex of
@@ -92,9 +93,9 @@ class TransformSelectorRawLogFIDMatrix(object):
         for i_x in range(matrix_score.shape[-2]):
             for i_y in range(matrix_score.shape[-1]):
                 if i_x == i_y:
-                    matrix_score[:, i_x, i_y] = -1
+                    matrix_score[i_x, i_y] = -1
                 elif i_x > i_y:
-                    matrix_score[:, i_x, i_y] = matrix_score[:, i_y, i_x]
+                    matrix_score[i_x, i_y] = matrix_score[i_y, i_x]
         return matrix_score
 
     def _get_fid_from_two_data_sets(self, x_data_1, x_data_2):
@@ -121,7 +122,7 @@ class TransformSelectorRawLogFIDMatrix(object):
                 transformer)
             labels = []
             scores = []
-            for x_y_tuple in tqdm(transformation_index_tuples):
+            for x_y_tuple in transformation_index_tuples:
                 trf_ind_x = x_y_tuple[0]
                 trf_ind_y = x_y_tuple[1]
                 labels.append(useful_transformations_matrix[
@@ -144,6 +145,7 @@ if __name__ == "__main__":
         RankingTransformer
     from modules.data_loaders.ztf_small_outlier_loader import \
         ZTFSmallOutlierLoader
+    from modules.geometric_transform.transformer_no_compositions import NoCompositionTransformer
 
     VERBOSE = True
     SHOW = True
@@ -179,7 +181,8 @@ if __name__ == "__main__":
         # hits_loader_4c,
         ztf_loader_3c
     ]
-    transformer = RankingTransformer()
+    # transformer = RankingTransformer()
+    transformer = NoCompositionTransformer()
     print('Original n transforms %i' % transformer.n_transforms)
 
     fid_selector = TransformSelectorRawLogFIDMatrix(
@@ -191,5 +194,8 @@ if __name__ == "__main__":
         print(x_train.shape)
         matrix = fid_selector.get_useful_trfs_matrix(
             x_train, transformer)
+        plt.imshow(matrix)
+        plt.colorbar()
+        plt.show()
         print('')
     print('Original n transforms %i' % transformer.n_transforms)
