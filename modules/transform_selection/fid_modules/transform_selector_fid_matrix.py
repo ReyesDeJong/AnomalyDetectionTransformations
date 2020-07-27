@@ -183,7 +183,7 @@ class TransformSelectorRawLogFIDMatrix(object):
             x_ind = x_y_tuple[0]
             y_ind = x_y_tuple[1]
             x_y_is_useful = useful_trfs_matrix[x_ind, y_ind]
-            if x_y_is_useful:
+            if not x_y_is_useful:
                 redundant_transforms_tuples.append(x_y_tuple)
         if self.verbose:
             print('Conflicting transformations')
