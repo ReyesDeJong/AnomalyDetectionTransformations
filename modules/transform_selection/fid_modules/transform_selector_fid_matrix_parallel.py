@@ -26,16 +26,43 @@ from modules.transform_selection.fid_modules.transform_selector_fid_matrix impor
 import multiprocessing
 from joblib import Parallel, delayed
 
+#TODO: not working it would need to preload all transformations, bt dataset its too large
 
-def _get_raw_fid_from_x_y_tuple(selector: TransformSelectorRawLogFIDMatrix,
-    x_y_tuple, x_data, transform_batch_size):
+def _get_raw_fid_from_x_y_tuple(
+    transformer: AbstractTransformer, x_y_tuple, x_data, transform_batch_size):
     trf_ind_x = x_y_tuple[0]
     trf_ind_y = x_y_tuple[1]
-    x_transformed_x_ind, x_transformed_y_ind = selector._get_binary_data(
+    x_transformed_x_ind, x_transformed_y_ind = _get_binary_data(
         transformer, x_data, trf_ind_x, trf_ind_y, transform_batch_size)
-    raw_fid_score_x_y = selector._get_fid_from_two_data_sets(
+    raw_fid_score_x_y = _get_fid_from_two_data_sets(
         x_transformed_x_ind, x_transformed_y_ind)
     return raw_fid_score_x_y
+
+def _get_binary_data(transformer: AbstractTransformer, x_data, x_ind,
+    y_ind, transform_batch_size):
+    x_transformed_x_ind, _ = \
+        transformer.apply_transforms(x_data, [x_ind], transform_batch_size)
+    x_transformed_y_ind, _ = \
+        transformer.apply_transforms(x_data, [y_ind], transform_batch_size)
+    return x_transformed_x_ind, x_transformed_y_ind
+
+def _get_fid_from_two_data_sets(x_data_1, x_data_2):
+    fid_moments_1 = _get_fid_moments_from_data(x_data_1)
+    fid_moments_2 = _get_fid_moments_from_data(x_data_2)
+    return _get_fid_from_moments(fid_moments_1, fid_moments_2)
+
+def _get_fid_moments_from_data(data):
+    mu, sigma = fid. \
+        calculate_activation_statistics_from_activation_array(data)
+    return (mu, sigma)
+
+def _get_fid_from_moments(fid_moments_1,
+    fid_moments_2):
+    fid_value = fid.calculate_frechet_distance(
+        fid_moments_1[0], fid_moments_1[1],
+        fid_moments_2[0],
+        fid_moments_2[1])
+    return fid_value
 
 class TransformSelectorRawLogFIDMatrixParallel(TransformSelectorRawLogFIDMatrix):
 
@@ -55,7 +82,8 @@ class TransformSelectorRawLogFIDMatrixParallel(TransformSelectorRawLogFIDMatrix)
 
         raw_fid_scores_list = Parallel(n_jobs=self.n_cpus)(
             delayed(_get_raw_fid_from_x_y_tuple)(
-                self, transformation_index_tuples[i], x_data, transform_batch_size)
+                transformer, transformation_index_tuples[i], x_data,
+                transform_batch_size)
             for
             i in tqdm(range(len(transformation_index_tuples)),
                       disable=not self.verbose))
