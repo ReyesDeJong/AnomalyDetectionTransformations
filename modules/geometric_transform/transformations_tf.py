@@ -250,7 +250,7 @@ class AbstractTransformer(abc.ABC):
     images = 2 * images - 1
     return images
 
-  def apply_transforms(self, x, transformations_inds, batch_size=None):
+  def apply_transforms(self, x, transformations_inds: list , batch_size=None):
     """generate transform inds, that are the labels of each transform and
     its respective transformed data. It generates labels after images"""
     if batch_size is not None:
