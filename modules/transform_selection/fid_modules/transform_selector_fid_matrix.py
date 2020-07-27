@@ -19,13 +19,16 @@ from modules.data_loaders.ztf_outlier_loader import ZTFOutlierLoader
 from modules import utils
 from tqdm import tqdm
 import matplotlib.pyplot as plt
+import pandas as pd
 from parameters import loader_keys, general_keys
 import itertools
 
 
 class TransformSelectorRawLogFIDMatrix(object):
 
-    def __init__(self, threshold_magnitud_order=1, verbose=False, show=False):
+    def __init__(self, threshold_magnitud_order=1,
+        verbose=False, show=False, from_scratch=False):
+        self.form_scratch = from_scratch
         self.verbose = verbose
         self.show = show
         self._generator_name = 'RawLogFIDMatrix'
@@ -69,23 +72,31 @@ class TransformSelectorRawLogFIDMatrix(object):
         return self._post_process_fid_matrix(matrix_raw_fid)
 
     def get_useful_trfs_matrix(
-        self, x_data, transformer: AbstractTransformer,
+        self, data_loader: HiTSOutlierLoader, x_data, transformer: AbstractTransformer,
         transform_batch_size=512):
-        raw_fid_matrix = self.get_raw_fid_matrix(
-            x_data, transformer, transform_batch_size)
-        n_samples_in_x = len(x_data)
-        x_dataset_T0_1 = x_data[:n_samples_in_x//2]
-        x_dataset_T0_2 = x_data[n_samples_in_x//2:]
-        self_fid = self._get_fid_from_two_data_sets(x_dataset_T0_1,
-                                                    x_dataset_T0_2)
-        log_fid_matrix = np.log(raw_fid_matrix)
-        diff_with_self_log_fid_matrix = np.abs(
-            log_fid_matrix - np.log(self_fid))
-        useful_transforms_matrix = diff_with_self_log_fid_matrix > \
-                                  self.threshold_magnitud_order
-        self._plot_clusters(diff_with_self_log_fid_matrix,
-                            useful_transforms_matrix)
-        return self._post_process_fid_matrix(useful_transforms_matrix*1.0)
+        matrix_folder_path = self._create_matrix_path(data_loader, transformer)
+        useful_trf_matrix_path = os.path.join(
+            matrix_folder_path, 'fid_useful_trf_matrix.pkl')
+        if os.path.exists(useful_trf_matrix_path) and not self.form_scratch:
+            useful_trf_matrix = pd.read_pickle(useful_trf_matrix_path)
+        else:
+            raw_fid_matrix = self.get_raw_fid_matrix(
+                x_data, transformer, transform_batch_size)
+            n_samples_in_x = len(x_data)
+            x_dataset_T0_1 = x_data[:n_samples_in_x//2]
+            x_dataset_T0_2 = x_data[n_samples_in_x//2:]
+            self_fid = self._get_fid_from_two_data_sets(x_dataset_T0_1,
+                                                        x_dataset_T0_2)
+            log_fid_matrix = np.log(raw_fid_matrix)
+            diff_with_self_log_fid_matrix = np.abs(
+                log_fid_matrix - np.log(self_fid))
+            useful_transforms_matrix = diff_with_self_log_fid_matrix > \
+                                      self.threshold_magnitud_order
+            self._plot_clusters(diff_with_self_log_fid_matrix,
+                                useful_transforms_matrix)
+            useful_trf_matrix = self._post_process_fid_matrix(useful_transforms_matrix*1.0)
+            self._save_useful_trf_matrix(useful_trf_matrix, matrix_folder_path)
+        return useful_trf_matrix
 
     def _post_process_fid_matrix(self, matrix_score):
         """fill diagonal with -1, and triangle bottom with reflex of
@@ -135,6 +146,77 @@ class TransformSelectorRawLogFIDMatrix(object):
             plt.scatter([1] * len(scores), scores, c=labels)
             plt.show()
 
+    def _create_matrix_path(self, data_loader: HiTSOutlierLoader,
+        transformer: AbstractTransformer):
+        matrix_folder_path = os.path.join(
+            PROJECT_PATH, 'results', 'transformation_selection_fid',
+            data_loader.name, '%s_%i' % (transformer.name,
+                                         transformer.n_transforms)
+        )
+        utils.check_path(matrix_folder_path)
+        return matrix_folder_path
+
+
+    def get_transform_selection_transformer(
+        self, data_loader: HiTSOutlierLoader, x_data,
+        transformer: AbstractTransformer):
+        useful_trf_matrix = self.get_useful_trfs_matrix(data_loader, x_data, transformer)
+        transformer_selected = self._get_transformer_with_selected_transforms(
+            useful_trf_matrix, transformer)
+        return transformer_selected
+
+    def _save_useful_trf_matrix(self, useful_trf_matrix, matrix_folder_path):
+        utils.save_pickle(
+            useful_trf_matrix,
+            os.path.join(matrix_folder_path, 'fid_useful_trf_matrix.pkl'))
+        # TODO: save plots
+        utils.save_2d_image(
+            useful_trf_matrix, 'gif_useful_trf_matrix',
+            matrix_folder_path, axis_show='on')
+
+    def _get_transformer_with_selected_transforms(self,
+        useful_trfs_matrix: np.ndarray,
+        transformer: AbstractTransformer):
+        index_tuples = self._get_transformations_index_tuples(transformer)
+        redundant_transforms_tuples = []
+        for x_y_tuple in index_tuples:
+            x_ind = x_y_tuple[0]
+            y_ind = x_y_tuple[1]
+            x_y_is_useful = useful_trfs_matrix[x_ind, y_ind]
+            if x_y_is_useful:
+                redundant_transforms_tuples.append(x_y_tuple)
+        if self.verbose:
+            print('Conflicting transformations')
+            for conflicting_tuple in redundant_transforms_tuples:
+                print('(%i,%i): %s ; %s' % (
+                    conflicting_tuple[0], conflicting_tuple[1],
+                    str(transformer.transformation_tuples[
+                            conflicting_tuple[0]]),
+                    str(transformer.transformation_tuples[
+                            conflicting_tuple[1]])))
+        # TODO: do a random selection and, selection_accuracy_tolerance=accuracy_selection_tolerance) a most repeated based. THIS is first
+        #  chosen
+        transforms_to_delete = [x_y_tuple[1] for x_y_tuple in
+                                redundant_transforms_tuples]
+        unique_transforms_to_delete = np.unique(transforms_to_delete)
+        if self.verbose:
+            print('transforms_to_delete %s' % str(transforms_to_delete))
+            print('unique transforms_to_delete %s' % str(unique_transforms_to_delete))
+        reversed_unique_transfors_to_delete = unique_transforms_to_delete[
+                                              ::-1]
+        transformer.transformation_tuples = list(
+            transformer.transformation_tuples)
+        for i in reversed_unique_transfors_to_delete:
+            del transformer.transformation_tuples[i]
+            del transformer._transformation_ops[i]
+        if self.verbose:
+            print(
+                'Left Transformations %i' % len(
+                    transformer.transformation_tuples))
+            print(transformer.transformation_tuples)
+            print(len(transformer._transformation_ops))
+        return transformer
+
 
 
 
@@ -183,19 +265,25 @@ if __name__ == "__main__":
     ]
     # transformer = RankingTransformer()
     transformer = NoCompositionTransformer()
-    print('Original n transforms %i' % transformer.n_transforms)
+
 
     fid_selector = TransformSelectorRawLogFIDMatrix(
         verbose=VERBOSE, show=SHOW
     )
 
     for data_loader_i in data_loaders:
+        print('Original n transforms %i' % transformer.n_transforms)
+        orig_trf = transformer.transformation_tuples[:]
         x_train = data_loader_i.get_outlier_detection_datasets()[0][0]
         print(x_train.shape)
-        matrix = fid_selector.get_useful_trfs_matrix(
+        matrix = fid_selector.get_useful_trfs_matrix(data_loader_i,
             x_train, transformer)
+        transformer = fid_selector.get_transform_selection_transformer(
+            data_loader_i, x_train, transformer
+        )
         plt.imshow(matrix)
         plt.colorbar()
         plt.show()
         print('')
-    print('Original n transforms %i' % transformer.n_transforms)
+        print('Final n transforms %i' % transformer.n_transforms)
+        transformer.set_transformations_to_perform(orig_trf)
