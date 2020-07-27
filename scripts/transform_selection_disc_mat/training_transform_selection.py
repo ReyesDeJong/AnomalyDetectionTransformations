@@ -73,7 +73,43 @@ def check_for_discrepancies_between_train_and_val_acc_matrix(
       myfile.write('VAL:\n' + str(val_transformer.transformation_tuples))
 
 
-
+# TODO: move this and above to methods of model
+def generate_transform_selector_acc_matrices(data_loader: HiTSOutlierLoader,
+    model: EnsembleOVOTransformODSimpleModel,
+    transformer: AbstractTransformer, accuracy_selection_tolerance=0.01):
+  # transform_selector = TransformSelectorByOVO()
+  (x_train, y_train), (x_val, y_val), (
+    _, _) = data_loader.get_outlier_detection_datasets()
+  is_model_loaded = try_to_load_model_weights(model)
+  if is_model_loaded == False:
+    model.fit(x_train, x_val, train_batch_size=1024, verbose=0)
+  train_acc_matrix = model.get_acc_matrix(
+      x_train, transform_batch_size=1024, predict_batch_size=2048)
+  val_acc_matrix = model.get_acc_matrix(
+      x_val, transform_batch_size=1024, predict_batch_size=2048)
+  utils.save_pickle(
+      train_acc_matrix,
+      os.path.join(
+          model.common_to_all_models_transform_selection_results_folder,
+          'train_acc_matrix.pkl'))
+  utils.save_pickle(
+      val_acc_matrix,
+      os.path.join(
+          model.common_to_all_models_transform_selection_results_folder,
+          'val_acc_matrix.pkl'))
+  # TODO: save plots
+  utils.save_2d_image(
+      train_acc_matrix, 'train_acc_matrix',
+      model.common_to_all_models_transform_selection_results_folder,
+      axis_show='on')
+  utils.save_2d_image(
+      val_acc_matrix, 'val_acc_matrix',
+      model.common_to_all_models_transform_selection_results_folder,
+      axis_show='on')
+  check_for_discrepancies_between_train_and_val_acc_matrix(
+      train_acc_matrix, val_acc_matrix, data_loader, model, transformer,
+      accuracy_selection_tolerance)
+  return train_acc_matrix, val_acc_matrix
 
 
 def get_transform_selection_transformer(data_loader: HiTSOutlierLoader,
