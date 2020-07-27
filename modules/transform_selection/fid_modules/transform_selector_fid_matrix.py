@@ -60,8 +60,7 @@ class TransformSelectorRawLogFIDMatrix(object):
         transformation_index_tuples = self._get_transformations_index_tuples(
             transformer)
         matrix_raw_fid = np.zeros((n_transforms, n_transforms))
-        for x_y_tuple in tqdm(transformation_index_tuples,
-                              disable=not self.verbose):
+        for x_y_tuple in tqdm(transformation_index_tuples):
             trf_ind_x = x_y_tuple[0]
             trf_ind_y = x_y_tuple[1]
             x_transformed_x_ind, x_transformed_y_ind = self._get_binary_data(
@@ -222,15 +221,15 @@ class TransformSelectorRawLogFIDMatrix(object):
 
 if __name__ == "__main__":
     from modules.geometric_transform.transformations_tf import \
-        PlusKernelTransformer
+        PlusKernelTransformer, Transformer
     from modules.geometric_transform.transformer_for_ranking import \
         RankingTransformer
     from modules.data_loaders.ztf_small_outlier_loader import \
         ZTFSmallOutlierLoader
     from modules.geometric_transform.transformer_no_compositions import NoCompositionTransformer
 
-    VERBOSE = True
-    SHOW = True
+    VERBOSE = False
+    SHOW = False
 
     utils.init_gpu_soft_growth()
     # data loaders
@@ -260,30 +259,38 @@ if __name__ == "__main__":
 
 
     data_loaders = [
-        # hits_loader_4c,
+        hits_loader_4c,
         ztf_loader_3c
     ]
     # transformer = RankingTransformer()
-    transformer = NoCompositionTransformer()
-
+    transformer_no_comp = NoCompositionTransformer()
+    transformer99 = PlusKernelTransformer()
+    transformer72 = Transformer()
+    transformers = [
+        transformer_no_comp,
+        # transformer72,
+        # transformer99
+    ]
 
     fid_selector = TransformSelectorRawLogFIDMatrix(
         verbose=VERBOSE, show=SHOW
     )
-
-    for data_loader_i in data_loaders:
-        print('Original n transforms %i' % transformer.n_transforms)
-        orig_trf = transformer.transformation_tuples[:]
-        x_train = data_loader_i.get_outlier_detection_datasets()[0][0]
-        print(x_train.shape)
-        matrix = fid_selector.get_useful_trfs_matrix(data_loader_i,
-            x_train, transformer)
-        transformer = fid_selector.get_transform_selection_transformer(
-            data_loader_i, x_train, transformer
-        )
-        plt.imshow(matrix)
-        plt.colorbar()
-        plt.show()
-        print('')
-        print('Final n transforms %i' % transformer.n_transforms)
-        transformer.set_transformations_to_perform(orig_trf)
+    import matplotlib
+    matplotlib.use('Agg')
+    for transformer_i in transformers:
+        for data_loader_i in data_loaders:
+            print('Original n transforms %i' % transformer_i.n_transforms)
+            orig_trf = transformer_i.transformation_tuples[:]
+            x_train = data_loader_i.get_outlier_detection_datasets()[0][0]
+            print(x_train.shape)
+            matrix = fid_selector.get_useful_trfs_matrix(data_loader_i,
+                x_train, transformer_i)
+            transformer_i = fid_selector.get_transform_selection_transformer(
+                data_loader_i, x_train, transformer_i
+            )
+            # plt.imshow(matrix)
+            # plt.colorbar()
+            # plt.show()
+            print('')
+            print('Final n transforms %i' % transformer_i.n_transforms)
+            transformer_i.set_transformations_to_perform(orig_trf)
