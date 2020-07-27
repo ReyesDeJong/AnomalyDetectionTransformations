@@ -91,7 +91,7 @@ class TransformSelectorRawLogFIDMatrix(object):
                 log_fid_matrix - np.log(self_fid))
             useful_transforms_matrix = diff_with_self_log_fid_matrix > \
                                       self.threshold_magnitud_order
-            self._plot_clusters(diff_with_self_log_fid_matrix,
+            self._plot_clusters(transformer, diff_with_self_log_fid_matrix,
                                 useful_transforms_matrix)
             useful_trf_matrix = self._post_process_fid_matrix(useful_transforms_matrix*1.0)
             self._save_useful_trf_matrix(useful_trf_matrix, matrix_folder_path)
@@ -126,7 +126,7 @@ class TransformSelectorRawLogFIDMatrix(object):
             fid_moments_2[1])
         return fid_value
 
-    def _plot_clusters(self, trfs_scores_matrix,  useful_transformations_matrix):
+    def _plot_clusters(self, transformer, trfs_scores_matrix,  useful_transformations_matrix):
         if self.show:
             transformation_index_tuples = self._get_transformations_index_tuples(
                 transformer)
