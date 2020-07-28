@@ -214,6 +214,7 @@ def test_visualize_transforms():
     plt.show()
 
     transformer = RankingTransformer()
+    print(transformer.n_transforms)
     transformations_inds = np.arange(transformer.n_transforms)
 
     transformed_batch = transformer.transform_batch(

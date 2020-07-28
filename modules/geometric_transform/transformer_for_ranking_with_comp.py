@@ -62,7 +62,8 @@ def test_visualize_transforms():
     plt.imshow(im[0])
     plt.show()
 
-    transformer = RankingSingleCompositionTransformer
+    transformer = RankingSingleCompositionTransformer()
+    print(transformer.n_transforms)
     transformations_inds = np.arange(transformer.n_transforms)
 
     transformed_batch = transformer.transform_batch(
@@ -78,6 +79,51 @@ def test_visualize_transforms():
         plt.axis('off')
         plt.show()
 
+def test_visualize_transforms_hits():
+    from modules.data_loaders.hits_outlier_loader import HiTSOutlierLoader
+    from parameters import loader_keys, general_keys
+    import imageio
+    import os
+    import matplotlib.pyplot as plt
+
+    hits_params = {
+        loader_keys.DATA_PATH: os.path.join(
+            PROJECT_PATH, '../datasets/HiTS2013_300k_samples.pkl'),
+        loader_keys.N_SAMPLES_BY_CLASS: 10000,
+        loader_keys.TEST_PERCENTAGE: 0.2,
+        loader_keys.VAL_SET_INLIER_PERCENTAGE: 0.1,
+        loader_keys.USED_CHANNELS: [0, 1, 2, 3],  #
+        loader_keys.CROP_SIZE: 21,
+        general_keys.RANDOM_SEED: 42,
+        loader_keys.TRANSFORMATION_INLIER_CLASS_VALUE: 1
+    }
+    data_loader = HiTSOutlierLoader(hits_params)
+    (x_train, y_train), (x_val, y_val), (
+        x_test, y_test) = data_loader.get_outlier_detection_datasets()
+
+    im = x_test[0, :, :, -1][None, ..., None]
+    print(im.shape)
+    plt.imshow(im[0, ..., 0])
+    plt.show()
+
+    transformer = RankingSingleCompositionTransformer()
+    print(transformer.n_transforms)
+    transformations_inds = np.arange(transformer.n_transforms)
+
+    transformed_batch = transformer.transform_batch(
+        tf.convert_to_tensor(im, dtype=tf.float32),
+        transformations_inds)
+
+    print(transformed_batch.shape)
+
+    for i in range(transformer.n_transforms):
+        transform_indx = i
+        plt.imshow(transformed_batch[transform_indx, ..., 0])
+        plt.title(str(transformer.transformation_tuples[i]))
+        plt.axis('off')
+        plt.show()
+
 
 if __name__ == "__main__":
-    test_visualize_transforms()
+    # test_visualize_transforms()
+    test_visualize_transforms_hits()

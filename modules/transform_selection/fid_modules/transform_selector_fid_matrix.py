@@ -170,7 +170,7 @@ class TransformSelectorRawLogFIDMatrix(object):
             os.path.join(matrix_folder_path, 'fid_useful_trf_matrix.pkl'))
         # TODO: save plots
         utils.save_2d_image(
-            useful_trf_matrix, 'gif_useful_trf_matrix',
+            useful_trf_matrix, 'fid_useful_trf_matrix',
             matrix_folder_path, axis_show='on')
 
     def _get_transformer_with_selected_transforms(self,
