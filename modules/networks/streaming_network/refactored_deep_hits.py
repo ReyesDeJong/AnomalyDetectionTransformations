@@ -25,13 +25,13 @@ class DeepHits(tf.keras.Model):
 
     def __init__(
         self, n_classes, drop_rate=0.5, final_activation='softmax',
-        name='deep_hits_refactored', results_path=''):
+        name='deep_hits_refactored', results_folder_name=None):
         super().__init__(name=name)
         self._init_layers(n_classes, drop_rate, final_activation)
         self._init_builds()
         self.print_manager = PrintManager()
         self.model_weights_folder, self.best_model_weights_path = \
-            self._create_model_paths(results_path)
+            self._create_model_paths(results_folder_name)
 
     def _init_layers(self, n_classes, drop_rate, final_activation):
         self.zp = tf.keras.layers.ZeroPadding2D(padding=(3, 3))
@@ -113,7 +113,7 @@ class DeepHits(tf.keras.Model):
                 self.train_step(images, labels)
                 self.eval_step(images, labels)
             template = 'Epoch {}, Loss: {}, Acc: {}, Time: {}'
-            print(template.format(epoch + 1,
+            print(template.format(epoch,
                                   self.eval_loss.result(),
                                   self.eval_accuracy.result() * 100,
                                   delta_timer(
@@ -165,7 +165,7 @@ class DeepHits(tf.keras.Model):
                             it_i,
                             patience-self.best_model_so_far[
                                 general_keys.NOT_IMPROVED_COUNTER],
-                            epoch + 1,
+                            epoch,
                             self.train_loss.result(),
                             self.train_accuracy.result() * 100,
                             self.eval_loss.result(),
@@ -201,25 +201,18 @@ class DeepHits(tf.keras.Model):
         return False
 
     # TODO: refactor on a better saving result manner
-    def _create_model_paths(self, results_path):
-        model_weights_folder = os.path.join(results_path, 'aux_weights')
-        utils.check_path(model_weights_folder)
-        best_model_weights_path = os.path.join(model_weights_folder,
-                                                    'best_weights.ckpt')
-        return model_weights_folder, best_model_weights_path
-    #     results_folder_path = os.path.join(
-    #         PROJECT_PATH, 'results', 'results_refactored', results_folder_name)
-    #     date = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
-    #     self.model_path = os.path.join(PROJECT_PATH, 'results',
-    #                                    self.params[
-    #                                        param_keys.RESULTS_FOLDER_NAME],
-    #                                    '%s_%s' % (self.model_name, date))
-    #     best_model_weights_folder = os.path.join(self.model_path,
-    #                                              'aux_weights')
-    #     utils.check_path(best_model_weights_folder)
-    #     self.best_model_weights_path = os.path.join(
-    #         best_model_weights_folder,
-    #         'best_weights.ckpt')
+    def _create_model_paths(self, results_folder_name):
+        if results_folder_name is None:
+            results_folder_name = ''
+        else:
+            date = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
+            results_folder_name = os.path.join(
+                'results', results_folder_name,
+                '%s_%s' % (self.name, date))
+            utils.check_path(results_folder_name)
+        best_model_weights_path = os.path.join(
+            results_folder_name, 'checkpoints', 'best_weights.ckpt')
+        return results_folder_name, best_model_weights_path
 
     def check_best_model_save(self, iteration):
         self.best_model_so_far[general_keys.NOT_IMPROVED_COUNTER] += 1
@@ -347,7 +340,7 @@ if __name__ == '__main__':
 
     del mdl
     mdl = DeepHits(n_classes=transformer.n_transforms)
-    mdl.load_weights('aux_weights/best_weights.ckpt')
+    mdl.load_weights('checkpoints/best_weights.ckpt')
     print('\nResults with model loaded')
     mdl.eval_tf(x_train_transformed, to_categorical(transformations_inds),
                 verbose=1)

@@ -26,42 +26,38 @@ class StreamingTransformationsDeepHits(DeepHits):
     def __init__(
         self, transformer: AbstractTransformer, drop_rate=0.5,
         final_activation='softmax', name='deep_hits_streaming_transformations',
-        results_path=''):
+        results_folder_name=''):
         super().__init__(transformer.n_transforms, drop_rate,
-                         final_activation, name, results_path)
+                         final_activation, name, results_folder_name)
         self.transformer = transformer
 
-    # TODO: Not implemented
-    def _fit_without_validation(self, x, y, batch_size, epochs):
-        self.evaluation_set_name = 'train'
-        train_ds = tf.data.Dataset.from_tensor_slices(
-            (x, y)).shuffle(10000).batch(batch_size, drop_remainder=True)
-        for epoch in range(epochs):
-            epoch_start_time = time.time()
-            for it_i, (images, labels) in enumerate(train_ds):
-                self.train_step(images, labels)
-                # self.eval_step(images, labels)
-            template = 'Epoch {}, Loss: {}, Acc: {}, Time: {}'
-            print(template.format(epoch + 1,
-                                  self.eval_loss.result(),
-                                  self.eval_accuracy.result() * 100,
-                                  delta_timer(
-                                      time.time() - epoch_start_time)
-                                  ))
-            self.check_best_model_save(
-                it_i + ((epoch + 1) * self.n_iterations_in_epoch))
-            self.eval_loss.reset_states()
-            self.eval_accuracy.reset_states()
-        print('Total Training Time: {}'.format(
-            delta_timer(time.time() - self.training_star_time)))
+    # # TODO: Not implemented
+    # def _fit_without_validation(self, x, y, batch_size, epochs):
+    #     self.evaluation_set_name = 'train'
+    #     train_ds = tf.data.Dataset.from_tensor_slices(
+    #         (x, y)).shuffle(10000).batch(batch_size, drop_remainder=True)
+    #     for epoch in range(epochs):
+    #         epoch_start_time = time.time()
+    #         for it_i, (images, labels) in enumerate(train_ds):
+    #             self.train_step(images, labels)
+    #             # self.eval_step(images, labels)
+    #         template = 'Epoch {}, Loss: {}, Acc: {}, Time: {}'
+    #         print(template.format(epoch + 1,
+    #                               self.eval_loss.result(),
+    #                               self.eval_accuracy.result() * 100,
+    #                               delta_timer(
+    #                                   time.time() - epoch_start_time)
+    #                               ))
+    #         self.check_best_model_save(
+    #             it_i + ((epoch + 1) * self.n_iterations_in_epoch))
+    #         self.eval_loss.reset_states()
+    #         self.eval_accuracy.reset_states()
+    #     print('Total Training Time: {}'.format(
+    #         delta_timer(time.time() - self.training_star_time)))
 
     def _get_training_dataset(self, x_train, batch_size):
-        dummy_labels = np.zeros(shape=len(x_train))
-        train_ds = tf.data.Dataset.from_tensor_slices(
-            (x_train, dummy_labels)).shuffle(10000).batch(
-            batch_size, drop_remainder=True)#.map(
-            # self.transformer.
-            #     transform_batch_with_random_categorical_indexes_for_dataset_map)
+        train_ds = tf.data.Dataset.from_tensor_slices((x_train)).\
+            shuffle(10000).batch(batch_size, drop_remainder=True)
         return train_ds
 
     @tf.function
@@ -73,6 +69,23 @@ class StreamingTransformationsDeepHits(DeepHits):
         self.optimizer.apply_gradients(zip(gradients, self.trainable_variables))
         self.train_loss(loss)
         self.train_accuracy(labels, predictions)
+
+    # this method cannot use tf.function because of conflict with getting
+    # transformation_ops from a list by tensor indixes, thus it is SLOW!
+    def _transform_batch_and_get_transformation_indexes_oh(self, x_data):
+        x_transformed, transformation_indexes = \
+            self.transformer.transform_batch_with_random_indexes(
+                x_data)
+        transformation_indexes_oh = tf.one_hot(
+            transformation_indexes,
+            depth=self.transformer.n_transforms)
+        return x_transformed, transformation_indexes_oh
+
+    def _get_iteration_wrt_train_initialization(
+        self, iteration, epoch, transformation_i, batch_size, x_train):
+        iteration_real = iteration + (epoch * self.n_iterations_in_epoch) + (
+            transformation_i * (len(x_train) // batch_size))
+        return iteration_real
 
     # TODO: implement some kind of train_loggin
     def fit(self, x, epochs, x_validation=None, batch_size=128,
@@ -101,24 +114,18 @@ class StreamingTransformationsDeepHits(DeepHits):
         validation_ds = tf.data.Dataset.from_tensor_slices(
             (x_validation)).batch(validation_batch_size)
         for epoch in range(epochs):
-            for trf_i in range(self.transformer.n_transforms):
-                for it_i, (images, labels) in enumerate(train_ds):
-                    random_transformation_indexes = tf.random.uniform(
-                        shape=[images.shape[0]], minval=0,
-                        maxval=self.transformer.n_transforms,
-                        dtype=tf.int32)
-                    labels = random_transformation_indexes
-                    labels = tf.one_hot(
-                        labels, depth=self.transformer.n_transforms)
-                    images = self.transformer.transform_batch_given_indexes(
-                        images, random_transformation_indexes)
-                    self.train_step(images, labels)
-                    # (epoch !=0) is becaus at beggining o epochs after 1
-                    it_i = it_i + (epoch * self.n_iterations_in_epoch) + (
-                            trf_i * (len(x) // batch_size))
-                    print(it_i, epoch, trf_i, iterations_to_validate, self.transformer.n_transforms, len(x) // batch_size)
+            for transformation_index in range(self.transformer.n_transforms):
+                for iteration_i, x_images in enumerate(train_ds):
+                    images_transformed, transformation_indexes_oh = \
+                        self._transform_batch_and_get_transformation_indexes_oh(
+                            x_images)
+                    self.train_step(
+                        images_transformed, transformation_indexes_oh)
+                    iteration_i = self._get_iteration_wrt_train_initialization(
+                        iteration_i, epoch, transformation_index, batch_size, x)
+                    print(iteration_i, epoch, transformation_index, iterations_to_validate, self.transformer.n_transforms, len(x) // batch_size)
                     # TODO: slow
-                    if it_i % iterations_to_validate == 0:
+                    if iteration_i % iterations_to_validate == 0:
                         # if self.check_early_stopping(patience):
                         #     return
                         for transformation_idx_i in range(
@@ -139,7 +146,7 @@ class StreamingTransformationsDeepHits(DeepHits):
                         template = 'Iter {}, Patience {}, Epoch {}, Loss: {}, Acc: {}, Val loss: {}, Val acc: {}, Time: {}'
                         print(
                             template.format(
-                                it_i,
+                                iteration_i,
                                 patience - self.best_model_so_far[
                                     general_keys.NOT_IMPROVED_COUNTER],
                                 epoch + 1,
@@ -151,7 +158,7 @@ class StreamingTransformationsDeepHits(DeepHits):
                                     time.time() - self.training_star_time)
                             )
                         )
-                        self.check_best_model_save(it_i)
+                        self.check_best_model_save(iteration_i)
                         self.eval_loss.reset_states()
                         self.eval_accuracy.reset_states()
                         self.train_loss.reset_states()
@@ -207,14 +214,12 @@ if __name__ == '__main__':
     from modules.geometric_transform.streaming_transformers.transformer_ranking import \
         RankingTransformer
     from modules.data_loaders.hits_outlier_loader import HiTSOutlierLoader
+    from modules.utils import set_soft_gpu_memory_growth
+    set_soft_gpu_memory_growth()
 
-    EPOCHS = 100
+    EPOCHS = 1000
     ITERATIONS_TO_VALIDATE = None  # 1000 # None
     PATIENCE = 5  # 0
-
-    gpus = tf.config.experimental.list_physical_devices('GPU')
-    for gpu in gpus:
-        tf.config.experimental.set_memory_growth(gpu, True)
 
     hits_params = {
         loader_keys.DATA_PATH: os.path.join(
@@ -231,7 +236,6 @@ if __name__ == '__main__':
     (x_train, y_train), (x_val, y_val), (
         x_test, y_test) = data_loader.get_outlier_detection_datasets()
 
-    # transformer = transformations_tf.Transformer()
     transformer = RankingTransformer()
     transformer.set_transformations_to_perform(transformer.transformation_tuples*100)
     print(transformer.n_transforms)
