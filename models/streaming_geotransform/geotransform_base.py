@@ -27,74 +27,49 @@ from joblib import Parallel, delayed
 from sklearn.svm import OneClassSVM
 import time
 from modules.print_manager import PrintManager
+from modules.networks.streaming_network.streaming_transformations_deep_hits\
+    import StreamingTransformationsDeepHits
 
 
 class GeoTransformBase(tf.keras.Model):
-    def __init__(self, classifier: tf.keras.Model,
-        data_loader: ZTFOutlierLoader,
-        transformer: AbstractTransformer, results_folder_name='',
+    def __init__(self, classifier: StreamingTransformationsDeepHits,
+        transformer: AbstractTransformer, results_folder_name=None,
         name='GeoTransform_Base'):
         super().__init__(name=name)
+        self.classifier = classifier
+        self.main_model_path = self._create_model_paths(
+            results_folder_name)
+        self.classifier._set_model_paths(self.main_model_path)
         self.print_manager = PrintManager()
-        self.data_loader = data_loader
         self.transformer = transformer
         self.date = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
-        self.main_model_path = self.create_main_model_paths(results_folder_name,
-                                                            self.name)
-        self.create_specific_model_paths()
-        utils.check_paths(self.main_model_path)
-        self.classifier = classifier
         self.percentile = 97.73
 
     def classifier_call(self, input_tensor, training=False):
         return self.classifier(input_tensor, training)
 
-    def create_main_model_paths(self, results_folder_name, model_name):
-        results_folder_path = self._results_folder_name_to_path(
-            results_folder_name)
-        main_model_path = os.path.join(results_folder_path, model_name)
-        return main_model_path
-
-    def _results_folder_name_to_path(self, result_folder_name):
-        # TODO: erease this, it weird, as if in results folder was like 'results/'
-        if 'results' in result_folder_name:
-            return result_folder_name
+    def _create_model_paths(self, results_folder_name, model_name):
+        if results_folder_name is None:
+            results_folder_name = self.name
+            results_folder_path = results_folder_name
         else:
-            return os.path.join(PROJECT_PATH, 'results', result_folder_name)
-
-    def create_specific_model_paths(self):
-        self.specific_model_folder = os.path.join(self.main_model_path,
-                                                  self.transformer.name,
-                                                  '%s_%s' % (
-                                                  self.name, self.date))
-        self.checkpoint_folder = os.path.join(self.specific_model_folder,
-                                              'checkpoints')
-        # self.tb_path = os.path.join(self.model_path, 'tb_summaries')
-        utils.check_paths(
-            [self.specific_model_folder, self.checkpoint_folder])
+            results_folder_path = os.path.join(
+                PROJECT_PATH, 'results', results_folder_name,
+                '%s_%s' % (self.name, self.date))
+        utils.check_path(results_folder_path)
+        return results_folder_path
 
     def _get_original_paper_epochs(self):
         return int(np.ceil(200 / self.transformer.n_transforms))
 
-
-
-    def fit_classifier(self, x_train, x_val, epochs, train_batch_size=128, patience=0,
-        verbose=True):
-        self.print_manager.verbose_printing(verbose)
+    def fit_classifier(self, x_train, epochs, x_validation=None, batch_size=128,
+        iterations_to_validate=None, patience=None, verbose=True):
         if epochs is None:
             epochs = self._get_original_paper_epochs()
             patience = int(1e100)
-        train_ds = self._get_training_dataset(x_train, train_batch_size)
-        for it_i, (images, labels) in enumerate(train_ds):
-            print(it_i)
-            print(images.shape)
-            print(labels)
-
-        # self.network.eval_tf(x_val_transform, tf.keras.utils.to_categorical(y_val_transform))
-        weight_path = os.path.join(self.checkpoint_folder,
-                                   'final_weights.ckpt')
-        # self.save_weights(weight_path)
-        self.print_manager.close()
+        self.classifier.fit(
+            x_train, epochs, x_validation, batch_size, iterations_to_validate,
+            patience, verbose)
 
     def predict_dirichlet_score(self, x_train, x_eval,
         transform_batch_size=512, predict_batch_size=1024, verbose=True,
@@ -106,93 +81,44 @@ class GeoTransformBase(tf.keras.Model):
         self.print_manager.close()
         return diri_scores
 
-    # TODO: implement pre-transofrmed, in-situ-all, efficient transforming
-    def predict_matrix_score(self, x, transform_batch_size=512,
-        predict_batch_size=1024, **kwargs):
+    # TODO: avoid apply_all_transforms at once
+    def _predict_matrix_probabilities(self, x_data, transform_batch_size=512,
+        predict_batch_size=1024):
         n_transforms = self.transformer.n_transforms
         x_transformed, y_transformed = self.transformer.apply_all_transforms(
-            x, transform_batch_size)
-        # self.network.eval_tf(x_transformed, tf.keras.utils.to_categorical(y_transformed))
+            x_data, transform_batch_size)
         start_time = time.time()
-        # TODO: Memory leakage HERE, predict is not working!! right, it doubles memory usage!
-        # see reproducing similar issue here:
-        # https://github.com/tensorflow/tensorflow/issues/33030
         x_pred = self.classifier.predict(x_transformed,
                                          batch_size=predict_batch_size)
-        len_x = self.transformer.get_not_transformed_data_len(len(x))
-        matrix_scores = np.zeros((len_x, n_transforms, n_transforms))
-        # TODO: paralelice this
+        # get actual length if all transformations applied on model input
+        matrix_scores = np.zeros((len(x_data), n_transforms, n_transforms))
         for t_ind in range(n_transforms):
-            ind_x_pred_queal_to_t_ind = np.where(y_transformed == t_ind)[0]
-            matrix_scores[:, :, t_ind] += x_pred[ind_x_pred_queal_to_t_ind]
-        print(
-            "Matrix_score_Time %s" % utils.timer(
+            ind_x_pred_equal_to_t_ind = np.where(y_transformed == t_ind)[0]
+            matrix_scores[:, :, t_ind] += x_pred[ind_x_pred_equal_to_t_ind]
+        print("Matrix probabilities time: %s" % utils.timer(
                 start_time, time.time()))
         return matrix_scores
 
-    # # TODO: implement pre-transofrmed, in-situ-all, efficient transforming
-    # def predict_matrix_and_dirichlet_score(self, x_train, x_eval,
-    #     transform_batch_size=512, predict_batch_size=1024,
-    # transforms at each step!!
-    #     **kwargs):
-    #   n_transforms = self.transformer.n_transforms
-    #   diri_scores = np.zeros(len(x_eval))
-    #   matrix_scores = np.zeros((len(x_eval), n_transforms, n_transforms))
-    #   for t_ind in tqdm(range(n_transforms)):
-    #     x_train_transformed, _ = self.transformer.apply_transforms(
-    #         x_train, [t_ind], transform_batch_size)
-    #     observed_dirichlet = self.predict(
-    #         x_train_transformed, batch_size=predict_batch_size, **kwargs)
-    #     x_eval_transformed, _ = self.transformer.apply_transforms(
-    #         x_eval, [t_ind], transform_batch_size)
-    #     x_eval_p = self.predict(
-    #         x_eval_transformed, batch_size=predict_batch_size, **kwargs)
-    #     diri_scores += dirichlet_utils.dirichlet_score(
-    #         observed_dirichlet, x_eval_p)
-    #     matrix_scores[:, :, t_ind] += x_eval_p
-    #     del x_train_transformed, x_eval_transformed
-    #   diri_scores /= n_transforms
-    #   return matrix_scores, diri_scores
-
-    # def predict_matrix_and_dirichlet_score(self, x_train, x_eval,
-    # Apliying matrix scores ans transforms at same time!!!
-    #     transform_batch_size=512, predict_batch_size=1024,
-    #     **kwargs):
-    #   n_transforms = self.transformer.n_transforms
-    #   diri_scores = np.zeros(len(x_eval))
-    #   x_train_transformed, y_train_transformed = self.transformer.apply_all_transforms(
-    #       x_train, transform_batch_size)
-    #   x_train_pred = self.predict(x_train_transformed, batch_size=predict_batch_size)
-    #   x_eval_transformed, y_eval_transformed = self.transformer.apply_all_transforms(
-    #       x_eval, transform_batch_size)
-    #   x_eval_pred = self.predict(x_eval_transformed, batch_size=predict_batch_size)
-    #   matrix_scores = np.zeros((len(x_eval), n_transforms, n_transforms))
-    #   for t_ind in tqdm(range(n_transforms)):
-    #     ind_x_pred_train_queal_to_t_ind = np.where(y_train_transformed == t_ind)[0]
-    #     ind_x_pred_eval_queal_to_t_ind = np.where(y_eval_transformed == t_ind)[
-    #       0]
-    #     observed_dirichlet = x_train_pred[ind_x_pred_train_queal_to_t_ind]
-    #     x_eval_p = x_eval_pred[ind_x_pred_eval_queal_to_t_ind]
-    #     diri_scores += dirichlet_utils.dirichlet_score(
-    #         observed_dirichlet, x_eval_p)
-    #     matrix_scores[:, :, t_ind] += x_eval_p
-    #   diri_scores /= n_transforms
-    #   return matrix_scores, diri_scores
-
-    # TODO: implement pre-transofrmed, in-situ-all, efficient transforming
+    # TODO: avoid apply_all_transforms at once
+    # TODO: instead of saving matrix_train_score save dirichlet params
     def predict_matrix_and_dirichlet_score(self, x_train, x_eval,
-        transform_batch_size=512, predict_batch_size=1024, verbose=True,
-        **kwargs):
+        transform_batch_size=512, predict_batch_size=1024, verbose=True):
+        self.print_manager.verbose_printing(verbose)
         n_transforms = self.transformer.n_transforms
         if self.matrix_scores_train is None:
-            self.matrix_scores_train = self.predict_matrix_score(
-                x_train, transform_batch_size, predict_batch_size, **kwargs)
+            print("Calculating matrix probabilities for training set...")
+            self.matrix_scores_train = self._predict_matrix_probabilities(
+                x_train, transform_batch_size, predict_batch_size)
+        # TODO: see effect of this del x_train
         del x_train
-        matrix_scores_eval = self.predict_matrix_score(
-            x_eval, transform_batch_size, predict_batch_size, **kwargs)
-        # TODO:!!! make method to get actual lenght from data, otherwise it just te latest run
-        len_x_eval = self.transformer.get_not_transformed_data_len(len(x_eval))
-        diri_scores = np.zeros(len_x_eval)
+        # TODO: avoid calculation of whole eval matrix, if there ire too many
+        #  transformations, matrices will be bigger than actual data!
+        print("Calculating matrix probabilities for evaluation set...")
+        matrix_scores_eval = self._predict_matrix_probabilities(
+            x_eval, transform_batch_size, predict_batch_size)
+        # get actual length if all transformations applied on model input
+        diri_scores = np.zeros(len(x_eval))
+        # TODO: see effect of this del x_eval
         del x_eval
         for t_ind in tqdm(range(n_transforms), disable=not verbose):
             observed_dirichlet = self.matrix_scores_train[:, :, t_ind]
@@ -200,11 +126,11 @@ class GeoTransformBase(tf.keras.Model):
             diri_scores += dirichlet_utils.dirichlet_score(
                 observed_dirichlet, x_eval_p)
             assert np.isfinite(diri_scores).all()
-            # if np.isfinite(diri_scores).all():
-            #   print('')
         diri_scores /= n_transforms
+        self.print_manager.close()
         return matrix_scores_eval, diri_scores
 
+    # TODO: HERE!!!
     def get_scores_dict(self, x_train, x_eval,
         transform_batch_size=512, predict_batch_size=1024, verbose=True,
         **kwargs):
@@ -415,7 +341,7 @@ if __name__ == '__main__':
     from modules.data_loaders.hits_outlier_loader import HiTSOutlierLoader
     from parameters import loader_keys
     from modules.geometric_transform.streaming_transformers.transformer_ranking import RankingTransformer
-    from modules.networks.streaming_network.refactored_deep_hits import DeepHits
+
 
     gpus = tf.config.experimental.list_physical_devices('GPU')
     for gpu in gpus:

@@ -123,7 +123,7 @@ class TransformODModelOE(TransformODModel):
     x_train_merge = x_train_merge[idxes]
     y_train_merge = y_train_merge[idxes]
     self.network.fit(
-        x_data=x_train_merge, y=y_train_merge,
+        x_train=x_train_merge, y=y_train_merge,
         validation_data=(
           x_val_transform, y_val_transform),
         batch_size=train_batch_size,

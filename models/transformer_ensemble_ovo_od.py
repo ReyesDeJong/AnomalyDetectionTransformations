@@ -175,7 +175,7 @@ class EnsembleOVOTransformODModel(TransformODModel):
         callbacks = None
         validation_data = None
       model.fit(
-          x_data=train_x_binary,
+          x_train=train_x_binary,
           y=tf.keras.utils.to_categorical(train_y_binary),
           validation_data=validation_data,
           batch_size=train_batch_size,

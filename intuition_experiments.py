@@ -42,7 +42,7 @@ mdl.compile('adam',
             ['acc'])
 
 batch_size = 64
-mdl.fit(x_data=x_train_single_transformed,
+mdl.fit(x_train=x_train_single_transformed,
         y=to_categorical(transformations_inds),
         batch_size=batch_size,
         validation_split=0.1,

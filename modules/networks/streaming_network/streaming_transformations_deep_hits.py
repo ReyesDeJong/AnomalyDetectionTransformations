@@ -106,18 +106,18 @@ class StreamingTransformationsDeepHits(DeepHits):
         return iterations_to_validate
 
     # TODO: implement some kind of train_loggin
-    def fit(self, x_data, epochs, x_validation=None, batch_size=128,
+    def fit(self, x_train, epochs, x_validation=None, batch_size=128,
         iterations_to_validate=None, patience=None, verbose=True):
         validation_batch_size = 1024
         self.print_manager.verbose_printing(verbose)
         print('\nTraining Initiated\n')
-        self._initialize_training_attributes(x_data, batch_size)
+        self._initialize_training_attributes(x_train, batch_size)
         # if validation_data is None:
         #     return self._fit_without_validation(x, y, batch_size, epochs)
         assert patience is not None
         iterations_to_validate = self._set_validation_at_epochs_end_if_none(
             iterations_to_validate)
-        train_ds = self._get_training_dataset(x_data, batch_size)
+        train_ds = self._get_training_dataset(x_train, batch_size)
         validation_ds = tf.data.Dataset.from_tensor_slices(
             (x_validation)).batch(validation_batch_size)
         for epoch in range(epochs):
@@ -125,7 +125,7 @@ class StreamingTransformationsDeepHits(DeepHits):
                 for iteration_i, x_batch_train in enumerate(train_ds):
                     iteration = self._get_iteration_wrt_train_initialization(
                         iteration_i, epoch, transformation_index, batch_size,
-                        x_data)
+                        x_train)
                     if iteration % iterations_to_validate == 0:
                         self._validate(
                             validation_ds, iteration, patience, epoch)
@@ -146,7 +146,7 @@ class StreamingTransformationsDeepHits(DeepHits):
         self, x_batch_val, transform_index):
         transformation_indexes = tf.ones(
             x_batch_val.shape[0], dtype=tf.int32) * transform_index
-        x_transformed = self.transformer.apply_specific_transform(
+        x_transformed = self.transformer.apply_specific_transform_on_batch(
                 x_batch_val, transform_index)
         transformation_indexes_oh = tf.one_hot(
             transformation_indexes, depth=self.transformer.n_transforms)
@@ -269,26 +269,27 @@ if __name__ == '__main__':
     # transformer.set_transformations_to_perform(transformer.transformation_tuples*100)
     print(transformer.n_transforms)
 
-    # mdl = StreamingTransformationsDeepHits(transformer)
-    # mdl.save_initial_weights(x_train, 'aux_weights')
-    # mdl.fit(
-    #     x_train, epochs=EPOCHS, x_validation=x_val, batch_size=128,
-    #     patience=PATIENCE, iterations_to_validate=ITERATIONS_TO_VALIDATE)
-    # mdl.evaluate(x_train)
-    # mdl.evaluate(x_val)
-    # print('\nResults with random Initial Weights')
-    # mdl.load_weights('aux_weights/init.ckpt')
-    # mdl.evaluate(x_train)
-    # mdl.evaluate(x_val)
-    # mdl.fit(
-    #     x_train, epochs=EPOCHS, x_validation=x_val, batch_size=128,
-    #     patience=PATIENCE, iterations_to_validate=ITERATIONS_TO_VALIDATE)
-    # mdl.evaluate(x_train)
-    # mdl.evaluate(x_val)
-    #
-    # del mdl
     mdl = StreamingTransformationsDeepHits(transformer)
-    mdl.load_weights('checkpoints/best_weights.ckpt')
+    mdl.save_initial_weights(x_train, mdl.results_folder_path)
+    mdl.fit(
+        x_train, epochs=EPOCHS, x_validation=x_val, batch_size=128,
+        patience=PATIENCE, iterations_to_validate=ITERATIONS_TO_VALIDATE)
+    mdl.evaluate(x_train)
+    mdl.evaluate(x_val)
+    print('\nResults with random Initial Weights')
+    mdl.load_weights(os.path.join(mdl.results_folder_path, 'init.ckpt'))
+    mdl.evaluate(x_train)
+    mdl.evaluate(x_val)
+    mdl.fit(
+        x_train, epochs=EPOCHS, x_validation=x_val, batch_size=128,
+        patience=PATIENCE, iterations_to_validate=ITERATIONS_TO_VALIDATE)
+    mdl.evaluate(x_train)
+    mdl.evaluate(x_val)
+
+    del mdl
+    mdl = StreamingTransformationsDeepHits(transformer)
+    mdl.load_weights(os.path.join(mdl.results_folder_path, 'checkpoints',
+                                  'best_weights.ckpt'))
     print('\nResults with model loaded')
     # mdl.evaluate(x_train, batch_size=1000)
     # mdl.evaluate(x_train, batch_size=1000)

@@ -87,7 +87,6 @@ class AbstractTransformer(abc.ABC):
     #     x_transformed_normalize = self._normalize_1_1_by_image(x_transformed)
     #     return x_transformed_normalize, random_transformation_indexes
 
-    # @tf.function
     def transform_batch_with_random_indexes(self, x_batch) -> (
     tf.Tensor, tf.Tensor):
         random_transformation_indexes = tf.random.uniform(
@@ -105,7 +104,7 @@ class AbstractTransformer(abc.ABC):
         x_transformed_normalize = self._normalize_1_1_by_image(x_transformed)
         return x_transformed_normalize
 
-    def apply_specific_transform(self, x_batch,
+    def apply_specific_transform_on_batch(self, x_batch,
         single_transformation_index) -> (tf.Tensor, tf.Tensor):
             x_transformed = self._transformation_ops[
                 single_transformation_index](x_batch)

@@ -30,7 +30,7 @@ class DeepHits(tf.keras.Model):
         self._init_layers(n_classes, drop_rate, final_activation)
         self._init_builds()
         self.print_manager = PrintManager()
-        self.model_weights_folder, self.best_model_weights_path = \
+        self.results_folder_path, self.best_model_weights_path = \
             self._create_model_paths(results_folder_name)
 
     def _init_layers(self, n_classes, drop_rate, final_activation):
@@ -205,19 +205,26 @@ class DeepHits(tf.keras.Model):
             return True
         return False
 
-    # TODO: refactor on a better saving result manner
     def _create_model_paths(self, results_folder_name):
         if results_folder_name is None:
-            results_folder_name = ''
+            results_folder_name = self.name
+            results_folder_path = results_folder_name
         else:
             date = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
-            results_folder_name = os.path.join(
+            results_folder_path = os.path.join(
                 PROJECT_PATH, 'results', results_folder_name,
                 '%s_%s' % (self.name, date))
-            utils.check_path(results_folder_name)
+            utils.check_path(results_folder_path)
         best_model_weights_path = os.path.join(
-            results_folder_name, 'checkpoints', 'best_weights.ckpt')
-        return results_folder_name, best_model_weights_path
+            results_folder_path, 'checkpoints', 'best_weights.ckpt')
+        return results_folder_path, best_model_weights_path
+
+    def _set_model_paths(self, result_folder_path):
+        self.results_folder_path = os.path.join(
+            result_folder_path, self.name)
+        utils.check_path(self.results_folder_path)
+        self.best_model_weights_path = os.path.join(
+            self.results_folder_path, 'checkpoints', 'best_weights.ckpt')
 
     def check_best_model_save(self, iteration):
         self.best_model_so_far[
