@@ -142,8 +142,6 @@ class StreamingTransformationsDeepHits(DeepHits):
         self._reset_metrics()
         self.print_manager.close()
 
-
-
     def _transform_evaluation_batch_and_get_transform_indexes_oh(
         self, x_batch_val, transform_index):
         transformation_indexes = tf.ones(
@@ -233,6 +231,7 @@ class StreamingTransformationsDeepHits(DeepHits):
             set_name, self.eval_loss.result(), self.eval_accuracy.result(),
             delta_timer(time.time() - start_time))
         print(message)
+        # print('')
         results_dict = {general_keys.LOSS: self.eval_loss.result(),
                         general_keys.ACCURACY: self.eval_accuracy.result()}
         self._reset_metrics()
@@ -270,26 +269,31 @@ if __name__ == '__main__':
     # transformer.set_transformations_to_perform(transformer.transformation_tuples*100)
     print(transformer.n_transforms)
 
-    mdl = StreamingTransformationsDeepHits(transformer)
-    mdl.save_initial_weights(x_train, 'aux_weights')
-    mdl.fit(
-        x_train, epochs=EPOCHS, x_validation=x_val, batch_size=128,
-        patience=PATIENCE, iterations_to_validate=ITERATIONS_TO_VALIDATE)
-    mdl.evaluate(x_train)
-    mdl.evaluate(x_val)
-    print('\nResults with random Initial Weights')
-    mdl.load_weights('aux_weights/init.ckpt')
-    mdl.evaluate(x_train)
-    mdl.evaluate(x_val)
-    mdl.fit(
-        x_train, epochs=EPOCHS, x_validation=x_val, batch_size=128,
-        patience=PATIENCE, iterations_to_validate=ITERATIONS_TO_VALIDATE)
-    mdl.evaluate(x_train)
-    mdl.evaluate(x_val)
-
-    del mdl
+    # mdl = StreamingTransformationsDeepHits(transformer)
+    # mdl.save_initial_weights(x_train, 'aux_weights')
+    # mdl.fit(
+    #     x_train, epochs=EPOCHS, x_validation=x_val, batch_size=128,
+    #     patience=PATIENCE, iterations_to_validate=ITERATIONS_TO_VALIDATE)
+    # mdl.evaluate(x_train)
+    # mdl.evaluate(x_val)
+    # print('\nResults with random Initial Weights')
+    # mdl.load_weights('aux_weights/init.ckpt')
+    # mdl.evaluate(x_train)
+    # mdl.evaluate(x_val)
+    # mdl.fit(
+    #     x_train, epochs=EPOCHS, x_validation=x_val, batch_size=128,
+    #     patience=PATIENCE, iterations_to_validate=ITERATIONS_TO_VALIDATE)
+    # mdl.evaluate(x_train)
+    # mdl.evaluate(x_val)
+    #
+    # del mdl
     mdl = StreamingTransformationsDeepHits(transformer)
     mdl.load_weights('checkpoints/best_weights.ckpt')
     print('\nResults with model loaded')
+    # mdl.evaluate(x_train, batch_size=1000)
+    # mdl.evaluate(x_train, batch_size=1000)
+    mdl.evaluate(x_train)
     mdl.evaluate(x_train)
     mdl.evaluate(x_val)
+    mdl.evaluate(x_val)
+    # mdl.evaluate(x_val, batch_size=256)
