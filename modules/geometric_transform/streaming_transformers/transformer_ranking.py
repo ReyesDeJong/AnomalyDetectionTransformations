@@ -17,8 +17,8 @@ class RankingTransformer(AbstractTransformer):
             (0, 0, 0, self.rotations * 1, 0, 0, 0, 0),
             (0, 0, 0, 0, 1 * self.gauss, 0, 0, 0),
             (0, 0, 0, 0, 0, 1 * self.log, 0, 0),
-            (0, 0, 0, 0, 0, 0, self.mixed, 0),
-            (0, 0, 0, 0, 0, 0, 0, self.trivial),
+            # (0, 0, 0, 0, 0, 0, self.mixed, 0),
+            # (0, 0, 0, 0, 0, 0, 0, self.trivial),
         )
         # if some of the parameters is st to zero, avoid transformation
         # redundance, because original would appear more than once

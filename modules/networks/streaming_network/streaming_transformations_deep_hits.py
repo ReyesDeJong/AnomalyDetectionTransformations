@@ -110,7 +110,7 @@ class StreamingTransformationsDeepHits(DeepHits):
         iterations_to_validate=None, patience=None, verbose=True):
         validation_batch_size = 1024
         self.print_manager.verbose_printing(verbose)
-        print('\nTraining Initiated')
+        print('\nTraining Initiated\n')
         self._initialize_training_attributes(x_data, batch_size)
         # if validation_data is None:
         #     return self._fit_without_validation(x, y, batch_size, epochs)
@@ -198,7 +198,7 @@ class StreamingTransformationsDeepHits(DeepHits):
                 general_keys.COUNT_MODEL_NOT_IMPROVED_AT_EPOCH] = 0
             self.best_model_so_far[general_keys.ITERATION] = iteration
             self.save_weights(self.best_model_weights_path)
-            output_message = "\n\nNew best %s model: %s %.4f @ it %d\n" % (
+            output_message = "\n\nNew best %s model: %s %.6f @ it %d\n" % (
                 self.evaluation_set_name, general_keys.LOSS,
                 self.best_model_so_far[general_keys.LOSS],
                 self.best_model_so_far[general_keys.ITERATION])
@@ -211,36 +211,31 @@ class StreamingTransformationsDeepHits(DeepHits):
             predictions.append(self.call_wrapper_to_predict(images))
         return np.concatenate(predictions, axis=0)
 
-    def evaluate(self, x, batch_size=1024, verbose=True):
+    def _get_set_name_if_none(self, set_name):
+        if set_name is None:
+            return ''
+        else:
+            return '(%s) ' % set_name
+
+    def evaluate(self, x_data, batch_size=1024, verbose=True, set_name=None):
         self.print_manager.verbose_printing(verbose)
-        self.verbose = verbose
-        self.eval_loss.reset_states()
-        self.eval_accuracy.reset_states()
         dataset = tf.data.Dataset.from_tensor_slices(
-            (x)).batch(batch_size)
+            (x_data)).batch(batch_size)
         start_time = time.time()
-        for transformation_idx_i in range(
-            self.transformer.n_transforms):
-            for images in dataset:
-                transformations_inds = \
-                    [transformation_idx_i] * images.shape[0]
-                x_transformed = \
-                    self.transformer.apply_specific_transform(images,
-                                                              transformation_idx_i)
-                categorical_trf_ids = tf.keras.utils.to_categorical(
-                    transformations_inds,
-                    num_classes=self.transformer.n_transforms)
-                self.eval_step(x_transformed, categorical_trf_ids)
-        template = 'Loss: {}, Acc: {}, Time: {}'
-        print(template.format(
-            self.eval_loss.result(),
-            self.eval_accuracy.result() * 100,
-            delta_timer(time.time() - start_time)
-        ))
+        set_name = self._get_set_name_if_none(set_name)
+        for transformation_index in range(self.transformer.n_transforms):
+            for x_eval_batch in dataset:
+                x_transformed, transformation_indexes_oh = self. \
+                    _transform_evaluation_batch_and_get_transform_indexes_oh(
+                    x_eval_batch, transformation_index)
+                self.eval_step(x_transformed, transformation_indexes_oh)
+        message = '%sloss %.6f, acc %.6f, time %s' % (
+            set_name, self.eval_loss.result(), self.eval_accuracy.result(),
+            delta_timer(time.time() - start_time))
+        print(message)
         results_dict = {general_keys.LOSS: self.eval_loss.result(),
                         general_keys.ACCURACY: self.eval_accuracy.result()}
-        self.eval_loss.reset_states()
-        self.eval_accuracy.reset_states()
+        self._reset_metrics()
         self.print_manager.close()
         return results_dict
 
@@ -272,7 +267,7 @@ if __name__ == '__main__':
         x_test, y_test) = data_loader.get_outlier_detection_datasets()
 
     transformer = RankingTransformer()
-    transformer.set_transformations_to_perform(transformer.transformation_tuples*100)
+    # transformer.set_transformations_to_perform(transformer.transformation_tuples*100)
     print(transformer.n_transforms)
 
     mdl = StreamingTransformationsDeepHits(transformer)

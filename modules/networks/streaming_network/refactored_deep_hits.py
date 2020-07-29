@@ -188,6 +188,9 @@ class DeepHits(tf.keras.Model):
         self.print_manager.close()
 
     def _print_training_end(self):
+        print("\nBest model @ it %d.\nValidation lodd %.6f" % (
+            self.best_model_so_far[general_keys.ITERATION],
+            self.best_model_so_far[general_keys.LOSS]))
         print('\nTotal training time: {}\n'.format(
             delta_timer(time.time() - self.training_star_time)))
 
@@ -196,8 +199,9 @@ class DeepHits(tf.keras.Model):
             general_keys.COUNT_MODEL_NOT_IMPROVED_AT_EPOCH] > patience:
             self.load_weights(
                 self.best_model_weights_path)
-            self._reset_metrics()
             self._print_training_end()
+            self._reset_metrics()
+            self.print_manager.close()
             return True
         return False
 
