@@ -61,31 +61,31 @@ class AbstractTransformer(abc.ABC):
         )[0]
         return (x_transformed, transformation_index)
 
-    # method to be used on dataset maps
-    def _apply_transformation_in_dataset_map_map_fn(
-        self, tuple_x_transformation_index):
-        x_single_image = tuple_x_transformation_index[0]
-        transformation_index = tuple_x_transformation_index[1]
-        list_trfs = []
-        for i in range(self.n_transforms):
-            x_transformed = self._transformation_ops[i](
-                x_single_image[None, ...])[0]
-            list_trfs.append(x_transformed)
-        list_trfs = tf.convert_to_tensor(list_trfs)
-        x_transformed = list_trfs[transformation_index]
-        return (x_transformed, transformation_index)
-
-    # method to be used on dataset maps
-    def transform_batch_with_random_categorical_indexes_for_dataset_map(
-        self, x_batch, dummy_labels):
-        random_transformation_indexes = tf.random.uniform(
-            shape=[x_batch.shape[0]], minval=0, maxval=self.n_transforms,
-            dtype=tf.int32)
-        x_transformed, _ = tf.map_fn(
-            self._apply_transformation_in_dataset_map_map_fn,
-            (x_batch, random_transformation_indexes))
-        x_transformed_normalize = self._normalize_1_1_by_image(x_transformed)
-        return x_transformed_normalize, random_transformation_indexes
+    # # method to be used on dataset maps
+    # def _apply_transformation_in_dataset_map_map_fn(
+    #     self, tuple_x_transformation_index):
+    #     x_single_image = tuple_x_transformation_index[0]
+    #     transformation_index = tuple_x_transformation_index[1]
+    #     list_trfs = []
+    #     for i in range(self.n_transforms):
+    #         x_transformed = self._transformation_ops[i](
+    #             x_single_image[None, ...])[0]
+    #         list_trfs.append(x_transformed)
+    #     list_trfs = tf.convert_to_tensor(list_trfs)
+    #     x_transformed = list_trfs[transformation_index]
+    #     return (x_transformed, transformation_index)
+    #
+    # # method to be used on dataset maps
+    # def transform_batch_with_random_categorical_indexes_for_dataset_map(
+    #     self, x_batch, dummy_labels):
+    #     random_transformation_indexes = tf.random.uniform(
+    #         shape=[x_batch.shape[0]], minval=0, maxval=self.n_transforms,
+    #         dtype=tf.int32)
+    #     x_transformed, _ = tf.map_fn(
+    #         self._apply_transformation_in_dataset_map_map_fn,
+    #         (x_batch, random_transformation_indexes))
+    #     x_transformed_normalize = self._normalize_1_1_by_image(x_transformed)
+    #     return x_transformed_normalize, random_transformation_indexes
 
     # @tf.function
     def transform_batch_with_random_indexes(self, x_batch) -> (
@@ -105,13 +105,21 @@ class AbstractTransformer(abc.ABC):
         x_transformed_normalize = self._normalize_1_1_by_image(x_transformed)
         return x_transformed_normalize
 
-    # @tf.function
     def apply_specific_transform(self, x_batch,
         single_transformation_index) -> (tf.Tensor, tf.Tensor):
-            x_transformed = self._transformation_ops[single_transformation_index](
-                x_batch)
-            x_transformed_normalize = self._normalize_1_1_by_image( x_transformed)
+            x_transformed = self._transformation_ops[
+                single_transformation_index](x_batch)
+            x_transformed_normalize = self._normalize_1_1_by_image(
+                x_transformed)
             return x_transformed_normalize
+
+    def transform_batch(self, x, t_inds):
+        transformed_batch = []
+        with tf.name_scope("transformations"):
+            for i, t_ind in enumerate(t_inds):
+                transformed_batch.append(self._transformation_ops[t_ind](x))
+            concatenated_transformations = tf.concat(transformed_batch, axis=0)
+        return tf.identity(concatenated_transformations, 'concat_transforms')
 
     # TODO
     def apply_all_transforms(self, x, batch_size=None):

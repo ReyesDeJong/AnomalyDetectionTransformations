@@ -138,7 +138,7 @@ def test_model_original(transformer, loader, dataset_name='hits-4-c',
   print(x_train_task_transformed.shape)
   # train model
   batch_size = 128
-  mdl.fit(x=x_train_task_transformed, y=to_categorical(transformations_inds),
+  mdl.fit(x_data=x_train_task_transformed, y=to_categorical(transformations_inds),
           batch_size=batch_size,
           epochs=int(np.ceil(200 / transformer.n_transforms))
           )
@@ -268,7 +268,7 @@ def test_model_loading(transformer, mdl, loader, dataset_name='hits-4-c',
   batch_size = 128
   if epochs is None:
     epochs = int(np.ceil(200 / transformer.n_transforms))
-  mdl.fit(x=x_train_transform_tf1, y=to_categorical(y_train_transform_tf1),
+  mdl.fit(x_data=x_train_transform_tf1, y=to_categorical(y_train_transform_tf1),
           batch_size=batch_size,
           epochs=epochs
           )

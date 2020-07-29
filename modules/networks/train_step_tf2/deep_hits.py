@@ -152,7 +152,7 @@ class DeepHits(tf.keras.Model):
     self.best_model_so_far = {
       general_keys.ITERATION: 0,
       general_keys.LOSS: 1e100,
-      general_keys.NOT_IMPROVED_COUNTER: 0,
+      general_keys.COUNT_MODEL_NOT_IMPROVED_AT_EPOCH: 0,
     }
     train_ds = tf.data.Dataset.from_tensor_slices(
         (x, y)).shuffle(10000).batch(batch_size)
@@ -195,7 +195,7 @@ class DeepHits(tf.keras.Model):
 
   def check_early_stopping(self, patience):
     if self.best_model_so_far[
-      general_keys.NOT_IMPROVED_COUNTER] >= patience + 1:
+      general_keys.COUNT_MODEL_NOT_IMPROVED_AT_EPOCH] >= patience + 1:
       # print(self.best_model_weights_path)
       self.load_weights(
           self.best_model_weights_path).expect_partial()
@@ -217,10 +217,10 @@ class DeepHits(tf.keras.Model):
                                                   'best_weights.ckpt')
       self.save_weights(self.best_model_weights_path)
       return
-    self.best_model_so_far[general_keys.NOT_IMPROVED_COUNTER] += 1
+    self.best_model_so_far[general_keys.COUNT_MODEL_NOT_IMPROVED_AT_EPOCH] += 1
     if self.eval_loss.result() < self.best_model_so_far[general_keys.LOSS]:
       self.best_model_so_far[general_keys.LOSS] = self.eval_loss.result()
-      self.best_model_so_far[general_keys.NOT_IMPROVED_COUNTER] = 0
+      self.best_model_so_far[general_keys.COUNT_MODEL_NOT_IMPROVED_AT_EPOCH] = 0
       self.best_model_so_far[general_keys.ITERATION] = iteration
       self.save_weights(self.best_model_weights_path)
       if self.verbose:

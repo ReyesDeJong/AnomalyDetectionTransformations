@@ -26,7 +26,7 @@ class StreamingTransformationsDeepHits(DeepHits):
     def __init__(
         self, transformer: AbstractTransformer, drop_rate=0.5,
         final_activation='softmax', name='deep_hits_streaming_transformations',
-        results_folder_name=''):
+        results_folder_name=None):
         super().__init__(transformer.n_transforms, drop_rate,
                          final_activation, name, results_folder_name)
         self.transformer = transformer
@@ -72,13 +72,13 @@ class StreamingTransformationsDeepHits(DeepHits):
 
     # this method cannot use tf.function because of conflict with getting
     # transformation_ops from a list by tensor indixes, thus it is SLOW!
-    def _transform_batch_and_get_transformation_indexes_oh(self, x_data):
+    def _transform_train_batch_and_get_transform_indxs_oh(
+        self, x_train_batch):
         x_transformed, transformation_indexes = \
             self.transformer.transform_batch_with_random_indexes(
-                x_data)
+                x_train_batch)
         transformation_indexes_oh = tf.one_hot(
-            transformation_indexes,
-            depth=self.transformer.n_transforms)
+            transformation_indexes, depth=self.transformer.n_transforms)
         return x_transformed, transformation_indexes_oh
 
     def _get_iteration_wrt_train_initialization(
@@ -87,87 +87,122 @@ class StreamingTransformationsDeepHits(DeepHits):
             transformation_i * (len(x_train) // batch_size))
         return iteration_real
 
-    # TODO: implement some kind of train_loggin
-    def fit(self, x, epochs, x_validation=None, batch_size=128,
-        iterations_to_validate=None, patience=None, verbose=True):
-        validation_batch_size = 1024
-        self.print_manager.verbose_printing(verbose)
-        print('\nTraining Initiated')
-        self.training_star_time = time.time()
+    def _initialize_training_attributes(self, x_data, batch_size):
         self.best_model_so_far = {
             general_keys.ITERATION: 0,
             general_keys.LOSS: 1e100,
-            general_keys.NOT_IMPROVED_COUNTER: 0,
+            general_keys.COUNT_MODEL_NOT_IMPROVED_AT_EPOCH: 0,
         }
+        self.training_star_time = time.time()
         self.n_iterations_in_epoch = (
-            len(x) // batch_size) * self.transformer.n_transforms
-        # if validation_data is None:
-        #     return self._fit_without_validation(x, y, batch_size, epochs)
-        assert patience is not None
+            len(x_data) // batch_size) * self.transformer.n_transforms
         self.evaluation_set_name = 'validation'
+
+    def _set_validation_at_epochs_end_if_none(self, iterations_to_validate):
         # check if validate at end of epoch
         if iterations_to_validate is None:
             # -1 comes from fact that iterations start at 0
             iterations_to_validate = self.n_iterations_in_epoch - 1
+        return iterations_to_validate
 
-        train_ds = self._get_training_dataset(x, batch_size)
+    # TODO: implement some kind of train_loggin
+    def fit(self, x_data, epochs, x_validation=None, batch_size=128,
+        iterations_to_validate=None, patience=None, verbose=True):
+        validation_batch_size = 1024
+        self.print_manager.verbose_printing(verbose)
+        print('\nTraining Initiated')
+        self._initialize_training_attributes(x_data, batch_size)
+        # if validation_data is None:
+        #     return self._fit_without_validation(x, y, batch_size, epochs)
+        assert patience is not None
+        iterations_to_validate = self._set_validation_at_epochs_end_if_none(
+            iterations_to_validate)
+        train_ds = self._get_training_dataset(x_data, batch_size)
         validation_ds = tf.data.Dataset.from_tensor_slices(
             (x_validation)).batch(validation_batch_size)
         for epoch in range(epochs):
             for transformation_index in range(self.transformer.n_transforms):
-                for iteration_i, x_images in enumerate(train_ds):
+                for iteration_i, x_batch_train in enumerate(train_ds):
+                    iteration = self._get_iteration_wrt_train_initialization(
+                        iteration_i, epoch, transformation_index, batch_size,
+                        x_data)
+                    if iteration % iterations_to_validate == 0:
+                        self._validate(
+                            validation_ds, iteration, patience, epoch)
+                        if self.check_early_stopping(patience):
+                            return
                     images_transformed, transformation_indexes_oh = \
-                        self._transform_batch_and_get_transformation_indexes_oh(
-                            x_images)
+                        self._transform_train_batch_and_get_transform_indxs_oh(
+                            x_batch_train)
                     self.train_step(
                         images_transformed, transformation_indexes_oh)
-                    iteration_i = self._get_iteration_wrt_train_initialization(
-                        iteration_i, epoch, transformation_index, batch_size, x)
-                    print(iteration_i, epoch, transformation_index, iterations_to_validate, self.transformer.n_transforms, len(x) // batch_size)
-                    # TODO: slow
-                    if iteration_i % iterations_to_validate == 0:
-                        # if self.check_early_stopping(patience):
-                        #     return
-                        for transformation_idx_i in range(
-                            self.transformer.n_transforms):
-                            for validation_images in \
-                                validation_ds:
-                                transformations_inds = \
-                                    [transformation_idx_i] * \
-                                    validation_images.shape[0]
-                                x_transformed = \
-                                    self.transformer.apply_specific_transform(
-                                        validation_images, transformation_idx_i)
-                                categorical_trf_ids = tf.keras.utils.to_categorical(
-                                    transformations_inds,
-                                    num_classes=self.transformer.n_transforms)
-                                self.eval_step(x_transformed,
-                                               categorical_trf_ids)
-                        template = 'Iter {}, Patience {}, Epoch {}, Loss: {}, Acc: {}, Val loss: {}, Val acc: {}, Time: {}'
-                        print(
-                            template.format(
-                                iteration_i,
-                                patience - self.best_model_so_far[
-                                    general_keys.NOT_IMPROVED_COUNTER],
-                                epoch + 1,
-                                self.train_loss.result(),
-                                self.train_accuracy.result() * 100,
-                                self.eval_loss.result(),
-                                self.eval_accuracy.result() * 100,
-                                delta_timer(
-                                    time.time() - self.training_star_time)
-                            )
-                        )
-                        self.check_best_model_save(iteration_i)
-                        self.eval_loss.reset_states()
-                        self.eval_accuracy.reset_states()
-                        self.train_loss.reset_states()
-                        self.train_accuracy.reset_states()
         self.load_weights(
             self.best_model_weights_path)
-        print('Total Training Time: {}'.format(
-            delta_timer(time.time() - self.training_star_time)))
+        self._print_training_end()
+        self._reset_metrics()
         self.print_manager.close()
+
+
+
+    def _transform_evaluation_batch_and_get_transform_indexes_oh(
+        self, x_batch_val, transform_index):
+        transformation_indexes = tf.ones(
+            x_batch_val.shape[0], dtype=tf.int32) * transform_index
+        x_transformed = self.transformer.apply_specific_transform(
+                x_batch_val, transform_index)
+        transformation_indexes_oh = tf.one_hot(
+            transformation_indexes, depth=self.transformer.n_transforms)
+        return x_transformed, transformation_indexes_oh
+
+    def _print_at_validate(self, iteration, patience, epoch,
+        best_model_missing_message):
+        template = 'Time usage: %s\nEpoch %i Iteration %i Patience left %i' \
+                   ' (train): loss %.6f, acc %.6f\n' \
+                   '(validation): loss %.6f, acc %.6f %s'
+        print(template % (
+                delta_timer(time.time() - self.training_star_time),
+                epoch,
+                iteration,
+                patience - self.best_model_so_far[
+                    general_keys.COUNT_MODEL_NOT_IMPROVED_AT_EPOCH],
+                self.train_loss.result(),
+                self.train_accuracy.result(),
+                self.eval_loss.result(),
+                self.eval_accuracy.result(),
+                best_model_missing_message
+            )
+        )
+
+    def _validate(
+        self, validation_ds: tf.data.Dataset, iteration, patience, epoch):
+        for transformation_index in range(self.transformer.n_transforms):
+            for x_val_batch in validation_ds:
+                x_transformed, transformation_indexes_oh = self.\
+                    _transform_evaluation_batch_and_get_transform_indexes_oh(
+                    x_val_batch, transformation_index)
+                self.eval_step(x_transformed, transformation_indexes_oh)
+        # To correctily print patience, this must be the order of the following
+        # 2 methods
+        best_model_finding_message = self.check_best_model_save(iteration)
+        self._print_at_validate(iteration, patience, epoch,
+                                best_model_finding_message)
+        self._reset_metrics()
+
+    def check_best_model_save(self, iteration):
+        self.best_model_so_far[
+            general_keys.COUNT_MODEL_NOT_IMPROVED_AT_EPOCH] += 1
+        output_message = ''
+        if self.eval_loss.result() < self.best_model_so_far[general_keys.LOSS]:
+            self.best_model_so_far[general_keys.LOSS] = self.eval_loss.result()
+            self.best_model_so_far[
+                general_keys.COUNT_MODEL_NOT_IMPROVED_AT_EPOCH] = 0
+            self.best_model_so_far[general_keys.ITERATION] = iteration
+            self.save_weights(self.best_model_weights_path)
+            output_message = "\n\nNew best %s model: %s %.4f @ it %d\n" % (
+                self.evaluation_set_name, general_keys.LOSS,
+                self.best_model_so_far[general_keys.LOSS],
+                self.best_model_so_far[general_keys.ITERATION])
+        return output_message
 
     def predict(self, x, batch_size=1024):
         eval_ds = tf.data.Dataset.from_tensor_slices((x)).batch(batch_size)
@@ -176,7 +211,7 @@ class StreamingTransformationsDeepHits(DeepHits):
             predictions.append(self.call_wrapper_to_predict(images))
         return np.concatenate(predictions, axis=0)
 
-    def eval_tf(self, x, batch_size=1024, verbose=True):
+    def evaluate(self, x, batch_size=1024, verbose=True):
         self.print_manager.verbose_printing(verbose)
         self.verbose = verbose
         self.eval_loss.reset_states()
@@ -218,8 +253,8 @@ if __name__ == '__main__':
     set_soft_gpu_memory_growth()
 
     EPOCHS = 1000
-    ITERATIONS_TO_VALIDATE = None  # 1000 # None
-    PATIENCE = 5  # 0
+    ITERATIONS_TO_VALIDATE = 10  # 1000 # None
+    PATIENCE = 0  # 0
 
     hits_params = {
         loader_keys.DATA_PATH: os.path.join(
@@ -241,25 +276,25 @@ if __name__ == '__main__':
     print(transformer.n_transforms)
 
     mdl = StreamingTransformationsDeepHits(transformer)
-    # mdl.save_initial_weights(x_train, 'aux_weights')
+    mdl.save_initial_weights(x_train, 'aux_weights')
     mdl.fit(
         x_train, epochs=EPOCHS, x_validation=x_val, batch_size=128,
         patience=PATIENCE, iterations_to_validate=ITERATIONS_TO_VALIDATE)
-    mdl.eval_tf(x_train)
-    mdl.eval_tf(x_val)
+    mdl.evaluate(x_train)
+    mdl.evaluate(x_val)
     print('\nResults with random Initial Weights')
     mdl.load_weights('aux_weights/init.ckpt')
-    mdl.eval_tf(x_train)
-    mdl.eval_tf(x_val)
+    mdl.evaluate(x_train)
+    mdl.evaluate(x_val)
     mdl.fit(
         x_train, epochs=EPOCHS, x_validation=x_val, batch_size=128,
         patience=PATIENCE, iterations_to_validate=ITERATIONS_TO_VALIDATE)
-    mdl.eval_tf(x_train)
-    mdl.eval_tf(x_val)
+    mdl.evaluate(x_train)
+    mdl.evaluate(x_val)
 
     del mdl
     mdl = StreamingTransformationsDeepHits(transformer)
-    mdl.load_weights('aux_weights/best_weights.ckpt')
+    mdl.load_weights('checkpoints/best_weights.ckpt')
     print('\nResults with model loaded')
-    mdl.eval_tf(x_train)
-    mdl.eval_tf(x_val)
+    mdl.evaluate(x_train)
+    mdl.evaluate(x_val)

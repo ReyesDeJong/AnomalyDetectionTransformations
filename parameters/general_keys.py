@@ -69,7 +69,7 @@ ADAM = 'adam'
 # losses names
 CATEGORICAL_CROSSENTROPY = 'categorical_crossentropy'
 
-NOT_IMPROVED_COUNTER = 'not_improved_counter'
+COUNT_MODEL_NOT_IMPROVED_AT_EPOCH = 'not_improved_counter'
 
 TRANSFORMATION_TUPLE = 'transformation_tuple'
 SCORE = 'score'

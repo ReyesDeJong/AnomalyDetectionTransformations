@@ -57,7 +57,7 @@ def _transformations_experiment(dataset_load_fn, dataset_name, single_class_ind,
                                                            transformations_inds)
     batch_size = 128
 
-    mdl.fit(x=x_train_task_transformed, y=to_categorical(transformations_inds),
+    mdl.fit(x_data=x_train_task_transformed, y=to_categorical(transformations_inds),
             batch_size=batch_size, epochs=int(np.ceil(200/transformer.n_transforms))
             )
 
@@ -190,7 +190,7 @@ def _cae_ocsvm_experiment(dataset_load_fn, dataset_name, single_class_ind, gpu_q
 
     x_train_task = x_train[y_train.flatten() == single_class_ind]
     x_test_task = x_test[y_test.flatten() == single_class_ind]  # This is just for visual monitoring
-    cae.fit(x=x_train_task, y=x_train_task, batch_size=128, epochs=200, validation_data=(x_test_task, x_test_task))
+    cae.fit(x_data=x_train_task, y=x_train_task, batch_size=128, epochs=200, validation_data=(x_test_task, x_test_task))
 
     x_train_task_rep = enc.predict(x_train_task, batch_size=128)
     if dataset_name in LARGE_DATASET_NAMES:  # OC-SVM is quadratic on the number of examples, so subsample training set
@@ -238,7 +238,7 @@ def _dsebm_experiment(dataset_load_fn, dataset_name, single_class_ind, gpu_q):
     reconstruction_mdl.compile('adam', 'mse')
     x_train_task = x_train[y_train.flatten() == single_class_ind]
     x_test_task = x_test[y_test.flatten() == single_class_ind]  # This is just for visual monitoring
-    reconstruction_mdl.fit(x=x_train_task, y=x_train_task,
+    reconstruction_mdl.fit(x_data=x_train_task, y=x_train_task,
                            batch_size=batch_size,
                            epochs=epochs,
                            validation_data=(x_test_task, x_test_task))
@@ -280,7 +280,7 @@ def _dagmm_experiment(dataset_load_fn, dataset_name, single_class_ind, gpu_q):
 
     x_train_task = x_train[y_train.flatten() == single_class_ind]
     x_test_task = x_test[y_test.flatten() == single_class_ind]  # This is just for visual monitoring
-    dagmm_mdl.fit(x=x_train_task, y=[x_train_task, np.zeros((len(x_train_task), 1))],  # second y is dummy
+    dagmm_mdl.fit(x_data=x_train_task, y=[x_train_task, np.zeros((len(x_train_task), 1))],  # second y is dummy
                   batch_size=batch_size,
                   epochs=epochs,
                   validation_data=(x_test_task, [x_test_task, np.zeros((len(x_test_task), 1))]),

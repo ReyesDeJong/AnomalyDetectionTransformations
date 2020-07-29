@@ -138,7 +138,7 @@ def _transformations_experiment(dataset_load_fn, dataset_name, single_class_ind,
       transformations_inds)
   batch_size = 128
 
-  mdl.fit(x=x_train_task_transformed, y=to_categorical(transformations_inds),
+  mdl.fit(x_data=x_train_task_transformed, y=to_categorical(transformations_inds),
           batch_size=batch_size,
           epochs=int(np.ceil(200 / transformer.n_transforms))
           )
@@ -223,7 +223,7 @@ def _trans_transformations_experiment(dataset_load_fn, dataset_name,
       transformations_inds)
   batch_size = 128
 
-  mdl.fit(x=x_train_task_transformed, y=to_categorical(transformations_inds),
+  mdl.fit(x_data=x_train_task_transformed, y=to_categorical(transformations_inds),
           batch_size=batch_size,
           epochs=int(np.ceil(200 / transformer.n_transforms))
           )
@@ -307,7 +307,7 @@ def _kernel_transformations_experiment(dataset_load_fn, dataset_name,
       transformations_inds)
   batch_size = 128
 
-  mdl.fit(x=x_train_task_transformed, y=to_categorical(transformations_inds),
+  mdl.fit(x_data=x_train_task_transformed, y=to_categorical(transformations_inds),
           batch_size=batch_size,
           epochs=int(np.ceil(200 / transformer.n_transforms))
           )
@@ -391,7 +391,7 @@ def _kernal_plus_transformations_experiment(dataset_load_fn, dataset_name,
     transformations_inds)
   batch_size = 128
 
-  mdl.fit(x=x_train_task_transformed, y=to_categorical(transformations_inds),
+  mdl.fit(x_data=x_train_task_transformed, y=to_categorical(transformations_inds),
           batch_size=batch_size, epochs=2
           # int(np.ceil(200/transformer.n_transforms))
           )
@@ -582,7 +582,7 @@ def _cae_ocsvm_experiment(dataset_load_fn, dataset_name, single_class_ind,
   x_train_task = x_train[y_train.flatten() == single_class_ind]
   x_test_task = x_test[
     y_test.flatten() == single_class_ind]  # This is just for visual monitoring
-  cae.fit(x=x_train_task, y=x_train_task, batch_size=128, epochs=200,
+  cae.fit(x_data=x_train_task, y=x_train_task, batch_size=128, epochs=200,
           validation_data=(x_test_task, x_test_task))
 
   x_train_task_rep = enc.predict(x_train_task, batch_size=128)
@@ -639,7 +639,7 @@ def _dsebm_experiment(dataset_load_fn, dataset_name, single_class_ind, gpu_q):
   x_train_task = x_train[y_train.flatten() == single_class_ind]
   x_test_task = x_test[
     y_test.flatten() == single_class_ind]  # This is just for visual monitoring
-  reconstruction_mdl.fit(x=x_train_task, y=x_train_task,
+  reconstruction_mdl.fit(x_data=x_train_task, y=x_train_task,
                          batch_size=batch_size,
                          epochs=epochs,
                          validation_data=(x_test_task, x_test_task))
@@ -690,7 +690,7 @@ def _dagmm_experiment(dataset_load_fn, dataset_name, single_class_ind, gpu_q):
   x_train_task = x_train[y_train.flatten() == single_class_ind]
   x_test_task = x_test[
     y_test.flatten() == single_class_ind]  # This is just for visual monitoring
-  dagmm_mdl.fit(x=x_train_task,
+  dagmm_mdl.fit(x_data=x_train_task,
                 y=[x_train_task, np.zeros((len(x_train_task), 1))],
                 # second y is dummy
                 batch_size=batch_size,
