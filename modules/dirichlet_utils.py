@@ -126,10 +126,20 @@ def dirichlet_score(predict_x_train, predict_x_eval):
   #   log_file.write(str(observed_dirichlet) + '\n')
   #   log_file.close()
   mle_alpha_t = fixed_point_dirichlet_mle(alpha_0, log_p_hat_train)
+  # print(mle_alpha_t)
   diri_score = dirichlet_normality_score(mle_alpha_t, x_eval_p)
   return diri_score
 
 def correct_0_value_predictions(predictions):
   predictions[predictions==0] = 1e-10
   return normalize_sum1(predictions)
+
+def get_mle_alpha_t(predict_x_train):
+  observed_dirichlet = correct_0_value_predictions(predict_x_train)
+  log_p_hat_train = np.log(observed_dirichlet).mean(axis=0)
+  alpha_sum_approx = calc_approx_alpha_sum(
+      observed_dirichlet)
+  alpha_0 = observed_dirichlet.mean(axis=0) * alpha_sum_approx
+  mle_alpha_t = fixed_point_dirichlet_mle(alpha_0, log_p_hat_train)
+  return mle_alpha_t
 

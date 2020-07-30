@@ -40,6 +40,19 @@ class GeoTransformBaseNotAllTransformsAtOnce(GeoTransformBase):
         predict_batch_size=1024):
         return
 
+    # def _get_prediction_for_specific_transform_index(self,
+    #     x_train, x_eval, transformation_index,
+    #     transform_batch_size, predict_batch_size):
+    #     x_train_transformed, _ = self.transformer.apply_transforms(
+    #         x_train, [transformation_index], transform_batch_size)
+    #     predictions_train = self.classifier.predict(
+    #         x_train_transformed, predict_batch_size)
+    #     x_eval_transformed, _ = self.transformer.apply_transforms(
+    #         x_eval, [transformation_index], transform_batch_size)
+    #     predictions_eval = self.classifier.predict(
+    #         x_eval_transformed, predict_batch_size)
+    #     return predictions_train, predictions_eval
+
     def _get_prediction_for_specific_transform_index(self,
         x_train, x_eval, transformation_index,
         transform_batch_size, predict_batch_size):
@@ -79,7 +92,7 @@ if __name__ == '__main__':
     from parameters import loader_keys
     from modules.geometric_transform.\
         streaming_transformers.transformer_ranking import RankingTransformer
-    EPOCHS = 1
+    EPOCHS = 1000
     ITERATIONS_TO_VALIDATE = 0
     PATIENCE = 0
     VERBOSE = True
@@ -115,10 +128,10 @@ if __name__ == '__main__':
     model = GeoTransformBaseNotAllTransformsAtOnce(
         classifier=clf, transformer=transformer,
         results_folder_name='test_base')
-    # model.fit(
-    #     x_train, epochs=EPOCHS, x_validation=x_val,
-    #     iterations_to_validate=ITERATIONS_TO_VALIDATE, patience=PATIENCE,
-    #     verbose=VERBOSE)
+    model.fit(
+        x_train, epochs=EPOCHS, x_validation=x_val,
+        iterations_to_validate=ITERATIONS_TO_VALIDATE, patience=PATIENCE,
+        verbose=VERBOSE)
     model.evaluate(
         x_train, x_test, y_test, outlier_loader.name, 'real', x_val,
         save_metrics=False, save_histogram=False, get_auroc_acc_only=True,
