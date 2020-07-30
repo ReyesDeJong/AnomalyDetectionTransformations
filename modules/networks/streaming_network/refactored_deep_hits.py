@@ -188,7 +188,7 @@ class DeepHits(tf.keras.Model):
         self.print_manager.close()
 
     def _print_training_end(self):
-        print("\nBest model @ it %d.\nValidation lodd %.6f" % (
+        print("\nBest model @ it %d.\nValidation loss %.6f" % (
             self.best_model_so_far[general_keys.ITERATION],
             self.best_model_so_far[general_keys.LOSS]))
         print('\nTotal training time: {}\n'.format(
@@ -219,7 +219,7 @@ class DeepHits(tf.keras.Model):
             results_folder_path, 'checkpoints', 'best_weights.ckpt')
         return results_folder_path, best_model_weights_path
 
-    def _set_model_paths(self, result_folder_path):
+    def _set_model_results_paths(self, result_folder_path):
         self.results_folder_path = os.path.join(
             result_folder_path, self.name)
         utils.check_path(self.results_folder_path)

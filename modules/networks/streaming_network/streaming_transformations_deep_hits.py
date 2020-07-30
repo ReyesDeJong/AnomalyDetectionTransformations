@@ -99,10 +99,8 @@ class StreamingTransformationsDeepHits(DeepHits):
         self.evaluation_set_name = 'validation'
 
     def _set_validation_at_epochs_end_if_none(self, iterations_to_validate):
-        # check if validate at end of epoch
-        if iterations_to_validate is None:
-            # -1 comes from fact that iterations start at 0
-            iterations_to_validate = self.n_iterations_in_epoch - 1
+        if iterations_to_validate is None or iterations_to_validate==0:
+            iterations_to_validate = self.n_iterations_in_epoch
         return iterations_to_validate
 
     # TODO: implement some kind of train_loggin
