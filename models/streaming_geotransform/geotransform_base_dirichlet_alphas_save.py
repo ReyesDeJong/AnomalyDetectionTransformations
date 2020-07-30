@@ -14,12 +14,8 @@ from modules.geometric_transform.streaming_transformers. \
 from parameters import general_keys
 import numpy as np
 from modules import dirichlet_utils, utils
-from sklearn.metrics import roc_curve, precision_recall_curve, auc
-from modules.metrics import accuracies_by_threshold, accuracy_at_thr
 from tqdm import tqdm
 from models.streaming_geotransform.geotransform_base import GeoTransformBase
-import matplotlib.pyplot as plt
-# from joblib import Parallel, delayed
 import time
 from modules.networks.streaming_network.streaming_transformations_deep_hits \
     import StreamingTransformationsDeepHits
@@ -65,6 +61,7 @@ class GeoTransformBaseDirichletAlphasSaved(GeoTransformBase):
             x_train, epochs, x_validation, batch_size, iterations_to_validate,
             patience, verbose)
         self._update_dirichlet_alphas(x_train, verbose)
+        self.save_model(self.classifier.best_model_weights_path)
 
     # TODO: avoid apply_all_transforms at once
     def _predict_matrix_probabilities(self, x_data, transform_batch_size=512,
@@ -124,15 +121,36 @@ class GeoTransformBaseDirichletAlphasSaved(GeoTransformBase):
             additional_score_save_path_list, metrics_save_path,
             metrics, save_metrics)
         print("\nEvaluation time: %s" % utils.timer(
-                start_time, time.time()))
+            start_time, time.time()))
         self.print_manager.close()
         return metrics
 
-    def save_weights(self, path):
+    def save_model(self, path):
+        # Include alphas saving
+        folder_path = os.path.dirname(path)
+        dirichlet_mle_alphas_path = os.path.join(
+            folder_path, 'dirichlet_mle_alphas.npy')
+        np.save(dirichlet_mle_alphas_path, self.dirichlet_alphas)
         self.classifier.save_weights(path)
 
-    def load_weights(self, path, by_name=False):
-        self.classifier.load_weights(path, by_name=by_name)
+    def load_model(self, path_checkpoints, by_name=False):
+        # Include alphas saving
+        folder_path = os.path.dirname(path_checkpoints)
+        self.dirichlet_alphas = np.load(
+            os.path.join(folder_path, 'dirichlet_mle_alphas.npy'))
+        self.classifier.load_weights(path_checkpoints, by_name=by_name)
+
+    def predict(self, x_eval, x_validation=None,
+        transform_batch_size=512, evaluation_batch_size=1024, verbose=False):
+        if x_validation is None:
+            x_validation = x_eval
+        dirichlet_scores_eval = self.predict_dirichlet_score(
+            x_eval, transform_batch_size, evaluation_batch_size, verbose)
+        dirichlet_scores_validation = self.predict_dirichlet_score(
+            x_validation, transform_batch_size, evaluation_batch_size, verbose)
+        thr = np.percentile(dirichlet_scores_validation, 100 - self.percentile)
+        predictions = (dirichlet_scores_eval > thr) * 1
+        return predictions
 
 
 if __name__ == '__main__':
@@ -143,7 +161,7 @@ if __name__ == '__main__':
     from modules.geometric_transform. \
         streaming_transformers.transformer_ranking import RankingTransformer
 
-    EPOCHS = 1000
+    EPOCHS = 1  # 000
     ITERATIONS_TO_VALIDATE = 0
     PATIENCE = 0
     VERBOSE = True
@@ -184,7 +202,20 @@ if __name__ == '__main__':
     model.evaluate(
         x_test, y_test, outlier_loader.name, 'real', x_val, save_metrics=True,
         save_histogram=True, get_auroc_acc_only=True, verbose=VERBOSE)
+    model_results_folder = model.model_results_path
+    model_weights_path = model.classifier.best_model_weights_path
     del model
+    del clf
+    clf = StreamingTransformationsDeepHits(transformer)
+    model = GeoTransformBaseDirichletAlphasSaved(
+        classifier=clf, transformer=transformer,
+        results_folder_name='test_base')
+    model.set_model_results_path(model_results_folder)
+    model.load_model(model_weights_path)
+    model.evaluate(
+        x_test, y_test, outlier_loader.name, 'real', x_val, save_metrics=True,
+        save_histogram=True, get_auroc_acc_only=True, verbose=VERBOSE)
+    print(np.mean(model.predict(x_test, x_val) == y_test))
     # model = GeoTransformBase(
     #     classifier=clf, transformer=transformer,
     #     results_folder_name=None)

@@ -381,6 +381,19 @@ class GeoTransformBase(tf.keras.Model):
     def load_weights(self, path, by_name=False):
         self.classifier.load_weights(path, by_name=by_name)
 
+    def predict(self, x_train, x_eval, x_validation=None,
+        transform_batch_size=512, evaluation_batch_size=1024, verbose=False):
+        if x_validation is None:
+            x_validation = x_eval
+        dirichlet_scores_eval = self.predict_dirichlet_score(
+            x_train, x_eval, transform_batch_size, evaluation_batch_size,
+            verbose)
+        dirichlet_scores_validation = self.predict_dirichlet_score(
+            x_train, x_validation, transform_batch_size, evaluation_batch_size,
+            verbose)
+        thr = np.percentile(dirichlet_scores_validation, 100 - self.percentile)
+        predictions = (dirichlet_scores_eval > thr) * 1
+        return predictions
 
 if __name__ == '__main__':
     from modules.data_loaders.hits_outlier_loader import HiTSOutlierLoader
