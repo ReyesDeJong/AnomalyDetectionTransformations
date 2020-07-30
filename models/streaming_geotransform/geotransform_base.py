@@ -44,6 +44,9 @@ class GeoTransformBase(tf.keras.Model):
         self.percentile = 97.73
         self.matrix_scores_train = None
 
+    def set_model_results_path(self, path):
+        self.model_results_path = path
+
     def classifier_call(self, input_tensor, training=False):
         return self.classifier(input_tensor, training)
 
@@ -54,8 +57,8 @@ class GeoTransformBase(tf.keras.Model):
         else:
             results_folder_path = os.path.join(
                 PROJECT_PATH, 'results', results_folder_name,
-                '%s_%s' % (self.name, self.date))
-        utils.check_path(results_folder_path)
+                '%s_%s_%s' % (self.name, self.classifier.name, self.date))
+        # utils.check_path(results_folder_path)
         return results_folder_path
 
     def _get_original_paper_epochs(self):
@@ -165,7 +168,8 @@ class GeoTransformBase(tf.keras.Model):
             metrics, general_keys.DIRICHLET, dataset_name, class_name,
             save_histogram)
         self._print_final_metrics(
-            metrics, keys_to_keep=['roc_auc', 'acc_at_percentil'])
+            metrics, keys_to_keep=[
+                'roc_auc', 'acc_at_percentil', 'pr_auc_norm'])
         metrics = self._filter_metrics_to_return(
             metrics, get_auroc_acc_only,
             keys_to_keep=['roc_auc', 'acc_at_percentil'])
@@ -260,7 +264,7 @@ class GeoTransformBase(tf.keras.Model):
         accuracies = score_metric_dict['accuracies']
         scores = score_metric_dict['scores']
         labels = score_metric_dict['labels']
-        thresholds = -score_metric_dict['roc_thresholds']
+        thresholds = score_metric_dict['roc_thresholds']
         accuracy_at_percentile = score_metric_dict['acc_at_percentil']
         inliers_scores = -scores[labels == 1]
         outliers_scores = -scores[labels != 1]
@@ -286,7 +290,7 @@ class GeoTransformBase(tf.keras.Model):
         ax_acc.set_ylim([0.5, 1.0])
         ax_acc.yaxis.set_ticks(np.arange(0.5, 1.05, 0.05))
         ax_acc.set_ylabel('Accuracy', fontsize=12)
-        ax_acc.plot(thresholds, accuracies[::-1], lw=2,
+        ax_acc.plot(-thresholds, accuracies, lw=2,
                                label='Accuracy by\nthresholds',
                                color='black')
         ax_hist.plot([thr_percentile, thr_percentile],
@@ -294,9 +298,8 @@ class GeoTransformBase(tf.keras.Model):
                                       'k--',
                                       label='thr percentil %i on %s' % (
                                           self.percentile, dataset_name))
-        # ax_hist.text(thr_percentile,
-        #              max_ * 0.6,
-        #              'Acc: {:.2f}%'.format(accuracy_at_percentile * 100))
+        ax_hist.text(thr_percentile,
+                     10, 'Acc: {:.2f}%'.format(accuracy_at_percentile * 100))
         ax_acc.grid(ls='--')
         fig.legend(loc="upper right", bbox_to_anchor=(1, 1),
                    bbox_transform=ax_hist.transAxes)
@@ -371,6 +374,12 @@ class GeoTransformBase(tf.keras.Model):
                         'acc_at_percentil': acc_at_percentil}
         return metrics_dict
 
+    def save_weights(self, path):
+        self.classifier.save_weights(path)
+
+    def load_weights(self, path, by_name=False):
+        self.classifier.load_weights(path, by_name=by_name)
+
 
 if __name__ == '__main__':
     from modules.data_loaders.hits_outlier_loader import HiTSOutlierLoader
@@ -379,7 +388,7 @@ if __name__ == '__main__':
     from parameters import loader_keys
     from modules.geometric_transform.\
         streaming_transformers.transformer_ranking import RankingTransformer
-    EPOCHS = 1
+    EPOCHS = 1000
     ITERATIONS_TO_VALIDATE = 0
     PATIENCE = 0
     VERBOSE = True
@@ -421,3 +430,18 @@ if __name__ == '__main__':
         x_train, x_test, y_test, outlier_loader.name, 'real', x_val,
         save_metrics=True, save_histogram=True, get_auroc_acc_only=True,
         verbose=VERBOSE)
+    # model = GeoTransformBase(
+    #     classifier=clf, transformer=transformer,
+    #     results_folder_name=None)
+    # model_weights_folder = os.path.join(
+    #     PROJECT_PATH,
+    #     'results/test_base/GeoTransform_Base_DH_'
+    #     'Streaming_Trfs_20200729-230251/')
+    # model_weights_path = os.path.join(model_weights_folder, 'checkpoints',
+    #                                   'best_weights.ckpt')
+    # model.load_weights(model_weights_path)
+    # model.set_model_results_path(model_weights_folder)
+    # model.evaluate(
+    #     x_train, x_test, y_test, outlier_loader.name, 'real', x_val,
+    #     save_metrics=False, save_histogram=True, get_auroc_acc_only=True,
+    #     verbose=VERBOSE)

@@ -25,7 +25,7 @@ class StreamingTransformationsDeepHits(DeepHits):
 
     def __init__(
         self, transformer: AbstractTransformer, drop_rate=0.5,
-        final_activation='softmax', name='deep_hits_streaming_transformations',
+        final_activation='softmax', name='DH_Streaming_Trfs',
         results_folder_name=None):
         super().__init__(transformer.n_transforms, drop_rate,
                          final_activation, name, results_folder_name)

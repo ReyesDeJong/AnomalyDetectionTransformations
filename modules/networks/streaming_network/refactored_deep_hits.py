@@ -221,8 +221,7 @@ class DeepHits(tf.keras.Model):
 
     def _set_model_results_paths(self, result_folder_path):
         self.results_folder_path = os.path.join(
-            result_folder_path, self.name)
-        utils.check_path(self.results_folder_path)
+            result_folder_path)
         self.best_model_weights_path = os.path.join(
             self.results_folder_path, 'checkpoints', 'best_weights.ckpt')
 
@@ -283,7 +282,6 @@ class DeepHits(tf.keras.Model):
 
 
 if __name__ == '__main__':
-    from modules.geometric_transform import transformations_tf
     from modules.geometric_transform.transformer_for_ranking import RankingTransformer
     from modules.data_loaders.hits_outlier_loader import HiTSOutlierLoader
     from tensorflow.keras.utils import to_categorical
