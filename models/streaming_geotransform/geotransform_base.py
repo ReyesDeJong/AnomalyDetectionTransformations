@@ -28,7 +28,7 @@ from modules.networks.streaming_network.streaming_transformations_deep_hits\
 import matplotlib
 matplotlib.use('Agg')
 
-
+# this model must have streaming clf as input
 class GeoTransformBase(tf.keras.Model):
     def __init__(self, classifier: StreamingTransformationsDeepHits,
         transformer: AbstractTransformer, results_folder_name=None,
@@ -76,10 +76,10 @@ class GeoTransformBase(tf.keras.Model):
     # TODO: avoid apply_all_transforms at once
     def _predict_matrix_probabilities(self, x_data, transform_batch_size=512,
         predict_batch_size=1024):
+        start_time = time.time()
         n_transforms = self.transformer.n_transforms
         x_transformed, y_transformed = self.transformer.apply_all_transforms(
             x_data, transform_batch_size)
-        start_time = time.time()
         x_pred = self.classifier.predict(x_transformed,
                                          batch_size=predict_batch_size)
         # get actual length if all transformations applied on model input
@@ -249,6 +249,7 @@ class GeoTransformBase(tf.keras.Model):
                    bbox_transform=ax_hist.transAxes)
         results_name = self._get_score_result_name(score_name, dataset_name,
                                                    class_name)
+        utils.check_paths(self.model_results_path)
         fig.savefig(
             os.path.join(
                 self.model_results_path, '%s_hist_thr_acc.png' % results_name),
