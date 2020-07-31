@@ -153,6 +153,44 @@ class GeoTransformBaseDirichletAlphasSaved(GeoTransformBase):
         return predictions
 
 
+def get_best_tuples():
+    tuples = [(0, 0, 0, 0, 0, 0), (0, -8, -8, 1, 0, 0), (0, -8, -8, 3, 0, 0),
+              (0, 8, 0, 0, 1, 1), (0, 8, -8, 0, 1, 0), (0, -8, 0, 0, 1, 1),
+              (0, 0, 8, 0, 1, 1), (0, -8, -8, 2, 0, 0), (0, -8, 8, 0, 0, 1),
+              (0, 0, 0, 0, 1, 1), (0, 0, 0, 0, 1, 0), (0, 0, -8, 0, 1, 1),
+              (0, 8, 8, 0, 0, 1), (0, -8, -8, 0, 0, 1), (0, 0, -8, 0, 0, 0),
+              (0, 8, -8, 0, 1, 1), (0, -8, -8, 0, 0, 0)]
+    for i, tup in enumerate(tuples):
+        tuples[i] = tuple(list(tup) + [0, 0])
+    return tuples
+
+
+def get_best_9_tuples():
+    tuples = [(False, 0, 0, 0), (False, 0, -8, 0),
+              (False, 0, 8, 0), (False, -8, 0, 0),
+              (False, -8, -8, 0), (False, -8, 8, 0),
+              (False, 8, 0, 0), (False, 8, -8, 0),
+              (False, 8, 8, 0)]
+    for i, tup in enumerate(tuples):
+        tuples[i] = tuple(list(tup) + [0, 0, 0, 0])
+    return tuples
+
+
+def get_best_hits_tuples():
+    tuples = [(0, 0, 0, 0, 0, 0), (0, 0, -8, 0, 0, 0), (0, 0, 8, 0, 1, 0),
+              (0, -8, 0, 0, 0, 1), (0, -8, 0, 0, 1, 1), (0, -8, 8, 0, 0, 1),
+              (0, 0, -8, 2, 0, 0), (0, 8, 8, 0, 0, 1), (0, 8, 0, 0, 1, 0),
+              (0, 8, -8, 0, 1, 0), (0, -8, -8, 1, 0, 0), (0, -8, -8, 0, 0, 0),
+              (0, -8, -8, 0, 0, 1), (0, -8, -8, 0, 1, 0), (0, 8, 8, 0, 1, 1),
+              (0, 0, -8, 0, 1, 1), (0, -8, -8, 2, 0, 0), (0, 0, -8, 1, 0, 0),
+              (0, 0, 0, 0, 0, 1), (0, 8, -8, 0, 1, 1), (0, 8, -8, 0, 0, 1),
+              (0, -8, 8, 0, 1, 1), (0, 8, 8, 0, 1, 0), (0, -8, 0, 0, 1, 0),
+              (0, -8, -8, 0, 1, 1), (0, 0, -8, 0, 0, 1), (0, 0, -8, 0, 1, 0),
+              (0, 0, 8, 0, 1, 1)]
+    for i, tup in enumerate(tuples):
+        tuples[i] = tuple(list(tup) + [0, 0])
+    return tuples
+
 if __name__ == '__main__':
     from modules.data_loaders.hits_outlier_loader import HiTSOutlierLoader
     from modules.data_loaders.ztf_small_outlier_loader import \
@@ -160,8 +198,12 @@ if __name__ == '__main__':
     from parameters import loader_keys
     from modules.geometric_transform. \
         streaming_transformers.transformer_ranking import RankingTransformer
+    from modules.networks.streaming_network. \
+        streaming_transformations_wide_resnet import \
+        StreamingTransformationsWideResnet
 
-    EPOCHS = 1  # 000
+    EPOCHS = 1000
+    # 000
     ITERATIONS_TO_VALIDATE = 0
     PATIENCE = 0
     VERBOSE = True
@@ -186,12 +228,18 @@ if __name__ == '__main__':
         loader_keys.TRANSFORMATION_INLIER_CLASS_VALUE: 1
     }
     hits_loader = HiTSOutlierLoader(hits_params)
-    outlier_loader = ztf_loader
+    # outlier_loader = ztf_loader
+    outlier_loader = hits_loader
 
     (x_train, y_train), (x_val, y_val), (
         x_test, y_test) = outlier_loader.get_outlier_detection_datasets()
     transformer = RankingTransformer()
-    clf = StreamingTransformationsDeepHits(transformer)
+    transformer.set_transformations_to_perform(get_best_hits_tuples())
+    # transformer.set_transformations_to_perform(get_best_9_tuples())
+    # transformer.set_transformations_to_perform(get_best_tuples())
+    # clf = StreamingTransformationsDeepHits(transformer)
+    clf = StreamingTransformationsWideResnet(x_train.shape[:-1],
+                                             transformer)
     model = GeoTransformBaseDirichletAlphasSaved(
         classifier=clf, transformer=transformer,
         results_folder_name='test_base')
@@ -200,20 +248,24 @@ if __name__ == '__main__':
         iterations_to_validate=ITERATIONS_TO_VALIDATE, patience=PATIENCE,
         verbose=VERBOSE)
     model.evaluate(
-        x_test, y_test, outlier_loader.name, 'real', x_val, save_metrics=True,
+        x_test, y_test, outlier_loader.name, 'real', x_val,
+        save_metrics=True,
         save_histogram=True, get_auroc_acc_only=True, verbose=VERBOSE)
     model_results_folder = model.model_results_path
     model_weights_path = model.classifier.best_model_weights_path
     del model
     del clf
-    clf = StreamingTransformationsDeepHits(transformer)
+    # clf = StreamingTransformationsDeepHits(transformer)
+    clf = StreamingTransformationsWideResnet(x_train.shape[:-1],
+                                             transformer)
     model = GeoTransformBaseDirichletAlphasSaved(
         classifier=clf, transformer=transformer,
         results_folder_name='test_base')
     model.set_model_results_path(model_results_folder)
     model.load_model(model_weights_path)
     model.evaluate(
-        x_test, y_test, outlier_loader.name, 'real', x_val, save_metrics=True,
+        x_test, y_test, outlier_loader.name, 'real', x_val,
+        save_metrics=True,
         save_histogram=True, get_auroc_acc_only=True, verbose=VERBOSE)
     print(np.mean(model.predict(x_test, x_val) == y_test))
     # model = GeoTransformBase(
