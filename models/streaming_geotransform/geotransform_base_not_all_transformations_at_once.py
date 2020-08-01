@@ -68,7 +68,7 @@ class GeoTransformBaseNotAllTransformsAtOnce(GeoTransformBase):
     # TODO: save dirichlet params
     def predict_dirichlet_score(self, x_train, x_eval,
         transform_batch_size=512, predict_batch_size=1024, verbose=True):
-        self.print_manager.verbose_printing(verbose)
+        print_manager = PrintManager().verbose_printing(verbose)
         n_transforms = self.transformer.n_transforms
         # get actual length if all transformations applied on model input
         dirichlet_scores = np.zeros(len(x_eval))
@@ -82,7 +82,7 @@ class GeoTransformBaseNotAllTransformsAtOnce(GeoTransformBase):
                 observed_dirichlet, x_eval_p)
             assert np.isfinite(dirichlet_scores).all()
         dirichlet_scores /= n_transforms
-        self.print_manager.close()
+        print_manager.close()
         return dirichlet_scores
 
 if __name__ == '__main__':

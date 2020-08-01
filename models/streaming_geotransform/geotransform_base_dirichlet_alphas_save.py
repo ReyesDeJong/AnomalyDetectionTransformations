@@ -19,9 +19,10 @@ from models.streaming_geotransform.geotransform_base import GeoTransformBase
 import time
 from modules.networks.streaming_network.streaming_transformations_deep_hits \
     import StreamingTransformationsDeepHits
-import matplotlib
+from modules.print_manager import PrintManager
 
-matplotlib.use('Agg')
+
+
 
 
 # this model must have streaming clf as input
@@ -42,6 +43,7 @@ class GeoTransformBaseDirichletAlphasSaved(GeoTransformBase):
         predict_batch_size = 1024
         n_transforms = self.transformer.n_transforms
         dirichlet_alphas = np.zeros((n_transforms, n_transforms))
+        print('update_diri')
         print('Calculating dirichlet alphas...')
         for t_ind in tqdm(range(n_transforms), disable=not verbose):
             x_data_transformed, _ = self.transformer.apply_transforms(
@@ -54,6 +56,7 @@ class GeoTransformBaseDirichletAlphasSaved(GeoTransformBase):
 
     def fit(self, x_train, epochs, x_validation=None, batch_size=128,
         iterations_to_validate=None, patience=None, verbose=True):
+        print_manager = PrintManager().verbose_printing(verbose)
         if epochs is None:
             epochs = self._get_original_paper_epochs()
             patience = int(1e100)
@@ -62,6 +65,7 @@ class GeoTransformBaseDirichletAlphasSaved(GeoTransformBase):
             patience, verbose)
         self._update_dirichlet_alphas(x_train, verbose)
         self.save_model(self.classifier.best_model_weights_path)
+        print_manager.close()
 
     # TODO: avoid apply_all_transforms at once
     def _predict_matrix_probabilities(self, x_data, transform_batch_size=512,
@@ -70,7 +74,7 @@ class GeoTransformBaseDirichletAlphasSaved(GeoTransformBase):
 
     def predict_dirichlet_score(self, x_eval, transform_batch_size=512,
         predict_batch_size=1024, verbose=True):
-        self.print_manager.verbose_printing(verbose)
+        print_manager = PrintManager().verbose_printing(verbose)
         n_transforms = self.transformer.n_transforms
         dirichlet_scores = np.zeros(len(x_eval))
         print('Calculating dirichlet scores...')
@@ -86,7 +90,7 @@ class GeoTransformBaseDirichletAlphasSaved(GeoTransformBase):
                 mle_alpha_t, x_eval_p)
             assert np.isfinite(dirichlet_scores).all()
         dirichlet_scores /= n_transforms
-        self.print_manager.close()
+        print_manager.close()
         return dirichlet_scores
 
     def evaluate(self, x_eval, y_eval, dataset_name,
@@ -94,7 +98,7 @@ class GeoTransformBaseDirichletAlphasSaved(GeoTransformBase):
         evaluation_batch_size=1024, save_metrics=False,
         additional_score_save_path_list=None, save_histogram=False,
         get_auroc_acc_only=False, verbose=True):
-        self.print_manager.verbose_printing(verbose)
+        print_manager = PrintManager().verbose_printing(verbose)
         print('\nEvaluating model...')
         start_time = time.time()
         # validatioon is ussed to set accuracy thresholds
@@ -122,7 +126,7 @@ class GeoTransformBaseDirichletAlphasSaved(GeoTransformBase):
             metrics, save_metrics)
         print("\nEvaluation time: %s" % utils.timer(
             start_time, time.time()))
-        self.print_manager.close()
+        print_manager.close()
         return metrics
 
     def save_model(self, path):
@@ -201,6 +205,8 @@ if __name__ == '__main__':
     from modules.networks.streaming_network. \
         streaming_transformations_wide_resnet import \
         StreamingTransformationsWideResnet
+    import matplotlib
+    matplotlib.use('Agg')
 
     EPOCHS = 1000
     # 000

@@ -29,7 +29,6 @@ class DeepHits(tf.keras.Model):
         super().__init__(name=name)
         self._init_layers(n_classes, drop_rate, final_activation)
         self._init_builds()
-        self.print_manager = PrintManager()
         self.results_folder_path, self.best_model_weights_path = \
             self._create_model_paths(results_folder_name)
 
@@ -135,7 +134,7 @@ class DeepHits(tf.keras.Model):
     # TODO: implement some kind of train_loggin
     def fit(self, x, y, epochs, validation_data=None, batch_size=128,
         iterations_to_validate=None, patience=None, verbose=True):
-        self.print_manager.verbose_printing(verbose)
+        print_manager = PrintManager().verbose_printing(verbose)
         print('\nTraining Initiated')
         self.training_star_time = time.time()
         self.best_model_so_far = {
@@ -181,11 +180,12 @@ class DeepHits(tf.keras.Model):
                     self.check_best_model_save(it_i)
                     self._reset_metrics()
                     if self.check_early_stopping(patience):
+                        print_manager.close()
                         return
         self.load_weights(
             self.best_model_weights_path)
         self._print_training_end()
-        self.print_manager.close()
+        print_manager.close()
 
     def _print_training_end(self):
         print("\nBest model @ it %d.\nValidation loss %.6f" % (
@@ -201,7 +201,6 @@ class DeepHits(tf.keras.Model):
                 self.best_model_weights_path)
             self._print_training_end()
             self._reset_metrics()
-            self.print_manager.close()
             return True
         return False
 
@@ -251,7 +250,7 @@ class DeepHits(tf.keras.Model):
         return np.concatenate(predictions, axis=0)
 
     def evaluate(self, x, y, batch_size=1024, verbose=True):
-        self.print_manager.verbose_printing(verbose)
+        print_manager = PrintManager().verbose_printing(verbose)
         self.verbose = verbose
         self.eval_loss.reset_states()
         self.eval_accuracy.reset_states()
@@ -270,7 +269,7 @@ class DeepHits(tf.keras.Model):
                         general_keys.ACCURACY: self.eval_accuracy.result()}
         self.eval_loss.reset_states()
         self.eval_accuracy.reset_states()
-        self.print_manager.close()
+        print_manager.close()
         return results_dict
 
     def load_weights(self, filepath, by_name=False):

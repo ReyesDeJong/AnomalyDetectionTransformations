@@ -25,8 +25,6 @@ import time
 from modules.print_manager import PrintManager
 from modules.networks.streaming_network.streaming_transformations_deep_hits\
     import StreamingTransformationsDeepHits
-import matplotlib
-matplotlib.use('Agg')
 
 # this model must have streaming clf as input
 class GeoTransformBase(tf.keras.Model):
@@ -39,7 +37,6 @@ class GeoTransformBase(tf.keras.Model):
         self.model_results_path = self._create_model_paths(
             results_folder_name)
         self.classifier._set_model_results_paths(self.model_results_path)
-        self.print_manager = PrintManager()
         self.transformer = transformer
         self.percentile = 97.73
         self.matrix_scores_train = None
@@ -95,7 +92,7 @@ class GeoTransformBase(tf.keras.Model):
     # TODO: instead of saving matrix_train_score save dirichlet params
     def predict_dirichlet_score(self, x_train, x_eval,
         transform_batch_size=512, predict_batch_size=1024, verbose=True):
-        self.print_manager.verbose_printing(verbose)
+        print_manager = PrintManager().verbose_printing(verbose)
         n_transforms = self.transformer.n_transforms
         if self.matrix_scores_train is None:
             print("Calculating matrix probabilities for training set...")
@@ -121,7 +118,7 @@ class GeoTransformBase(tf.keras.Model):
                 observed_dirichlet, x_eval_p)
             assert np.isfinite(dirichlet_scores).all()
         dirichlet_scores /= n_transforms
-        self.print_manager.close()
+        print_manager.close()
         return dirichlet_scores
 
     def get_metrics_save_path(
@@ -150,7 +147,7 @@ class GeoTransformBase(tf.keras.Model):
         evaluation_batch_size=1024, save_metrics=False,
         additional_score_save_path_list=None, save_histogram=False,
         get_auroc_acc_only=False, verbose=True):
-        self.print_manager.verbose_printing(verbose)
+        print_manager = PrintManager().verbose_printing(verbose)
         print('\nEvaluating model...')
         start_time = time.time()
         # validatioon is ussed to set accuracy thresholds
@@ -180,7 +177,7 @@ class GeoTransformBase(tf.keras.Model):
             metrics, save_metrics)
         print("\nEvaluation time: %s" % utils.timer(
                 start_time, time.time()))
-        self.print_manager.close()
+        print_manager.close()
         return metrics
 
     def _print_final_metrics(
@@ -402,6 +399,9 @@ if __name__ == '__main__':
     from parameters import loader_keys
     from modules.geometric_transform.\
         streaming_transformers.transformer_ranking import RankingTransformer
+    import matplotlib
+    matplotlib.use('Agg')
+
     EPOCHS = 1000
     ITERATIONS_TO_VALIDATE = 0
     PATIENCE = 0

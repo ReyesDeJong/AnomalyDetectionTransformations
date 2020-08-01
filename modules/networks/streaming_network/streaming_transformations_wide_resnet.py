@@ -34,7 +34,6 @@ class StreamingTransformationsWideResnet(StreamingTransformationsDeepHits):
         final_activation='softmax', name='WRN_Streaming_Trfs',
         results_folder_name=None):
         tf.keras.Model.__init__(self, name=name)
-        self.print_manager = PrintManager()
         self.transformer = transformer
         self.input_channels = input_channels
         self.weight_decay = weight_decay
