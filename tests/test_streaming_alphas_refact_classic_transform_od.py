@@ -23,8 +23,8 @@ from tqdm import tqdm
 from typing import Callable, List
 from modules.geometric_transform.streaming_transformers. \
     abstract_streaming_transformer import AbstractTransformer
-
-
+from models.streaming_geotransform.geotransform_not_all_trf_at_once_wrn import \
+    GeoTransformNotAllAtOnceWRN
 # from modules.networks.streaming_network. \
 #     streaming_transformations_wide_resnet import \
 #     StreamingTransformationsWideResnet
@@ -45,7 +45,7 @@ def print_mean_results(result_dicts: List[dict]):
     print(message)
 
 
-def fit_and_evaluate_model_n_times(
+def fit_and_evaluate_model_n_times_alphas(
     ModelClass: Callable[[], GeoTransformAlphasWRN],
     transformer: AbstractTransformer, data_tuples, parameters, n_times):
     epochs, iterations_to_validate, patience, verbose, results_folder_name, \
@@ -73,9 +73,36 @@ def fit_and_evaluate_model_n_times(
     return result_dicts
 
 
+def fit_and_evaluate_model_n_times_not_all_a_once(
+    ModelClass: Callable[[], GeoTransformNotAllAtOnceWRN],
+    transformer: AbstractTransformer, data_tuples, parameters, n_times):
+    epochs, iterations_to_validate, patience, verbose, results_folder_name, \
+    data_loader_name = parameters
+    (x_train, y_train), (x_val, y_val), (
+        x_test, y_test) = data_tuples
+    result_dicts = []
+    for _ in tqdm(range(n_times)):
+        model = ModelClass(
+            n_channels=x_train.shape[:-1], transformer=transformer,
+            results_folder_name=results_folder_name)
+        model.fit(
+            x_train, epochs=epochs, x_validation=x_val,
+            iterations_to_validate=iterations_to_validate, patience=patience,
+            verbose=verbose)
+        results_i = model.evaluate(
+            x_train, x_test, y_test, data_loader_name, 'real', x_val,
+            save_metrics=True, save_histogram=False, get_auroc_acc_only=True,
+            verbose=verbose)
+        result_dicts.append(results_i)
+    print('Results %i trains, Model: %s, Transformer: %s, Data: %s' % (
+        n_times, model.name, transformer.name, data_loader_name
+    ))
+    print_mean_results(result_dicts)
+    return result_dicts
+
+
 if __name__ == '__main__':
     EPOCHS = 1
-    # 000
     ITERATIONS_TO_VALIDATE = 0
     PATIENCE = 0
     VERBOSE = False
@@ -114,6 +141,9 @@ if __name__ == '__main__':
                   'test_n_time_base', outlier_loader.name)
     data_tuples = ((x_train, y_train), (x_val, y_val), (
         x_test, y_test))
-    fit_and_evaluate_model_n_times(
+    fit_and_evaluate_model_n_times_alphas(
         GeoTransformAlphasWRN, transformer, data_tuples, parameters,
+        TRAIN_N_TIME)
+    fit_and_evaluate_model_n_times_not_all_a_once(
+        GeoTransformNotAllAtOnceWRN, transformer, data_tuples, parameters,
         TRAIN_N_TIME)

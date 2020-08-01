@@ -43,7 +43,6 @@ class GeoTransformBaseDirichletAlphasSaved(GeoTransformBase):
         predict_batch_size = 1024
         n_transforms = self.transformer.n_transforms
         dirichlet_alphas = np.zeros((n_transforms, n_transforms))
-        print('update_diri')
         print('Calculating dirichlet alphas...')
         for t_ind in tqdm(range(n_transforms), disable=not verbose):
             x_data_transformed, _ = self.transformer.apply_transforms(
