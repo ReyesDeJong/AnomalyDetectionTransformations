@@ -171,7 +171,9 @@ if __name__ == '__main__':
     #     transformer.transformation_tuples[:3])
     # trf_99.set_transformations_to_perform((
     #     trf_99.transformation_tuples[:3]))
-
+    test_folder_path = os.path.join(
+        PROJECT_PATH, 'tests', 'aux_results')
+    utils.check_path(test_folder_path)
     for outlier_loader in data_loaders:
         transformer.set_transformations_to_perform(
             get_best_transformation_tuples(outlier_loader))
@@ -179,8 +181,7 @@ if __name__ == '__main__':
             get_best_transformation_tuples(outlier_loader, add_zeros=False))
         print_manager = PrintManager()
         test_log_path = os.path.join(
-            PROJECT_PATH, 'tests', 'aux_results',
-            'test_models_%s.log' % outlier_loader.name)
+            test_folder_path, 'test_models_%s.log' % outlier_loader.name)
         log_file = open(test_log_path, 'w')
         print_manager.file_printing(log_file)
         print('N_transforms: %i' % (transformer.n_transforms))
