@@ -20,6 +20,9 @@ import time
 from modules.networks.streaming_network.streaming_transformations_deep_hits \
     import StreamingTransformationsDeepHits
 from modules.print_manager import PrintManager
+from sklearn.metrics import roc_curve, precision_recall_curve, auc
+from modules.metrics import accuracies_by_threshold, accuracy_at_thr
+import matplotlib.pyplot as plt
 
 
 # this model must have streaming clf as input
@@ -29,6 +32,7 @@ class GeoTransformBaseDirichletAlphasSaved(GeoTransformBase):
         name='GeoTransform_Base_Dirichlet_Alphas_Saved'):
         super().__init__(classifier, transformer, results_folder_name, name)
         self.dirichlet_alphas = self._initialize_dirichlet_alphas()
+        self.prediction_threshold = 27380.5240241269 # random
 
     def _initialize_dirichlet_alphas(self):
         n_transforms = self.transformer.n_transforms
@@ -50,6 +54,16 @@ class GeoTransformBaseDirichletAlphasSaved(GeoTransformBase):
                 predictions_data)
         self.dirichlet_alphas = dirichlet_alphas
 
+    def _update_prediction_threshold(self, x_validation, verbose):
+        transform_batch_size = 512
+        evaluation_batch_size = 1024
+        print('Calculating prediction threshold...')
+        dirichlet_scores_validation = self.predict_dirichlet_score(
+            x_validation, transform_batch_size, evaluation_batch_size, verbose)
+        self.prediction_threshold = np.percentile(
+            dirichlet_scores_validation, 100 - self.percentile)
+
+
     def fit(self, x_train, epochs, x_validation=None, batch_size=128,
         iterations_to_validate=None, patience=None, verbose=True):
         print_manager = PrintManager().verbose_printing(verbose)
@@ -60,6 +74,9 @@ class GeoTransformBaseDirichletAlphasSaved(GeoTransformBase):
             x_train, epochs, x_validation, batch_size, iterations_to_validate,
             patience, verbose)
         self._update_dirichlet_alphas(x_train, verbose)
+        if x_validation is None:
+            x_validation = x_train
+        self._update_prediction_threshold(x_validation, verbose)
         self.save_model(self.classifier.best_model_weights_path)
         print_manager.close()
 
@@ -89,23 +106,110 @@ class GeoTransformBaseDirichletAlphasSaved(GeoTransformBase):
         print_manager.close()
         return dirichlet_scores
 
+    def _get_metrics_dict(self, scores, labels):
+        divided_scores, divided_labels = self.\
+            _assign_inlier_outlier_sections_to_scores_and_labels(scores, labels)
+        fpr, tpr, roc_thresholds = roc_curve(divided_labels, divided_scores)
+        roc_auc = auc(fpr, tpr)
+        accuracies = accuracies_by_threshold(labels, scores, roc_thresholds)
+        # 100-percentile is necesary because normal data is at the right of
+        # anormal
+        thr = self.prediction_threshold
+        acc_at_percentil = accuracy_at_thr(labels, scores, thr)
+        # pr curve where "normal" is the positive class
+        precision_norm, recall_norm, pr_thresholds_norm = \
+            precision_recall_curve(divided_labels, divided_scores)
+        pr_auc_norm = auc(recall_norm, precision_norm)
+        # pr curve where "anomaly" is the positive class
+        precision_anom, recall_anom, pr_thresholds_anom = \
+            precision_recall_curve(divided_labels, -divided_scores, pos_label=0)
+        pr_auc_anom = auc(recall_anom, precision_anom)
+        metrics_dict = {'scores': scores, 'labels': labels,
+                        'clf': (scores > thr) * 1,
+                        'fpr': fpr,
+                        'tpr': tpr, 'roc_thresholds': roc_thresholds,
+                        'roc_auc': roc_auc,
+                        'precision_norm': precision_norm,
+                        'recall_norm': recall_norm,
+                        'pr_thresholds_norm': pr_thresholds_norm,
+                        'pr_auc_norm': pr_auc_norm,
+                        'precision_anom': precision_anom,
+                        'recall_anom': recall_anom,
+                        'pr_thresholds_anom': pr_thresholds_anom,
+                        'pr_auc_anom': pr_auc_anom,
+                        'accuracies': accuracies,
+                        'max_accuracy': np.max(accuracies),
+                        'acc_at_percentil': acc_at_percentil}
+        return metrics_dict
+
+    def _save_histogram(self, score_metric_dict, score_name, dataset_name,
+        class_name, save_histogram=False):
+        if not save_histogram:
+            return
+        auc_roc = score_metric_dict['roc_auc']
+        accuracies = score_metric_dict['accuracies']
+        scores = score_metric_dict['scores']
+        labels = score_metric_dict['labels']
+        thresholds = score_metric_dict['roc_thresholds']
+        accuracy_at_percentile = score_metric_dict['acc_at_percentil']
+        inliers_scores = scores[labels == 1]
+        outliers_scores = scores[labels != 1]
+        min_score = np.min(scores)
+        max_score = np.max(scores)
+        thr_percentile = self.prediction_threshold
+        fig = plt.figure(figsize=(8, 6))
+        ax_hist = fig.add_subplot(111)
+        ax_hist.set_title(
+            'AUC_ROC: %.2f%%, BEST ACC: %.2f%%' % (
+                auc_roc * 100, np.max(accuracies) * 100))
+        ax_acc = ax_hist.twinx()
+        ax_hist.hist(inliers_scores, 300, alpha=0.5,
+                             label='inlier', range=[min_score, max_score])
+        ax_hist.hist(outliers_scores, 300, alpha=0.5,
+                             label='outlier', range=[min_score, max_score])
+        ax_hist.set_yscale('log')
+        _, max_ = ax_hist.set_ylim()
+        ax_hist.set_ylabel('Counts', fontsize=12)
+        ax_hist.set_xlabel(score_name, fontsize=12)
+        # acc plot
+        ax_acc.set_ylim([0.5, 1.0])
+        ax_acc.yaxis.set_ticks(np.arange(0.5, 1.05, 0.05))
+        ax_acc.set_ylabel('Accuracy', fontsize=12)
+        ax_acc.plot(thresholds, accuracies, lw=2,
+                               label='Accuracy by\nthresholds',
+                               color='black')
+        ax_hist.plot([thr_percentile, thr_percentile],
+                                      [0, max_],
+                                      'k--',
+                                      label='thr percentil %i on %s' % (
+                                          self.percentile, dataset_name))
+        ax_hist.text(thr_percentile,
+                     max_ * 0.6,
+                     'Acc: {:.2f}%'.format(accuracy_at_percentile * 100))
+        ax_acc.grid(ls='--')
+        fig.legend(loc="upper right", bbox_to_anchor=(1, 1),
+                   bbox_transform=ax_hist.transAxes)
+        results_name = self._get_score_result_name(score_name, dataset_name,
+                                                   class_name)
+        utils.check_paths(self.model_results_path)
+        fig.savefig(
+            os.path.join(
+                self.model_results_path, '%s_hist_thr_acc.png' % results_name),
+            bbox_inches='tight')
+        plt.close()
+
     def evaluate(self, x_eval, y_eval, dataset_name,
-        class_name='inlier', x_validation=None, transform_batch_size=512,
+        class_name='inlier', transform_batch_size=512,
         evaluation_batch_size=1024, save_metrics=False,
         additional_score_save_path_list=None, save_histogram=False,
         get_auroc_acc_only=False, verbose=True):
         print_manager = PrintManager().verbose_printing(verbose)
         print('\nEvaluating model...')
         start_time = time.time()
-        # validatioon is ussed to set accuracy thresholds
-        if x_validation is None:
-            x_validation = x_eval
         dirichlet_scores_eval = self.predict_dirichlet_score(
             x_eval, transform_batch_size, evaluation_batch_size, verbose)
-        dirichlet_scores_validation = self.predict_dirichlet_score(
-            x_validation, transform_batch_size, evaluation_batch_size, verbose)
         metrics = self._get_metrics_dict(
-            dirichlet_scores_eval, dirichlet_scores_validation, y_eval)
+            dirichlet_scores_eval, y_eval)
         self._save_histogram(
             metrics, general_keys.DIRICHLET, dataset_name, class_name,
             save_histogram)
@@ -131,6 +235,9 @@ class GeoTransformBaseDirichletAlphasSaved(GeoTransformBase):
         dirichlet_mle_alphas_path = os.path.join(
             folder_path, 'dirichlet_mle_alphas.npy')
         np.save(dirichlet_mle_alphas_path, self.dirichlet_alphas)
+        prediction_threshold_path = os.path.join(
+            folder_path, 'prediction_threshold.npy')
+        np.save(prediction_threshold_path, self.prediction_threshold)
         self.classifier.save_weights(path)
 
     def load_model(self, path_checkpoints, by_name=False):
@@ -138,18 +245,15 @@ class GeoTransformBaseDirichletAlphasSaved(GeoTransformBase):
         folder_path = os.path.dirname(path_checkpoints)
         self.dirichlet_alphas = np.load(
             os.path.join(folder_path, 'dirichlet_mle_alphas.npy'))
+        self.prediction_threshold = np.load(
+            os.path.join(folder_path, 'prediction_threshold.npy'))
         self.classifier.load_weights(path_checkpoints, by_name=by_name)
 
     def predict(self, x_eval, x_validation=None,
         transform_batch_size=512, evaluation_batch_size=1024, verbose=False):
-        if x_validation is None:
-            x_validation = x_eval
         dirichlet_scores_eval = self.predict_dirichlet_score(
             x_eval, transform_batch_size, evaluation_batch_size, verbose)
-        dirichlet_scores_validation = self.predict_dirichlet_score(
-            x_validation, transform_batch_size, evaluation_batch_size, verbose)
-        thr = np.percentile(dirichlet_scores_validation, 100 - self.percentile)
-        predictions = (dirichlet_scores_eval > thr) * 1
+        predictions = (dirichlet_scores_eval > self.prediction_threshold) * 1
         return predictions
 
 
@@ -205,9 +309,9 @@ if __name__ == '__main__':
 
     matplotlib.use('Agg')
 
-    EPOCHS = 1000
+    EPOCHS = 1#1000
     # 000
-    ITERATIONS_TO_VALIDATE = 0
+    ITERATIONS_TO_VALIDATE = 2#0
     PATIENCE = 0
     VERBOSE = True
 
@@ -246,13 +350,13 @@ if __name__ == '__main__':
     model = GeoTransformBaseDirichletAlphasSaved(
         classifier=clf, transformer=transformer,
         results_folder_name='test_base')
+    # model.predict(x_test, x_val)
     model.fit(
         x_train, epochs=EPOCHS, x_validation=x_val,
         iterations_to_validate=ITERATIONS_TO_VALIDATE, patience=PATIENCE,
         verbose=VERBOSE)
     model.evaluate(
-        x_test, y_test, outlier_loader.name, 'real', x_val,
-        save_metrics=True,
+        x_test, y_test, outlier_loader.name, 'real', save_metrics=True,
         save_histogram=True, get_auroc_acc_only=True, verbose=VERBOSE)
     model_results_folder = model.model_results_path
     model_weights_path = model.classifier.best_model_weights_path
@@ -267,10 +371,9 @@ if __name__ == '__main__':
     model.set_model_results_path(model_results_folder)
     model.load_model(model_weights_path)
     model.evaluate(
-        x_test, y_test, outlier_loader.name, 'real', x_val,
-        save_metrics=True,
+        x_test, y_test, outlier_loader.name, 'real', save_metrics=True,
         save_histogram=True, get_auroc_acc_only=True, verbose=VERBOSE)
-    print(np.mean(model.predict(x_test, x_val) == y_test))
+    print(np.mean(model.predict(x_test) == y_test))
     # model = GeoTransformBase(
     #     classifier=clf, transformer=transformer,
     #     results_folder_name=None)
