@@ -16,7 +16,7 @@ from modules.data_loaders.hits_outlier_loader import HiTSOutlierLoader
 from modules.data_loaders.ztf_small_outlier_loader import \
     ZTFSmallOutlierLoader
 import numpy as np
-from parameters import loader_keys, general_keys
+from parameters import loader_keys, general_keys, param_keys
 from modules.geometric_transform. \
     streaming_transformers.transformer_ranking import RankingTransformer
 from tqdm import tqdm
@@ -25,9 +25,14 @@ from modules.geometric_transform.streaming_transformers. \
     abstract_streaming_transformer import AbstractTransformer
 from models.streaming_geotransform.geotransform_not_all_trf_at_once_wrn import \
     GeoTransformNotAllAtOnceWRN
+from models.transformer_od import TransformODModel
+from modules.trainer import ODTrainer
 # from modules.networks.streaming_network. \
 #     streaming_transformations_wide_resnet import \
 #     StreamingTransformationsWideResnet
+from models.streaming_geotransform.geotransform_base_dirichlet_alphas_save \
+    import get_best_hits_tuples, get_best_ztf_tuples
+from modules.geometric_transform import transformations_tf
 
 def print_mean_results(result_dicts: List[dict]):
     dict_keys = result_dicts[0].keys()
@@ -100,13 +105,36 @@ def fit_and_evaluate_model_n_times_not_all_a_once(
     print_mean_results(result_dicts)
     return result_dicts
 
+def evaluate_pipeline_transformer(
+    transformer: AbstractTransformer,
+    data_loader:HiTSOutlierLoader, n_times, epochs, verbose):
+    (x_train, y_train), (x_val, y_val), (
+        x_test, y_test) = data_loader.get_outlier_detection_datasets()
+    model_trainer = ODTrainer(
+        {param_keys.EPOCHS: epochs})
+    model_trainer.train_and_evaluate_model_n_times(
+        TransformODModel, transformer, x_train, x_val, x_test, y_test,
+        n_times, verbose=verbose)
+    result_mean, result_var = model_trainer.get_metric_mean_and_std()
+    print('\n[_RESULTS] %s_%s %i %.5f+/-%.5f' % (
+        'TransformODModel', data_loader.name, transformer.n_transforms,
+        result_mean, result_var))
+
+def get_best_transformation_tuples(data_loader: HiTSOutlierLoader, add_zeros=True):
+    if 'hits' in data_loader.name:
+        return get_best_hits_tuples(add_zeros)
+    elif 'ztf' in data_loader.name:
+        return get_best_ztf_tuples(add_zeros)
+    else:
+        return None
+
 
 if __name__ == '__main__':
-    EPOCHS = 1
+    EPOCHS = 1000
     ITERATIONS_TO_VALIDATE = 0
     PATIENCE = 0
     VERBOSE = False
-    TRAIN_N_TIME = 3
+    TRAIN_N_TIME = 10
 
     utils.set_soft_gpu_memory_growth()
 
@@ -134,13 +162,26 @@ if __name__ == '__main__':
     (x_train, y_train), (x_val, y_val), (
         x_test, y_test) = outlier_loader.get_outlier_detection_datasets()
     transformer = RankingTransformer()
-    transformer.set_transformations_to_perform(
-        transformer.transformation_tuples[:3])
+    trf_99 = transformations_tf.PlusKernelTransformer()
 
+    # transformer.set_transformations_to_perform(
+    #     transformer.transformation_tuples[:3])
+    # trf_99.set_transformations_to_perform((
+    #     trf_99.transformation_tuples[:3]))
+
+    transformer.set_transformations_to_perform(
+        get_best_transformation_tuples(outlier_loader))
+    trf_99.set_transformations_to_perform(
+        get_best_transformation_tuples(outlier_loader, add_zeros=False))
+
+    print('N_transforms: %i' % (transformer.n_transforms))
+    print('N_transforms trf_99: %i' % (trf_99.n_transforms))
     parameters = (EPOCHS, ITERATIONS_TO_VALIDATE, PATIENCE, VERBOSE,
                   'test_n_time_base', outlier_loader.name)
     data_tuples = ((x_train, y_train), (x_val, y_val), (
         x_test, y_test))
+    evaluate_pipeline_transformer(trf_99, outlier_loader,
+                                  TRAIN_N_TIME, EPOCHS, VERBOSE)
     fit_and_evaluate_model_n_times_alphas(
         GeoTransformAlphasWRN, transformer, data_tuples, parameters,
         TRAIN_N_TIME)

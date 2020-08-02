@@ -15,7 +15,7 @@ from modules.data_loaders.hits_outlier_loader import HiTSOutlierLoader
 from models.transformer_od import TransformODModel
 from modules.geometric_transform.transformations_tf import AbstractTransformer
 import numpy as np
-
+from tqdm import tqdm
 
 class ODTrainer(object):
 
@@ -39,8 +39,8 @@ class ODTrainer(object):
         data_loader:HiTSOutlierLoader=None
     ):
         self.metric_results = []
-        for i in range(train_times):
-            print('Training Model %i/%i' % (i+1, train_times))
+        for i in tqdm(range(train_times)):
+            # print('Training Model %i/%i' % (i+1, train_times))
             model = ModelClass(
                 None, transformer, input_shape=x_train.shape[1:])
             model.fit(x_train, x_val, epochs=self.train_epochs, patience=0,

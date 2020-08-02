@@ -22,9 +22,6 @@ from modules.networks.streaming_network.streaming_transformations_deep_hits \
 from modules.print_manager import PrintManager
 
 
-
-
-
 # this model must have streaming clf as input
 class GeoTransformBaseDirichletAlphasSaved(GeoTransformBase):
     def __init__(self, classifier: StreamingTransformationsDeepHits,
@@ -156,15 +153,16 @@ class GeoTransformBaseDirichletAlphasSaved(GeoTransformBase):
         return predictions
 
 
-def get_best_tuples():
+def get_best_ztf_tuples(add_zeros=True):
     tuples = [(0, 0, 0, 0, 0, 0), (0, -8, -8, 1, 0, 0), (0, -8, -8, 3, 0, 0),
               (0, 8, 0, 0, 1, 1), (0, 8, -8, 0, 1, 0), (0, -8, 0, 0, 1, 1),
               (0, 0, 8, 0, 1, 1), (0, -8, -8, 2, 0, 0), (0, -8, 8, 0, 0, 1),
               (0, 0, 0, 0, 1, 1), (0, 0, 0, 0, 1, 0), (0, 0, -8, 0, 1, 1),
               (0, 8, 8, 0, 0, 1), (0, -8, -8, 0, 0, 1), (0, 0, -8, 0, 0, 0),
               (0, 8, -8, 0, 1, 1), (0, -8, -8, 0, 0, 0)]
-    for i, tup in enumerate(tuples):
-        tuples[i] = tuple(list(tup) + [0, 0])
+    if add_zeros:
+        for i, tup in enumerate(tuples):
+            tuples[i] = tuple(list(tup) + [0, 0])
     return tuples
 
 
@@ -179,20 +177,19 @@ def get_best_9_tuples():
     return tuples
 
 
-def get_best_hits_tuples():
-    tuples = [(0, 0, 0, 0, 0, 0), (0, 0, -8, 0, 0, 0), (0, 0, 8, 0, 1, 0),
-              (0, -8, 0, 0, 0, 1), (0, -8, 0, 0, 1, 1), (0, -8, 8, 0, 0, 1),
-              (0, 0, -8, 2, 0, 0), (0, 8, 8, 0, 0, 1), (0, 8, 0, 0, 1, 0),
-              (0, 8, -8, 0, 1, 0), (0, -8, -8, 1, 0, 0), (0, -8, -8, 0, 0, 0),
-              (0, -8, -8, 0, 0, 1), (0, -8, -8, 0, 1, 0), (0, 8, 8, 0, 1, 1),
-              (0, 0, -8, 0, 1, 1), (0, -8, -8, 2, 0, 0), (0, 0, -8, 1, 0, 0),
-              (0, 0, 0, 0, 0, 1), (0, 8, -8, 0, 1, 1), (0, 8, -8, 0, 0, 1),
-              (0, -8, 8, 0, 1, 1), (0, 8, 8, 0, 1, 0), (0, -8, 0, 0, 1, 0),
-              (0, -8, -8, 0, 1, 1), (0, 0, -8, 0, 0, 1), (0, 0, -8, 0, 1, 0),
-              (0, 0, 8, 0, 1, 1)]
-    for i, tup in enumerate(tuples):
-        tuples[i] = tuple(list(tup) + [0, 0])
+def get_best_hits_tuples(add_zeros=True):
+    tuples = [(0, 0, 0, 0, 0, 0), (0, 0, -8, 0, 0, 0), (0, 0, -8, 0, 1, 0),
+              (0, 8, 0, 0, 0, 1), (0, -8, 8, 0, 0, 1), (0, -8, -8, 0, 0, 1),
+              (0, 8, -8, 0, 1, 1), (0, -8, 8, 0, 1, 0), (0, -8, -8, 3, 0, 0),
+              (0, -8, -8, 0, 1, 1), (0, -8, -8, 1, 0, 0), (0, 8, 8, 0, 0, 1),
+              (0, -8, 0, 0, 0, 1), (0, 8, 8, 0, 1, 1), (0, 8, 0, 0, 1, 1),
+              (0, 8, -8, 0, 0, 1), (0, 8, -8, 0, 1, 0), (0, -8, -8, 2, 0, 0),
+              (0, -8, 8, 0, 1, 1), (0, -8, -8, 0, 1, 0), (0, -8, 0, 0, 1, 1)]
+    if add_zeros:
+        for i, tup in enumerate(tuples):
+            tuples[i] = tuple(list(tup) + [0, 0])
     return tuples
+
 
 if __name__ == '__main__':
     from modules.data_loaders.hits_outlier_loader import HiTSOutlierLoader
@@ -205,6 +202,7 @@ if __name__ == '__main__':
         streaming_transformations_wide_resnet import \
         StreamingTransformationsWideResnet
     import matplotlib
+
     matplotlib.use('Agg')
 
     EPOCHS = 1000
