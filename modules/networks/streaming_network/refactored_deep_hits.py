@@ -29,7 +29,6 @@ class DeepHits(tf.keras.Model):
         super().__init__(name=name)
         self._init_layers(n_classes, drop_rate, final_activation)
         self._init_builds()
-        self.print_manager = PrintManager()
         self.results_folder_path, self.best_model_weights_path = \
             self._create_model_paths(results_folder_name)
 
@@ -135,7 +134,7 @@ class DeepHits(tf.keras.Model):
     # TODO: implement some kind of train_loggin
     def fit(self, x, y, epochs, validation_data=None, batch_size=128,
         iterations_to_validate=None, patience=None, verbose=True):
-        self.print_manager.verbose_printing(verbose)
+        print_manager = PrintManager().verbose_printing(verbose)
         print('\nTraining Initiated')
         self.training_star_time = time.time()
         self.best_model_so_far = {
@@ -181,14 +180,15 @@ class DeepHits(tf.keras.Model):
                     self.check_best_model_save(it_i)
                     self._reset_metrics()
                     if self.check_early_stopping(patience):
+                        print_manager.close()
                         return
         self.load_weights(
             self.best_model_weights_path)
         self._print_training_end()
-        self.print_manager.close()
+        print_manager.close()
 
     def _print_training_end(self):
-        print("\nBest model @ it %d.\nValidation lodd %.6f" % (
+        print("\nBest model @ it %d.\nValidation loss %.6f" % (
             self.best_model_so_far[general_keys.ITERATION],
             self.best_model_so_far[general_keys.LOSS]))
         print('\nTotal training time: {}\n'.format(
@@ -201,7 +201,6 @@ class DeepHits(tf.keras.Model):
                 self.best_model_weights_path)
             self._print_training_end()
             self._reset_metrics()
-            self.print_manager.close()
             return True
         return False
 
@@ -219,10 +218,9 @@ class DeepHits(tf.keras.Model):
             results_folder_path, 'checkpoints', 'best_weights.ckpt')
         return results_folder_path, best_model_weights_path
 
-    def _set_model_paths(self, result_folder_path):
+    def _set_model_results_paths(self, result_folder_path):
         self.results_folder_path = os.path.join(
-            result_folder_path, self.name)
-        utils.check_path(self.results_folder_path)
+            result_folder_path)
         self.best_model_weights_path = os.path.join(
             self.results_folder_path, 'checkpoints', 'best_weights.ckpt')
 
@@ -252,7 +250,7 @@ class DeepHits(tf.keras.Model):
         return np.concatenate(predictions, axis=0)
 
     def evaluate(self, x, y, batch_size=1024, verbose=True):
-        self.print_manager.verbose_printing(verbose)
+        print_manager = PrintManager().verbose_printing(verbose)
         self.verbose = verbose
         self.eval_loss.reset_states()
         self.eval_accuracy.reset_states()
@@ -271,7 +269,7 @@ class DeepHits(tf.keras.Model):
                         general_keys.ACCURACY: self.eval_accuracy.result()}
         self.eval_loss.reset_states()
         self.eval_accuracy.reset_states()
-        self.print_manager.close()
+        print_manager.close()
         return results_dict
 
     def load_weights(self, filepath, by_name=False):
@@ -283,7 +281,6 @@ class DeepHits(tf.keras.Model):
 
 
 if __name__ == '__main__':
-    from modules.geometric_transform import transformations_tf
     from modules.geometric_transform.transformer_for_ranking import RankingTransformer
     from modules.data_loaders.hits_outlier_loader import HiTSOutlierLoader
     from tensorflow.keras.utils import to_categorical

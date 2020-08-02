@@ -78,9 +78,9 @@ class Trainer(object):
                          name=model_name, results_folder_name=self.models_path)
       model.fit(x_train, x_val, epochs=params['epochs'],
                 patience=params['patience'])
-      metrics_dict = model.evaluate_od(
+      metrics_dict = model.evaluate(
           x_train, x_test, y_test, self.data_loader.name, general_keys.REAL,
-          x_val, save_hist_folder_path=model.specific_model_folder)
+          x_val, save_histogram=model.specific_model_folder)
       print('\nroc_auc')
       for key in metrics_dict.keys():
         print(key, metrics_dict[key]['roc_auc'])

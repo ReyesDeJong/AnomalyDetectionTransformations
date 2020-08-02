@@ -18,14 +18,14 @@ from parameters import loader_keys, general_keys
 from modules.networks.streaming_network.refactored_deep_hits import DeepHits
 from modules.geometric_transform.streaming_transformers. \
     abstract_streaming_transformer import AbstractTransformer
-
+from modules.print_manager import PrintManager
 
 # TODO: manage weights saved in a better manner: save_path, non saving when not given, etc
 class StreamingTransformationsDeepHits(DeepHits):
 
     def __init__(
         self, transformer: AbstractTransformer, drop_rate=0.5,
-        final_activation='softmax', name='deep_hits_streaming_transformations',
+        final_activation='softmax', name='DH_Streaming_Trfs',
         results_folder_name=None):
         super().__init__(transformer.n_transforms, drop_rate,
                          final_activation, name, results_folder_name)
@@ -99,9 +99,8 @@ class StreamingTransformationsDeepHits(DeepHits):
         self.evaluation_set_name = 'validation'
 
     def _set_validation_at_epochs_end_if_none(self, iterations_to_validate):
-        # check if validate at end of epoch
-        if iterations_to_validate is None:
-            # -1 comes from fact that iterations start at 0
+        if iterations_to_validate is None or iterations_to_validate==0:
+            # -1 is used to actually perform a validation when epochs set to 1
             iterations_to_validate = self.n_iterations_in_epoch - 1
         return iterations_to_validate
 
@@ -109,7 +108,7 @@ class StreamingTransformationsDeepHits(DeepHits):
     def fit(self, x_train, epochs, x_validation=None, batch_size=128,
         iterations_to_validate=None, patience=None, verbose=True):
         validation_batch_size = 1024
-        self.print_manager.verbose_printing(verbose)
+        print_manager = PrintManager().verbose_printing(verbose)
         print('\nTraining Initiated\n')
         self._initialize_training_attributes(x_train, batch_size)
         # if validation_data is None:
@@ -130,6 +129,7 @@ class StreamingTransformationsDeepHits(DeepHits):
                         self._validate(
                             validation_ds, iteration, patience, epoch)
                         if self.check_early_stopping(patience):
+                            print_manager.close()
                             return
                     images_transformed, transformation_indexes_oh = \
                         self._transform_train_batch_and_get_transform_indxs_oh(
@@ -140,7 +140,7 @@ class StreamingTransformationsDeepHits(DeepHits):
             self.best_model_weights_path)
         self._print_training_end()
         self._reset_metrics()
-        self.print_manager.close()
+        print_manager.close()
 
     def _transform_evaluation_batch_and_get_transform_indexes_oh(
         self, x_batch_val, transform_index):
@@ -159,7 +159,9 @@ class StreamingTransformationsDeepHits(DeepHits):
                    '(validation): loss %.6f, acc %.6f %s'
         print(template % (
                 delta_timer(time.time() - self.training_star_time),
-                epoch,
+                # (iteration!=0)+1 is added so in first val epochs = 0 and +1
+                # in rest
+                epoch + (iteration!=0)*1,
                 iteration,
                 patience - self.best_model_so_far[
                     general_keys.COUNT_MODEL_NOT_IMPROVED_AT_EPOCH],
@@ -216,7 +218,7 @@ class StreamingTransformationsDeepHits(DeepHits):
             return '(%s) ' % set_name
 
     def evaluate(self, x_data, batch_size=1024, verbose=True, set_name=None):
-        self.print_manager.verbose_printing(verbose)
+        print_manager = PrintManager().verbose_printing(verbose)
         dataset = tf.data.Dataset.from_tensor_slices(
             (x_data)).batch(batch_size)
         start_time = time.time()
@@ -235,7 +237,7 @@ class StreamingTransformationsDeepHits(DeepHits):
         results_dict = {general_keys.LOSS: self.eval_loss.result(),
                         general_keys.ACCURACY: self.eval_accuracy.result()}
         self._reset_metrics()
-        self.print_manager.close()
+        print_manager.close()
         return results_dict
 
 

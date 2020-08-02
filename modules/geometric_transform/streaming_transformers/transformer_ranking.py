@@ -6,9 +6,11 @@ import numpy as np
 class RankingTransformer(AbstractTransformer):
     def __init__(self, translation_x=8, translation_y=8, rotations=True,
         flips=True, gauss=True, log=True, mixed=1, trivial=1,
-        transform_batch_size=512, name='Stream_Ranking_Transformer'):
-        super().__init__(translation_x, translation_y, rotations, flips, gauss,
-                         log, mixed, trivial, transform_batch_size, name)
+        transform_batch_size=512, name='Stream_Ranking_Transformer',
+        verbose=False):
+        super().__init__(
+            translation_x, translation_y, rotations, flips, gauss, log, mixed,
+            trivial, transform_batch_size, name, verbose)
 
     def _get_transformation_tuples_list(self):
         transformation_tuples = (

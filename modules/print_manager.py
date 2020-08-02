@@ -15,24 +15,25 @@ import sys
 
 class PrintManager(object):
   def __init__(self):
-    self.original_print = print
     self.original_stdout = sys.stdout
 
   def verbose_printing(self, verbose=True):
     sys.stdout = self.original_stdout if verbose else None
+    return self
 
   def file_printing(self, file):
     if sys.stdout is None:
       sys.stdout = Tee(file)
     else:
       sys.stdout = Tee(sys.stdout, file)
+    return self
 
   def sys_std_out_to_original(self):
     sys.stdout = self.original_stdout
 
   def close(self):
     self.sys_std_out_to_original()
-
+    return self
 
 class Tee(object):
   def __init__(self, *files):

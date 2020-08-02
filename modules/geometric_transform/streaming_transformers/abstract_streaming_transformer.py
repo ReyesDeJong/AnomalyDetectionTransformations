@@ -14,7 +14,9 @@ from modules.geometric_transform.streaming_transformers. \
 
 class AbstractTransformer(abc.ABC):
     def __init__(self, translation_x, translation_y, rotations,
-        flips, gauss, log, mixed, trivial, transform_batch_size, name):
+        flips, gauss, log, mixed, trivial, transform_batch_size, name,
+        verbose=False):
+        self.verbose = verbose
         self.translation_x = translation_x
         self.translation_y = translation_y
         self.rotations = rotations
@@ -125,8 +127,8 @@ class AbstractTransformer(abc.ABC):
         """generate transform inds, that are the labels of each transform and
         its respective transformed data. It generates labels after images"""
         if self.verbose:
-            if self.return_data_not_transformed:
-                print('Not')
+            # if self.return_data_not_transformed:
+            #     print('Not')
             print('Appliying all %i transforms to set of shape %s' % (
                 self.n_transforms, str(x.shape)))
         transformations_inds = np.arange(self.n_transforms)
@@ -148,11 +150,11 @@ class AbstractTransformer(abc.ABC):
         its respective transformed data. It generates labels after images"""
         if batch_size is not None:
             self._transform_batch_size = batch_size
-        if self.return_data_not_transformed:
-            self.original_x_len = int(len(x) / self.n_transforms)
-            y_transformed = self._get_y_transform(self.original_x_len,
-                                                  transformations_inds)
-            return x, y_transformed
+        # if self.return_data_not_transformed:
+        #     self.original_x_len = int(len(x) / self.n_transforms)
+        #     y_transformed = self._get_y_transform(self.original_x_len,
+        #                                           transformations_inds)
+        #     return x, y_transformed
 
         train_ds = tf.data.Dataset.from_tensor_slices((x)).batch(
             self._transform_batch_size)
