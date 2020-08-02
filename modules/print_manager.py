@@ -30,7 +30,6 @@ class PrintManager(object):
 
   def sys_std_out_to_original(self):
     sys.stdout = self.original_stdout
-    return self
 
   def close(self):
     self.sys_std_out_to_original()

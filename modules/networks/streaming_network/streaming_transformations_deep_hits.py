@@ -129,7 +129,7 @@ class StreamingTransformationsDeepHits(DeepHits):
                         self._validate(
                             validation_ds, iteration, patience, epoch)
                         if self.check_early_stopping(patience):
-                            print_manager.close
+                            print_manager.close()
                             return
                     images_transformed, transformation_indexes_oh = \
                         self._transform_train_batch_and_get_transform_indxs_oh(

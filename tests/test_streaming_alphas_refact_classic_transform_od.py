@@ -33,6 +33,7 @@ from modules.trainer import ODTrainer
 from models.streaming_geotransform.geotransform_base_dirichlet_alphas_save \
     import get_best_hits_tuples, get_best_ztf_tuples
 from modules.geometric_transform import transformations_tf
+from modules.print_manager import PrintManager
 
 def print_mean_results(result_dicts: List[dict]):
     dict_keys = result_dicts[0].keys()
@@ -71,7 +72,7 @@ def fit_and_evaluate_model_n_times_alphas(
             save_metrics=True, save_histogram=False, get_auroc_acc_only=True,
             verbose=verbose)
         result_dicts.append(results_i)
-    print('Results %i trains, Model: %s, Transformer: %s, Data: %s' % (
+    print('\nResults %i trains, Model: %s, Transformer: %s, Data: %s' % (
         n_times, model.name, transformer.name, data_loader_name
     ))
     print_mean_results(result_dicts)
@@ -99,7 +100,7 @@ def fit_and_evaluate_model_n_times_not_all_a_once(
             save_metrics=True, save_histogram=False, get_auroc_acc_only=True,
             verbose=verbose)
         result_dicts.append(results_i)
-    print('Results %i trains, Model: %s, Transformer: %s, Data: %s' % (
+    print('\nResults %i trains, Model: %s, Transformer: %s, Data: %s' % (
         n_times, model.name, transformer.name, data_loader_name
     ))
     print_mean_results(result_dicts)
@@ -157,10 +158,12 @@ if __name__ == '__main__':
     }
     hits_loader = HiTSOutlierLoader(hits_params)
     # outlier_loader = ztf_loader
-    outlier_loader = hits_loader
+    # outlier_loader = hits_loader
+    data_loaders = [
+        ztf_loader,
+        hits_loader
+    ]
 
-    (x_train, y_train), (x_val, y_val), (
-        x_test, y_test) = outlier_loader.get_outlier_detection_datasets()
     transformer = RankingTransformer()
     trf_99 = transformations_tf.PlusKernelTransformer()
 
@@ -169,22 +172,31 @@ if __name__ == '__main__':
     # trf_99.set_transformations_to_perform((
     #     trf_99.transformation_tuples[:3]))
 
-    transformer.set_transformations_to_perform(
-        get_best_transformation_tuples(outlier_loader))
-    trf_99.set_transformations_to_perform(
-        get_best_transformation_tuples(outlier_loader, add_zeros=False))
-
-    print('N_transforms: %i' % (transformer.n_transforms))
-    print('N_transforms trf_99: %i' % (trf_99.n_transforms))
-    parameters = (EPOCHS, ITERATIONS_TO_VALIDATE, PATIENCE, VERBOSE,
-                  'test_n_time_base', outlier_loader.name)
-    data_tuples = ((x_train, y_train), (x_val, y_val), (
-        x_test, y_test))
-    evaluate_pipeline_transformer(trf_99, outlier_loader,
-                                  TRAIN_N_TIME, EPOCHS, VERBOSE)
-    fit_and_evaluate_model_n_times_alphas(
-        GeoTransformAlphasWRN, transformer, data_tuples, parameters,
-        TRAIN_N_TIME)
-    fit_and_evaluate_model_n_times_not_all_a_once(
-        GeoTransformNotAllAtOnceWRN, transformer, data_tuples, parameters,
-        TRAIN_N_TIME)
+    for outlier_loader in data_loaders:
+        transformer.set_transformations_to_perform(
+            get_best_transformation_tuples(outlier_loader))
+        trf_99.set_transformations_to_perform(
+            get_best_transformation_tuples(outlier_loader, add_zeros=False))
+        print_manager = PrintManager()
+        test_log_path = os.path.join(
+            PROJECT_PATH, 'tests', 'aux_results',
+            'test_models_%s.log' % outlier_loader.name)
+        log_file = open(test_log_path, 'w')
+        print_manager.file_printing(log_file)
+        print('N_transforms: %i' % (transformer.n_transforms))
+        print('N_transforms trf_99: %i' % (trf_99.n_transforms))
+        (x_train, y_train), (x_val, y_val), (
+            x_test, y_test) = outlier_loader.get_outlier_detection_datasets()
+        parameters = (EPOCHS, ITERATIONS_TO_VALIDATE, PATIENCE, VERBOSE,
+                      'test_n_time_base', outlier_loader.name)
+        data_tuples = ((x_train, y_train), (x_val, y_val), (
+            x_test, y_test))
+        evaluate_pipeline_transformer(trf_99, outlier_loader,
+                                      TRAIN_N_TIME, EPOCHS, VERBOSE)
+        fit_and_evaluate_model_n_times_alphas(
+            GeoTransformAlphasWRN, transformer, data_tuples, parameters,
+            TRAIN_N_TIME)
+        fit_and_evaluate_model_n_times_not_all_a_once(
+            GeoTransformNotAllAtOnceWRN, transformer, data_tuples, parameters,
+            TRAIN_N_TIME)
+        print_manager.close()
