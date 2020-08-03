@@ -426,9 +426,10 @@ if __name__ == '__main__':
         general_keys.RANDOM_SEED: 42,
         loader_keys.TRANSFORMATION_INLIER_CLASS_VALUE: 1
     }
-    hits_loader = HiTSOutlierLoader(hits_params)
-    outlier_loader = ztf_loader
-
+    hits_loader = HiTSOutlierLoader(hits_params)#, 'hits_all')
+    # outlier_loader = ztf_loader
+    outlier_loader = hits_loader
+    print(outlier_loader.name)
     (x_train, y_train), (x_val, y_val), (
         x_test, y_test) = outlier_loader.get_outlier_detection_datasets()
     transformer = RankingTransformer()

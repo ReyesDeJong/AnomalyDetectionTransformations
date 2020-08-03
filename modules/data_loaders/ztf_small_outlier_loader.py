@@ -105,7 +105,8 @@ if __name__ == "__main__":
 
   start_time = time.time()
   params = {
-    loader_keys.DATA_PATH: '/home/ereyes/Projects/Thesis/datasets/ALeRCE_data/new_small_od_dataset_tuples.pkl',
+    # loader_keys.DATA_PATH: '/home/ereyes/Projects/Thesis/datasets/ALeRCE_data/new_small_od_dataset_tuples.pkl',
+    loader_keys.DATA_PATH: '/home/ereyes/Projects/Thesis/datasets/ALeRCE_data/all_ztf_dataset_tuples.pkl',
   }
   transformer = Transformer()
   ztf_outlier_dataset = ZTFSmallOutlierLoader(params)
@@ -115,12 +116,12 @@ if __name__ == "__main__":
   print('train: ', np.unique(y_train, return_counts=True))
   print('val: ', np.unique(y_val, return_counts=True))
   print('test: ', np.unique(y_test, return_counts=True))
-  (X_train_trans, y_train_trans), (X_val_trans, y_val_trans), (
-    X_test_trans, y_test_trans) = ztf_outlier_dataset.get_transformed_datasets(
-      transformer)
-  time_usage = str(datetime.timedelta(
-      seconds=int(round(time.time() - start_time))))
-  print("Time usage %s: %s" % (transformer.name, str(time_usage)), flush=True)
-  print('train: ', np.unique(y_train_trans, return_counts=True))
-  print('val: ', np.unique(y_val_trans, return_counts=True))
-  print('test: ', np.unique(y_test_trans, return_counts=True))
+  # (X_train_trans, y_train_trans), (X_val_trans, y_val_trans), (
+  #   X_test_trans, y_test_trans) = ztf_outlier_dataset.get_transformed_datasets(
+  #     transformer)
+  # time_usage = str(datetime.timedelta(
+  #     seconds=int(round(time.time() - start_time))))
+  # print("Time usage %s: %s" % (transformer.name, str(time_usage)), flush=True)
+  # print('train: ', np.unique(y_train_trans, return_counts=True))
+  # print('val: ', np.unique(y_val_trans, return_counts=True))
+  # print('test: ', np.unique(y_test_trans, return_counts=True))
