@@ -31,6 +31,9 @@ if __name__ == "__main__":
 
   stamps = np.concatenate([train_set['images'], validation_set['images'],
                            test_set['images']])
+  print(np.mean(np.max(stamps, axis=(1,2)), axis=0))
+  print(np.mean(np.min(stamps, axis=(1, 2)), axis=0))
+
   labels = np.concatenate(
       [train_set['labels'], validation_set['labels'], test_set['labels']])
   features = np.concatenate(
