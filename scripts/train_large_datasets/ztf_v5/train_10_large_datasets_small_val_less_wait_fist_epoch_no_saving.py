@@ -9,55 +9,24 @@ PROJECT_PATH = os.path.abspath(
     os.path.join(os.path.dirname(__file__), '..', '..', '..'))
 sys.path.append(PROJECT_PATH)
 
-from models.streaming_geotransform.geotransform_base_dirichlet_alphas_save \
-    import GeoTransformBaseDirichletAlphasSaved
 from modules import utils
-from modules.data_loaders.hits_outlier_loader import HiTSOutlierLoader
 from modules.data_loaders.ztf_small_outlier_loader import \
     ZTFSmallOutlierLoader
-from parameters import loader_keys, general_keys
+from parameters import loader_keys
 from modules.geometric_transform. \
     streaming_transformers.transformer_ranking import RankingTransformer
 from modules.print_manager import PrintManager
 from tests.test_streaming_alphas_refact_classic_transform_od import \
-    print_mean_results, get_best_transformation_tuples
+    get_best_transformation_tuples
 from models.streaming_geotransform.geotransform_alphas_wrn_wait_first_epoch \
     import GeoTransformAlphasWRN1Epoch
-from typing import Callable
-from modules.geometric_transform.streaming_transformers. \
-    abstract_streaming_transformer import AbstractTransformer
-from tqdm import tqdm
+from scripts.train_large_datasets. \
+    train_10_large_datasets_small_val_less_wait_fist_epoch_no_saving import \
+    fit_and_evaluate_model_n_times_alphas
 import numpy as np
 import matplotlib
-matplotlib.use('Agg')
 
-def fit_and_evaluate_model_n_times_alphas(
-    ModelClass: Callable[[], GeoTransformAlphasWRN1Epoch],
-    transformer: AbstractTransformer, data_tuples, parameters, n_times):
-    epochs, iterations_to_validate, patience, verbose, results_folder_name, \
-    data_loader_name = parameters
-    (x_train, y_train), (x_val, y_val), (
-        x_test, y_test) = data_tuples
-    result_dicts = []
-    for _ in tqdm(range(n_times)):
-        model = ModelClass(
-            n_channels=x_train.shape[:-1], transformer=transformer,
-            results_folder_name=results_folder_name)
-        model.fit(
-            x_train, epochs=epochs, x_validation=x_val,
-            iterations_to_validate=iterations_to_validate, patience=patience,
-            wait_first_epoch=True, verbose=verbose)
-        results_i = model.evaluate(
-            x_test, y_test, data_loader_name, 'real',
-            save_metrics=True, save_histogram=True, get_auroc_acc_only=True,
-            verbose=verbose)
-        result_dicts.append(results_i)
-        del model
-    print('\nResults %i trains, Model: %s, Transformer: %s, Data: %s' % (
-        n_times, model.name, transformer.name, data_loader_name
-    ))
-    print_mean_results(result_dicts)
-    return result_dicts
+matplotlib.use('Agg')
 
 if __name__ == '__main__':
     EPOCHS = 1000

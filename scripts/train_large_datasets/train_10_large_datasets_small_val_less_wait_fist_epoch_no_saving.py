@@ -52,7 +52,6 @@ def fit_and_evaluate_model_n_times_alphas(
             save_metrics=True, save_histogram=True, get_auroc_acc_only=True,
             verbose=verbose)
         result_dicts.append(results_i)
-        del model
     print('\nResults %i trains, Model: %s, Transformer: %s, Data: %s' % (
         n_times, model.name, transformer.name, data_loader_name
     ))
