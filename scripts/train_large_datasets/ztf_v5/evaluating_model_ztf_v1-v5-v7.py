@@ -76,5 +76,4 @@ if __name__ == '__main__':
         model.evaluate(
             x_test, y_test, outlier_loader.name, save_histogram=True,
             get_auroc_acc_only=True, verbose=VERBOSE)
-        model.close()
         del model
