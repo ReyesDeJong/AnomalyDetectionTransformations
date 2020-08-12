@@ -35,8 +35,8 @@ if __name__ == '__main__':
     VERBOSE = False
     TRAIN_N_TIME = 10
     # RESULTS_FOLDER_NAME = 'ztf_versions_evaluation'
-    WEIGHTS_FOLDER_NAME = 'large_datasets_best_transforms_small_validate_' \
-                          'step_wait_first_epoch_no_saving'
+    WEIGHTS_FOLDER_NAME = 'large_datasets_best_transforms_small_validate_step' \
+                          '_wait_first_epoch'
     utils.set_soft_gpu_memory_growth()
 
     ztf_params = {
