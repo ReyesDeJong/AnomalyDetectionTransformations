@@ -23,8 +23,9 @@ If you use the ideas or method presented in the paper, please cite:
 }
 ```
 
-## Version Specifications 0.1.3
+## Version Specifications 0.1.4
 
+r0.1.4 Before including tested streaming models
 r0.1.3 Before including streaming models
 r0.1.2 Before including fixes to dirichlet bug; trivial constant transform ruined alpha_0 init
 r0.1.1 Before modification to DeepHits.py. Future will include modifications to predict, to avoid memry leak
