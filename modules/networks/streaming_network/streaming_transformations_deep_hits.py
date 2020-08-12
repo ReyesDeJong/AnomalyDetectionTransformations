@@ -101,7 +101,7 @@ class StreamingTransformationsDeepHits(DeepHits):
     def _set_validation_at_epochs_end_if_none(self, iterations_to_validate):
         if iterations_to_validate is None or iterations_to_validate==0:
             # -1 is used to actually perform a validation when epochs set to 1
-            iterations_to_validate = self.n_iterations_in_epoch - 1
+            iterations_to_validate = self.n_iterations_in_epoch #- 1
         return iterations_to_validate
 
     # TODO: implement some kind of train_loggin
@@ -161,7 +161,7 @@ class StreamingTransformationsDeepHits(DeepHits):
                 delta_timer(time.time() - self.training_star_time),
                 # (iteration!=0)+1 is added so in first val epochs = 0 and +1
                 # in rest
-                epoch + (iteration!=0)*1,
+                epoch, #+ (iteration!=0)*1,
                 iteration,
                 patience - self.best_model_so_far[
                     general_keys.COUNT_MODEL_NOT_IMPROVED_AT_EPOCH],

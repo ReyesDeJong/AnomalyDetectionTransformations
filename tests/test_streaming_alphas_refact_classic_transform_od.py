@@ -68,10 +68,11 @@ def fit_and_evaluate_model_n_times_alphas(
             iterations_to_validate=iterations_to_validate, patience=patience,
             verbose=verbose)
         results_i = model.evaluate(
-            x_test, y_test, data_loader_name, 'real', x_val,
-            save_metrics=True, save_histogram=False, get_auroc_acc_only=True,
+            x_test, y_test, data_loader_name, 'real',
+            save_metrics=True, save_histogram=True, get_auroc_acc_only=True,
             verbose=verbose)
         result_dicts.append(results_i)
+        del model
     print('\nResults %i trains, Model: %s, Transformer: %s, Data: %s' % (
         n_times, model.name, transformer.name, data_loader_name
     ))

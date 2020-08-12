@@ -236,7 +236,7 @@ if __name__ == "__main__":
   params = {
     loader_keys.DATA_PATH: os.path.join(
         PROJECT_PATH, '../datasets/HiTS2013_300k_samples.pkl'),
-    loader_keys.N_SAMPLES_BY_CLASS: 10000,
+    loader_keys.N_SAMPLES_BY_CLASS: 100000,
     loader_keys.TEST_PERCENTAGE: 0.2,
     loader_keys.VAL_SET_INLIER_PERCENTAGE: 0.1,
     loader_keys.USED_CHANNELS: [0, 1, 2, 3],
@@ -245,7 +245,7 @@ if __name__ == "__main__":
     loader_keys.TRANSFORMATION_INLIER_CLASS_VALUE: 1
   }
   transformer = Transformer()
-  hits_outlier_dataset = HiTSOutlierLoader(params)
+  hits_outlier_dataset = HiTSOutlierLoader(params, pickles_usage=False)
 
   dataset = hits_outlier_dataset.get_unsplitted_dataset()
   print('dataset: ', np.unique(dataset.data_label, return_counts=True))
@@ -254,12 +254,12 @@ if __name__ == "__main__":
   print('train: ', np.unique(y_train, return_counts=True))
   print('val: ', np.unique(y_val, return_counts=True))
   print('test: ', np.unique(y_test, return_counts=True))
-  (X_train_trans, y_train_trans), (X_val_trans, y_val_trans), (
-    X_test_trans, y_test_trans) = hits_outlier_dataset.get_transformed_datasets(
-      transformer)
-  time_usage = str(datetime.timedelta(
-      seconds=int(round(time.time() - start_time))))
-  print("Time usage %s: %s" % (transformer.name, str(time_usage)), flush=True)
-  print('train: ', np.unique(y_train_trans, return_counts=True))
-  print('val: ', np.unique(y_val_trans, return_counts=True))
-  print('test: ', np.unique(y_test_trans, return_counts=True))
+  # (X_train_trans, y_train_trans), (X_val_trans, y_val_trans), (
+  #   X_test_trans, y_test_trans) = hits_outlier_dataset.get_transformed_datasets(
+  #     transformer)
+  # time_usage = str(datetime.timedelta(
+  #     seconds=int(round(time.time() - start_time))))
+  # print("Time usage %s: %s" % (transformer.name, str(time_usage)), flush=True)
+  # print('train: ', np.unique(y_train_trans, return_counts=True))
+  # print('val: ', np.unique(y_val_trans, return_counts=True))
+  # print('test: ', np.unique(y_test_trans, return_counts=True))
