@@ -60,4 +60,4 @@ if __name__ == "__main__":
 
   utils.save_pickle(
       stamps,
-      os.path.join(save_folder, 'unlabeled_ztf_chunk_%i.pkl'))
+      os.path.join(save_folder, 'unlabeled_ztf_chunk_%i.pkl' % chunk_i))
