@@ -49,7 +49,7 @@ if __name__ == '__main__':
     ztf_params = {
         loader_keys.DATA_PATH: os.path.join(
             PROJECT_PATH,
-            '../datasets/ALeRCE_data/v5_big_ztf_dataset_tuples.pkl'),
+            '../datasets/ALeRCE_data/v5_big_ztf_dataset_tuples_new.pkl'),
     }
     ztf_loader_v5 = ZTFSmallOutlierLoader(
         ztf_params, 'v5_ztf', pickles_usage=False)
