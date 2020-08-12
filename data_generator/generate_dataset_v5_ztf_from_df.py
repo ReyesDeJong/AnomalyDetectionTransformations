@@ -32,7 +32,7 @@ if __name__ == "__main__":
     param_keys.TEST_SIZE: n_classes * 200,
     param_keys.VAL_SIZE: n_classes * 100,
     param_keys.VALIDATION_RANDOM_SEED: random_seed,
-    param_keys.CONVERTED_DATA_SAVEPATH: '/home/esteban/Projects/Thesis/'
+    param_keys.CONVERTED_DATA_SAVEPATH: '/home/ereyes/Projects/Thesis/'
                                         'datasets/ALeRCE_data/ztf_v5/'
                                         'converted_data.pkl',
     param_keys.BOGUS_LABEL_VALUE: None,
