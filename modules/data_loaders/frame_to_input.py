@@ -33,7 +33,7 @@ class FrameToInput(ZTFLoader):
 
     def _init_dataframe(self, df):
         self.data_frame = df
-        self.n_points = len(self.data_frame)
+        self.n_points = 3#len(self.data_frame)
         self.class_names = np.unique(self.data_frame["class"])
         self.class_dict = dict(zip(self.class_names, list(range(len(self.class_names)))))
         print(self.class_dict)
