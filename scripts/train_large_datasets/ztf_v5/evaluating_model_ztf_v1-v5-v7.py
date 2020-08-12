@@ -32,7 +32,7 @@ if __name__ == '__main__':
     EPOCHS = 1000
     ITERATIONS_TO_VALIDATE = 100
     PATIENCE = 10
-    VERBOSE = False
+    VERBOSE = True
     TRAIN_N_TIME = 10
     # RESULTS_FOLDER_NAME = 'ztf_versions_evaluation'
     WEIGHTS_FOLDER_NAME = 'large_datasets_best_transforms_small_validate_step' \
