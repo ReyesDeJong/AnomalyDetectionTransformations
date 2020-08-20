@@ -36,7 +36,8 @@ if __name__ == '__main__':
     TRAIN_N_TIME = 10
     # RESULTS_FOLDER_NAME = 'ztf_versions_evaluation'
     WEIGHTS_FOLDER_NAME = 'large_datasets_best_transforms_small_validate_step' \
-                          '_wait_first_epoch'
+                          '_wait_first_epoch'\
+                          #'_no_saving'
     utils.set_soft_gpu_memory_growth()
 
     ztf_params = {
@@ -49,10 +50,10 @@ if __name__ == '__main__':
     ztf_params = {
         loader_keys.DATA_PATH: os.path.join(
             PROJECT_PATH,
-            '../datasets/ALeRCE_data/v5_big_ztf_dataset_tuples_new.pkl'),
+            '../datasets/ALeRCE_data/v7_ztf_all_bogus_in_test.pkl'),#v5_big_ztf_dataset_tuples_new.pkl'),
     }
     ztf_loader_v5 = ZTFSmallOutlierLoader(
-        ztf_params, 'v5_ztf', pickles_usage=False)
+        ztf_params, 'v7_ztf', pickles_usage=False)
     data_loaders = [
         ztf_loader,
         ztf_loader_v5,
@@ -60,7 +61,9 @@ if __name__ == '__main__':
     weights_path = os.path.join(
         PROJECT_PATH, 'results', WEIGHTS_FOLDER_NAME,
         'GeoTransform_Alphas_WRN_Wait_1_Epoch_'
-        'WRN_Streaming_Trfs_20200804-222433', 'checkpoints',
+        # 'WRN_Streaming_Trfs_20200813-030230',
+        'WRN_Streaming_Trfs_20200804-222433',
+        'checkpoints',
         'best_weights.ckpt'
     )
     transformer = RankingTransformer()

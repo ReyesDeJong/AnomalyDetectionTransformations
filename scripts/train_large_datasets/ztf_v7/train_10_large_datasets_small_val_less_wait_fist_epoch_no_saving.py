@@ -32,7 +32,7 @@ if __name__ == '__main__':
     EPOCHS = 1000
     ITERATIONS_TO_VALIDATE = 100
     PATIENCE = 10
-    VERBOSE = True
+    VERBOSE = False
     TRAIN_N_TIME = 10
     RESULTS_FOLDER_NAME = 'large_datasets_best_transforms_small_validate_' \
                           'step_wait_first_epoch_no_saving'
