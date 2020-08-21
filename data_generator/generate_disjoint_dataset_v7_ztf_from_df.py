@@ -77,6 +77,33 @@ def generate_inliers_outliers_tuples(stamps, labels, random_seed,
             v7_disjoint_dataset_tuples, save_path)
     return v7_disjoint_dataset_tuples
 
+def generate_inliers_sets_with_original_labels(stamps, labels, random_seed,
+    val_inlier_percentage):
+    bogus_stamps = stamps[labels == 4]
+    inliers_stamps = stamps[labels != 4]
+    inliers_labels = labels[labels != 4]
+
+    inlier_indexes = np.arange(len(inliers_stamps))
+    np.random.RandomState(seed=random_seed).shuffle(inlier_indexes)
+    test_inliers = inliers_stamps[inlier_indexes[:len(bogus_stamps)]]
+    test_inliers_labels = inliers_stamps[inlier_indexes[:len(bogus_stamps)]]
+    remaining_inliers_original_idexes = inlier_indexes[len(bogus_stamps):]
+    remaining_inliers = inliers_stamps[remaining_inliers_original_idexes]
+    remaining_inliers_labels = inliers_labels[
+        remaining_inliers_original_idexes]
+
+    train_inliers_stamps = remaining_inliers[
+                           int(len(remaining_inliers) * val_inlier_percentage):]
+    train_inliers_labels = remaining_inliers_labels[
+                           int(len(remaining_inliers) * val_inlier_percentage):]
+    val_inliers_stamps = remaining_inliers[
+                         :int(len(remaining_inliers) * val_inlier_percentage)]
+    val_inliers_labels = remaining_inliers_labels[
+                         :int(len(remaining_inliers) * val_inlier_percentage)]
+    return ((train_inliers_stamps, train_inliers_labels),
+            (val_inliers_stamps, val_inliers_labels),
+            (test_inliers, test_inliers_labels))
+
 
 if __name__ == "__main__":
     random_seed = 42
@@ -172,42 +199,35 @@ if __name__ == "__main__":
     #------------------
     #v7 ztf disjoint dataset oversampled
     # ------------------
-    print('Disjoint Data v7: ',
+    print('\nDisjoint Data v7: ',
           np.unique(v7_labels_not_in_test, return_counts=True))
     stamps = v7_stamps_not_in_test
     labels = v7_labels_not_in_test
     bogus_stamps = stamps[labels == 4]
-    inliers_stamps = stamps[labels != 4]
-    inliers_labels = labels[labels != 4]
+    ((train_inliers_stamps, train_inliers_labels),
+     (val_inliers_stamps, val_inliers_labels),
+     (test_inliers, test_inliers_labels)) = \
+        generate_inliers_sets_with_original_labels(
+            stamps, labels, random_seed, val_inlier_percentage)
 
-    inlier_indexes = np.arange(len(inliers_stamps))
-    np.random.RandomState(seed=random_seed).shuffle(inlier_indexes)
-    test_inliers = inliers_stamps[inlier_indexes[:len(bogus_stamps)]]
-    remaining_inliers_original_idexes = inlier_indexes[len(bogus_stamps):]
-    remaining_inliers = inliers_stamps[inlier_indexes[len(bogus_stamps):]]
-    remaining_inliers_labels = inliers_labels[
-        inlier_indexes[len(bogus_stamps):]]
-    print('Disjoint remaining Data v7: ',
-          np.unique(remaining_inliers_labels, return_counts=True))
-    oversamples_inliers_dataset = Dataset(
-        remaining_inliers, remaining_inliers_labels, None)
-    oversamples_inliers_dataset.balance_data_by_replication()
-    print('Oversampled Data v7 inliers: ',
-              np.unique(
-                  oversamples_inliers_dataset.data_label, return_counts=True))
-    remaining_inliers = oversamples_inliers_dataset.data_array
-    val_inliers = remaining_inliers[
-                  :int(len(remaining_inliers) * val_inlier_percentage)]
-    train_inliers = remaining_inliers[
-                    int(len(remaining_inliers) * val_inlier_percentage):]
-    train_inliers_labels = labels[
-        remaining_inliers_original_idexes[
-        int(len(remaining_inliers) * val_inlier_percentage):
-        ]]
-    print('\nTrain set: ',
-          np.unique(train_inliers_labels, return_counts=True), '\n')
+    oversamples_train_dataset = Dataset(
+        train_inliers_stamps, train_inliers_labels, None)
+    oversamples_train_dataset.balance_data_by_replication()
+    oversamples_train_dataset.shuffle_data(random_seed)
+    print('Oversampled Train Data v7 inliers: ',
+          np.unique(
+              oversamples_train_dataset.data_label, return_counts=True))
+
+    oversamples_val_dataset = Dataset(
+        val_inliers_stamps, val_inliers_labels, None)
+    oversamples_val_dataset.balance_data_by_replication()
+    oversamples_val_dataset.shuffle_data(random_seed)
+    print('Oversampled val Data v7 inliers: ',
+          np.unique(
+              oversamples_val_dataset.data_label, return_counts=True))
     print('Inliers numbers Train %i Val %i Test %i' % (
-        len(train_inliers), len(val_inliers), len(test_inliers)))
+        len(oversamples_train_dataset.data_array),
+        len(oversamples_val_dataset.data_array), len(test_inliers)))
 
     x_test = np.concatenate([test_inliers, bogus_stamps])
     y_test = np.concatenate(
@@ -215,57 +235,54 @@ if __name__ == "__main__":
     print('\nTest set: ',
           np.unique(y_test, return_counts=True), '\n')
 
-    x_val = val_inliers
-    y_val = np.ones(len(val_inliers))
-    x_train = train_inliers
-    y_train = np.ones(len(train_inliers))
+    x_val = oversamples_val_dataset.data_array
+    y_val = np.ones(len(oversamples_val_dataset.data_array))
+    x_train = oversamples_train_dataset.data_array
+    y_train = np.ones(len(oversamples_train_dataset.data_array))
 
-    v7_disjoint_dataset_oversampled_tuples = ((x_train, y_train), (x_val, y_val), (
-        x_test, y_test))
-    save_path = os.path.join(save_folder, 'v7_ztf_oversamples_disjoint_test.pkl')
+    v7_disjoint_dataset_oversampled_tuples = (
+        (x_train, y_train), (x_val, y_val), (
+            x_test, y_test))
+    save_path = os.path.join(save_folder,
+                             'v7_ztf_oversample_disjoint_test.pkl')
     utils.save_pickle(
         v7_disjoint_dataset_oversampled_tuples, save_path)
-    print(np.mean(ztf_v7_data_tuples[2][0]==x_test))
+    print(np.mean(ztf_v7_data_tuples[2][0] == x_test))
 
-    #------------------
-    #v7 ztf disjoint dataset undersampled
     # ------------------
-    print('Disjoint Data v7: ',
+    # v7 ztf disjoint dataset undersampled
+    # ------------------
+    print('\nDisjoint Data v7: ',
           np.unique(v7_labels_not_in_test, return_counts=True))
     stamps = v7_stamps_not_in_test
     labels = v7_labels_not_in_test
     bogus_stamps = stamps[labels == 4]
-    inliers_stamps = stamps[labels != 4]
-    inliers_labels = labels[labels != 4]
+    ((train_inliers_stamps, train_inliers_labels),
+     (val_inliers_stamps, val_inliers_labels),
+     (test_inliers, test_inliers_labels)) = \
+        generate_inliers_sets_with_original_labels(
+            stamps, labels, random_seed, val_inlier_percentage)
 
-    inlier_indexes = np.arange(len(inliers_stamps))
-    np.random.RandomState(seed=random_seed).shuffle(inlier_indexes)
-    test_inliers = inliers_stamps[inlier_indexes[:len(bogus_stamps)]]
-    remaining_inliers_original_idexes = inlier_indexes[len(bogus_stamps):]
-    remaining_inliers = inliers_stamps[inlier_indexes[len(bogus_stamps):]]
-    remaining_inliers_labels = inliers_labels[
-        inlier_indexes[len(bogus_stamps):]]
-    print('Disjoint remaining Data v7: ',
-          np.unique(remaining_inliers_labels, return_counts=True))
-    oversamples_inliers_dataset = Dataset(
-        remaining_inliers, remaining_inliers_labels, None)
-    oversamples_inliers_dataset.balance_data_by_replication()
-    print('Oversampled Data v7 inliers: ',
-              np.unique(
-                  oversamples_inliers_dataset.data_label, return_counts=True))
-    remaining_inliers = oversamples_inliers_dataset.data_array
-    val_inliers = remaining_inliers[
-                  :int(len(remaining_inliers) * val_inlier_percentage)]
-    train_inliers = remaining_inliers[
-                    int(len(remaining_inliers) * val_inlier_percentage):]
-    train_inliers_labels = labels[
-        remaining_inliers_original_idexes[
-        int(len(remaining_inliers) * val_inlier_percentage):
-        ]]
-    print('\nTrain set: ',
-          np.unique(train_inliers_labels, return_counts=True), '\n')
+    undersamples_train_dataset = Dataset(
+        train_inliers_stamps, train_inliers_labels, None)
+    undersamples_train_dataset.undersample_data(n_samples_max_under_sample,
+                                                  random_seed)
+    undersamples_train_dataset.shuffle_data(random_seed)
+    print('Undersampled Train Data v7 inliers: ',
+          np.unique(
+              undersamples_train_dataset.data_label, return_counts=True))
+
+    undersamples_val_dataset = Dataset(
+        val_inliers_stamps, val_inliers_labels, None)
+    undersamples_val_dataset.undersample_data(n_samples_max_under_sample,
+                                                  random_seed)
+    undersamples_val_dataset.shuffle_data(random_seed)
+    print('Undersampled val Data v7 inliers: ',
+          np.unique(
+              undersamples_val_dataset.data_label, return_counts=True))
     print('Inliers numbers Train %i Val %i Test %i' % (
-        len(train_inliers), len(val_inliers), len(test_inliers)))
+        len(undersamples_train_dataset.data_array),
+        len(undersamples_val_dataset.data_array), len(test_inliers)))
 
     x_test = np.concatenate([test_inliers, bogus_stamps])
     y_test = np.concatenate(
@@ -273,17 +290,76 @@ if __name__ == "__main__":
     print('\nTest set: ',
           np.unique(y_test, return_counts=True), '\n')
 
-    x_val = val_inliers
-    y_val = np.ones(len(val_inliers))
-    x_train = train_inliers
-    y_train = np.ones(len(train_inliers))
+    x_val = undersamples_val_dataset.data_array
+    y_val = np.ones(len(undersamples_val_dataset.data_array))
+    x_train = undersamples_train_dataset.data_array
+    y_train = np.ones(len(undersamples_train_dataset.data_array))
 
-    v7_disjoint_dataset_oversampled_tuples = ((x_train, y_train), (x_val, y_val), (
+    v7_disjoint_dataset_undersampled_tuples = (
+    (x_train, y_train), (x_val, y_val), (
         x_test, y_test))
-    save_path = os.path.join(save_folder, 'v7_ztf_oversamples_disjoint_test.pkl')
+    save_path = os.path.join(save_folder,
+                             'v7_ztf_undersample_disjoint_test.pkl')
     utils.save_pickle(
-        v7_disjoint_dataset_oversampled_tuples, save_path)
-    print(np.mean(ztf_v7_data_tuples[2][0]==x_test))
+        v7_disjoint_dataset_undersampled_tuples, save_path)
+    print(np.mean(ztf_v7_data_tuples[2][0] == x_test))
+
+    # ------------------
+    # v7 ztf disjoint dataset undersampled-oversampled
+    # ------------------
+    print('\nDisjoint Data v7: ',
+          np.unique(v7_labels_not_in_test, return_counts=True))
+    stamps = v7_stamps_not_in_test
+    labels = v7_labels_not_in_test
+    bogus_stamps = stamps[labels == 4]
+    ((train_inliers_stamps, train_inliers_labels),
+     (val_inliers_stamps, val_inliers_labels),
+     (test_inliers, test_inliers_labels)) = \
+        generate_inliers_sets_with_original_labels(
+            stamps, labels, random_seed, val_inlier_percentage)
+
+    under_over_samples_train_dataset = Dataset(
+        train_inliers_stamps, train_inliers_labels, None)
+    under_over_samples_train_dataset.undersample_data(
+        n_samples_max_under_sample, random_seed)
+    under_over_samples_train_dataset.balance_data_by_replication()
+    under_over_samples_train_dataset.shuffle_data(random_seed)
+    print('under_over_sampled Train Data v7 inliers: ',
+          np.unique(
+              under_over_samples_train_dataset.data_label, return_counts=True))
+
+    under_over_samples_val_dataset = Dataset(
+        val_inliers_stamps, val_inliers_labels, None)
+    under_over_samples_val_dataset.undersample_data(n_samples_max_under_sample,
+                                              random_seed)
+    under_over_samples_val_dataset.balance_data_by_replication()
+    under_over_samples_val_dataset.shuffle_data(random_seed)
+    print('under_over_sampled val Data v7 inliers: ',
+          np.unique(
+              under_over_samples_val_dataset.data_label, return_counts=True))
+    print('Inliers numbers Train %i Val %i Test %i' % (
+        len(under_over_samples_train_dataset.data_array),
+        len(under_over_samples_val_dataset.data_array), len(test_inliers)))
+
+    x_test = np.concatenate([test_inliers, bogus_stamps])
+    y_test = np.concatenate(
+        [np.ones(len(test_inliers)), np.zeros(len(bogus_stamps))])
+    print('\nTest set: ',
+          np.unique(y_test, return_counts=True), '\n')
+
+    x_val = under_over_samples_val_dataset.data_array
+    y_val = np.ones(len(under_over_samples_val_dataset.data_array))
+    x_train = under_over_samples_train_dataset.data_array
+    y_train = np.ones(len(under_over_samples_train_dataset.data_array))
+
+    v7_disjoint_dataset_under_over_sampled_tuples = (
+        (x_train, y_train), (x_val, y_val), (
+            x_test, y_test))
+    save_path = os.path.join(save_folder,
+                             'v7_ztf_under_over_sample_disjoint_test.pkl')
+    utils.save_pickle(
+        v7_disjoint_dataset_under_over_sampled_tuples, save_path)
+    print(np.mean(ztf_v7_data_tuples[2][0] == x_test))
 
 
 

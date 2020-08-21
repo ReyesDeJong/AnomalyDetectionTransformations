@@ -2,21 +2,20 @@
 # -*- coding: utf-8 -*-
 """
 Created on Mon Jun 18 18:05:40 2018
-
 Dataset Object
-
-CHECK MAX DISBALANCE OPN REPLICATION FOR MULTICLASS
-
+Nit everything ready to handle features, but replication is
 @author: ereyes
 """
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import numpy as np
-from collections import Counter
+import copy
 
-#Todo: refactor metadata
+import numpy as np
+
+
+# Todo: refactor metadata
 class Dataset(object):
   """
   Constructor
@@ -27,26 +26,29 @@ class Dataset(object):
     self.batch_counter_val = 0
     self.batch_size = batch_size
     self.data_array = np.array(data_array)
-    self.data_label = np.array(self._check_data_labels(data_label))
-    self.meta_data = self._check_meta_data(meta_data)
+    self.data_label = np.array(
+        self._check_data_avaliablility_or_fill_with_zeros(data_label))
+    self.meta_data = np.array(
+        self._check_data_avaliablility_or_fill_with_zeros(meta_data))
 
-  def _check_meta_data(self, meta_data):
-    if meta_data is None:
-      return np.zeros(self.data_array.shape[0])
-    return meta_data
-
-  def _check_data_labels(self, data_labels):
+  def _check_data_avaliablility_or_fill_with_zeros(self, data_labels):
     if data_labels is None:
-      return np.zeros(self.data_array.shape[0])
+      return np.ones(self.data_array.shape[0]) * -999
     return data_labels
 
-  def _merge_with_dataset(self, array, label_value):
-    self.data_label = np.concatenate(
-        (self.data_label, np.full(array.shape[0], label_value)))
-    self.data_array = np.concatenate((self.data_array, array))
+  def _oversampling_array(self, data_array):
+    max_label_count, _ = self.get_max_min_label_count()
+    n_copies = max_label_count // len(data_array)
+    augmented_samples = []
+    for i in range(n_copies):
+      augmented_samples.append(copy.deepcopy(data_array))
+    n_extra = max_label_count - len(np.concatenate(augmented_samples))
+    # n_extra = max_label_count - len(augmented_samples)
+    augmented_samples.append(copy.deepcopy(data_array[:n_extra]))
+    return np.concatenate(augmented_samples)
 
   def get_batch_images(self):
-    batch, _ = self.get_batch()
+    batch, _, _ = self.get_batch()
 
     return batch
 
@@ -58,6 +60,9 @@ class Dataset(object):
       batch_label = self.data_label[
                     self.batch_counter:self.batch_counter + self.batch_size,
                     ...]
+      batch_metadata = self.meta_data[
+                       self.batch_counter:self.batch_counter + self.batch_size,
+                       ...]
       self.batch_counter += self.batch_size
       # print(get_batch.BATCH_COUNTER)
     else:
@@ -69,9 +74,12 @@ class Dataset(object):
       batch_label = self.data_label[
                     self.batch_counter:self.batch_counter + self.batch_size,
                     ...]
+      batch_metadata = self.meta_data[
+                       self.batch_counter:self.batch_counter + self.batch_size,
+                       ...]
       self.batch_counter += self.batch_size
 
-    return batch_image, batch_label
+    return batch_image, batch_metadata, batch_label
 
   def get_batch_eval(self):
     if (self.batch_counter_val + self.batch_size < self.data_array.shape[0]):
@@ -81,6 +89,9 @@ class Dataset(object):
       batch_label = self.data_label[
                     self.batch_counter_val:self.batch_counter_val + self.batch_size,
                     ...]
+      batch_metadata = self.meta_data[
+                       self.batch_counter_val:self.batch_counter_val + self.batch_size,
+                       ...]
       self.batch_counter_val += self.batch_size
       # print(get_batch.BATCH_COUNTER)
     else:
@@ -91,121 +102,72 @@ class Dataset(object):
       batch_label = self.data_label[
                     self.batch_counter_val:self.batch_counter_val + left_samples,
                     ...]
+      batch_metadata = self.meta_data[
+                       self.batch_counter_val:self.batch_counter_val + left_samples,
+                       ...]
       self.batch_counter_val = 0
 
-    return batch_image, batch_label
+    return batch_image, batch_metadata, batch_label
 
-  def shuffle_data(self):
+  def shuffle_data(self, random_seed=42):
     idx = np.arange(self.data_array.shape[0])
-    np.random.shuffle(idx)
-    self.data_array = self.data_array[idx, ...]
-    self.data_label = self.data_label[idx, ...]
+    np.random.RandomState(random_seed).shuffle(idx)
+    self.data_array = self.data_array[idx]
+    self.data_label = self.data_label[idx]
+    self.meta_data = self.meta_data[idx]
 
   # TODO aboid data replication
   def balance_data_by_replication(self):
-    # sort labels by quantity
-    labels_count_sorted = np.argsort(list(Counter(self.data_label).values()))[
-                          ::-1]
-    label_values = np.array(list(Counter(self.data_label).keys())).astype(int)[
-      labels_count_sorted]  # np.unique(self.data_label)
-    for label_idx in range(label_values.shape[0] - 1):
-      if label_idx == 0:
-        first_labels_idx = np.where(self.data_label == label_values[0])[0]
-        second_labels_idx = np.where(self.data_label == label_values[1])[0]
-        data_set_train = Dataset(data_array=np.concatenate(
-            [self.data_array[first_labels_idx],
-             self.data_array[second_labels_idx]]),
-                                 data_label=np.concatenate(
-                                     [self.data_label[first_labels_idx],
-                                      self.data_label[second_labels_idx]]),
-                                 batch_size=8)
-        data_set_train.balance_data_by_replication_2_classes()
-        aux_balanced_data_array = data_set_train.data_array
-        aux_balanced_data_label = data_set_train.data_label
+    # labels, label_indexes = np.unique(self.data_label, return_inverse=True, axis=0)
+    print('Replicationg data from %s' % str(
+      np.unique(self.data_label, return_counts=True)))
+    labels = np.unique(self.data_label)
+    max_label_count, _ = self.get_max_min_label_count()
+    balanced_labels, balanced_images, balanced_features = [], [], []
+    for i, l in enumerate(labels):
+      # class_index = labels[label_indexes] == i
+      class_index = np.where(self.data_label == l)[0]
+      n_samples_this_class = class_index.shape[0]  # np.sum(class_index)
+      if n_samples_this_class != max_label_count:
+        balanced_labels.append(
+            self._oversampling_array(self.data_label[class_index]))
+        balanced_images.append(
+            self._oversampling_array(self.data_array[class_index]))
+        balanced_features.append(
+            self._oversampling_array(self.meta_data[class_index]))
       else:
-        # label_idx+1 because it will be equal to one at first and we want to skip idx 1 considered above
-        aux_labels_idx = \
-        np.where(aux_balanced_data_label == label_values[label_idx])[0]
-        remaining_labels_idx = \
-        np.where(self.data_label == label_values[label_idx + 1])[0]
+        balanced_labels.append(self.data_label[class_index])
+        balanced_images.append(self.data_array[class_index])
+        balanced_features.append(self.meta_data[class_index])
+    self.data_label = np.concatenate(balanced_labels)
+    self.data_array = np.concatenate(balanced_images)
+    self.meta_data = np.concatenate(balanced_features)
+    print('to %s' % str(
+        np.unique(self.data_label, return_counts=True)))
 
-        data_set_train = Dataset(data_array=np.concatenate(
-            [aux_balanced_data_array[aux_labels_idx],
-             self.data_array[remaining_labels_idx]]),
-                                 data_label=np.concatenate(
-                                     [aux_balanced_data_label[aux_labels_idx],
-                                      self.data_label[remaining_labels_idx]]),
-                                 batch_size=8)
-        data_set_train.balance_data_by_replication_2_classes()
+  # TODO aboid data replication
+  def undersample_data(self, max_n_sample_each_class, random_seed=42):
+    print('Undersampling data from %s' % str(
+        np.unique(self.data_label, return_counts=True)))
+    labels = np.unique(self.data_label)
+    max_label_count, _ = self.get_max_min_label_count()
+    balanced_labels, balanced_images, balanced_features = [], [], []
+    for i, l in enumerate(labels):
+      class_index = np.where(self.data_label == l)[0]
+      np.random.RandomState(random_seed).shuffle(class_index)
+      class_index_to_get = class_index[:max_n_sample_each_class]
+      balanced_labels.append(self.data_label[class_index_to_get])
+      balanced_images.append(self.data_array[class_index_to_get])
+      balanced_features.append(self.meta_data[class_index_to_get])
+    self.data_label = np.concatenate(balanced_labels)
+    self.data_array = np.concatenate(balanced_images)
+    self.meta_data = np.concatenate(balanced_features)
+    print('to %s' % str(
+        np.unique(self.data_label, return_counts=True)))
 
-        # get idx of remaing labels just replicated
-        balanced_remaining_labels_idx = \
-        np.where(data_set_train.data_label == label_values[label_idx + 1])[0]
-        aux_balanced_data_array = np.concatenate([aux_balanced_data_array,
-                                                  data_set_train.data_array[
-                                                    balanced_remaining_labels_idx]])
-        aux_balanced_data_label = np.concatenate([aux_balanced_data_label,
-                                                  data_set_train.data_label[
-                                                    balanced_remaining_labels_idx]])
-    self.data_array = aux_balanced_data_array
-    self.data_label = aux_balanced_data_label
-
-  # TODO: change both values for uique functions (AVOID CODE REPLICATION)
-  # TODO: recursively? replicate_data should be?
-  # TODO: min_lbl_count changes on very iteration, it should stay the same or shuffle
-  # of replicate_data cannot be
   def balance_data_by_replication_2_classes(self):
-    max_disbalance = self.get_max_disbalance()
-    max_lbl_count, min_lbl_count = self.get_max_min_label_count()
-    max_lbl, min_lbl = self.get_max_min_label()
-
-    if (max_disbalance == 0):
-      return
-    while (max_disbalance != 0):
-      if (min_lbl_count > max_disbalance):
-        self.replicate_data(min_lbl, max_disbalance)
-        # max_disbalance = 0
-      else:
-        self.replicate_data(min_lbl, min_lbl_count)
-        # max_disbalance -= min_lbl_count
-      max_disbalance = self.get_max_disbalance()  #
-    self.balance_data_by_replication_2_classes()
-    return
-
-  def get_max_disbalance(self):
-    max_label_count, min_label_count = self.get_max_min_label_count()
-    return max_label_count - min_label_count
+    self.balance_data_by_replication()
 
   def get_max_min_label_count(self):
-    max_label, min_label = self.get_max_min_label()
-
-    max_label_count = np.where(self.data_label == max_label)[0].shape[0]
-    min_label_count = np.where(self.data_label == min_label)[0].shape[0]
-
-    return max_label_count, min_label_count
-
-  def get_max_min_label(self):
-    labels = np.unique(self.data_label)
-    labels_count = []
-
-    for j in range(labels.shape[0]):
-      label_j_count = np.where(self.data_label == labels[j])[0].shape[0]
-      labels_count.append(label_j_count)
-
-    labels_count = np.array(labels_count)
-
-    max_label = labels[np.where(labels_count == np.max(labels_count))[0][0]]
-    min_label = labels[np.where(labels_count == np.min(labels_count))[0][0]]
-    return max_label, min_label
-
-  def replicate_data(self, label, samples_number):
-    # print("%i samples replicated of class %i" %(samples_number,label))
-    label_idx = np.where(self.data_label == label)[0]
-    # np.random.shuffle(label_idx)
-    label_idx = label_idx[0:samples_number]
-    replicated_data_array = self.data_array[label_idx, ...]
-    self._merge_with_dataset(replicated_data_array, label)
-
-  def get_array_from_label(self, label):
-    label_idx = np.where(self.data_label == label)[0]
-    return self.data_array[label_idx]
+    _, labels_count = np.unique(self.data_label, return_counts=True)
+    return np.amax(labels_count), np.amin(labels_count)
