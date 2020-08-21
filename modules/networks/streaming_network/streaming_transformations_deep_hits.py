@@ -20,6 +20,7 @@ from modules.geometric_transform.streaming_transformers. \
     abstract_streaming_transformer import AbstractTransformer
 from modules.print_manager import PrintManager
 
+
 # TODO: manage weights saved in a better manner: save_path, non saving when not given, etc
 class StreamingTransformationsDeepHits(DeepHits):
 
@@ -56,7 +57,7 @@ class StreamingTransformationsDeepHits(DeepHits):
     #         delta_timer(time.time() - self.training_star_time)))
 
     def _get_training_dataset(self, x_train, batch_size):
-        train_ds = tf.data.Dataset.from_tensor_slices((x_train)).\
+        train_ds = tf.data.Dataset.from_tensor_slices((x_train)). \
             shuffle(10000).batch(batch_size, drop_remainder=True)
         return train_ds
 
@@ -69,6 +70,10 @@ class StreamingTransformationsDeepHits(DeepHits):
         self.optimizer.apply_gradients(zip(gradients, self.trainable_variables))
         self.train_loss(loss)
         self.train_accuracy(labels, predictions)
+        accuracy = tf.reduce_mean(tf.cast(
+            tf.argmax(labels, axis=-1) == tf.argmax(predictions, axis=-1),
+            tf.float32))
+        return loss, accuracy
 
     # this method cannot use tf.function because of conflict with getting
     # transformation_ops from a list by tensor indixes, thus it is SLOW!
@@ -95,20 +100,24 @@ class StreamingTransformationsDeepHits(DeepHits):
         }
         self.training_star_time = time.time()
         self.n_iterations_in_epoch = (
-            len(x_data) // batch_size) * self.transformer.n_transforms
+                                         len(
+                                             x_data) // batch_size) * self.transformer.n_transforms
         self.evaluation_set_name = 'validation'
 
     def _set_validation_at_epochs_end_if_none(self, iterations_to_validate):
-        if iterations_to_validate is None or iterations_to_validate==0:
+        if iterations_to_validate is None or iterations_to_validate == 0:
             # -1 is used to actually perform a validation when epochs set to 1
-            iterations_to_validate = self.n_iterations_in_epoch #- 1
+            iterations_to_validate = self.n_iterations_in_epoch  # - 1
         return iterations_to_validate
 
     # TODO: implement some kind of train_loggin
     def fit(self, x_train, epochs, x_validation=None, batch_size=128,
-        iterations_to_validate=None, patience=None, verbose=True):
+        iterations_to_print_train=None, iterations_to_validate=None,
+        patience=None, verbose=True, log_file='train.log'):
         validation_batch_size = 1024
         print_manager = PrintManager().verbose_printing(verbose)
+        file = open(os.path.join(self.results_folder_path, log_file), 'w')
+        print_manager.file_printing(file)
         print('\nTraining Initiated\n')
         self._initialize_training_attributes(x_train, batch_size)
         # if validation_data is None:
@@ -116,6 +125,8 @@ class StreamingTransformationsDeepHits(DeepHits):
         assert patience is not None
         iterations_to_validate = self._set_validation_at_epochs_end_if_none(
             iterations_to_validate)
+        if iterations_to_print_train is None:
+            iterations_to_print_train = iterations_to_validate
         train_ds = self._get_training_dataset(x_train, batch_size)
         validation_ds = tf.data.Dataset.from_tensor_slices(
             (x_validation)).batch(validation_batch_size)
@@ -134,20 +145,24 @@ class StreamingTransformationsDeepHits(DeepHits):
                     images_transformed, transformation_indexes_oh = \
                         self._transform_train_batch_and_get_transform_indxs_oh(
                             x_batch_train)
-                    self.train_step(
+                    set_loss, step_accuracy = self.train_step(
                         images_transformed, transformation_indexes_oh)
+                    if iteration % iterations_to_print_train == 0:
+                        self._print_at_train(
+                            step_accuracy, set_loss, iteration, epoch)
         self.load_weights(
             self.best_model_weights_path)
         self._print_training_end()
         self._reset_metrics()
         print_manager.close()
+        file.close()
 
     def _transform_evaluation_batch_and_get_transform_indexes_oh(
         self, x_batch_val, transform_index):
         transformation_indexes = tf.ones(
             x_batch_val.shape[0], dtype=tf.int32) * transform_index
         x_transformed = self.transformer.apply_specific_transform_on_batch(
-                x_batch_val, transform_index)
+            x_batch_val, transform_index)
         transformation_indexes_oh = tf.one_hot(
             transformation_indexes, depth=self.transformer.n_transforms)
         return x_transformed, transformation_indexes_oh
@@ -158,26 +173,43 @@ class StreamingTransformationsDeepHits(DeepHits):
                    ' (train): loss %.6f, acc %.6f\n' \
                    '(validation): loss %.6f, acc %.6f %s'
         print(template % (
-                delta_timer(time.time() - self.training_star_time),
-                # (iteration!=0)+1 is added so in first val epochs = 0 and +1
-                # in rest
-                epoch, #+ (iteration!=0)*1,
-                iteration,
-                patience - self.best_model_so_far[
-                    general_keys.COUNT_MODEL_NOT_IMPROVED_AT_EPOCH],
-                self.train_loss.result(),
-                self.train_accuracy.result(),
-                self.eval_loss.result(),
-                self.eval_accuracy.result(),
-                best_model_missing_message
-            )
+            delta_timer(time.time() - self.training_star_time),
+            # (iteration!=0)+1 is added so in first val epochs = 0 and +1
+            # in rest
+            epoch,  # + (iteration!=0)*1,
+            iteration,
+            patience - self.best_model_so_far[
+                general_keys.COUNT_MODEL_NOT_IMPROVED_AT_EPOCH],
+            self.train_loss.result(),
+            self.train_accuracy.result(),
+            self.eval_loss.result(),
+            self.eval_accuracy.result(),
+            best_model_missing_message
         )
+              )
+        with self.val_summary_writer.as_default():
+            tf.summary.scalar('loss', self.eval_loss.result(), step=iteration)
+            tf.summary.scalar('accuracy', self.eval_accuracy.result(),
+                              step=iteration)
+
+    def _print_at_train(self, accuracy, loss, iteration, epoch):
+        template = 'Epoch %i Iteration %i (train): loss %.6f, acc %.6f'
+        print(template % (
+            epoch,
+            iteration,
+            loss,
+            accuracy
+        ))
+        with self.train_summary_writer.as_default():
+            tf.summary.scalar('loss', loss, step=iteration)
+            tf.summary.scalar('accuracy', accuracy,
+                              step=iteration)
 
     def _validate(
         self, validation_ds: tf.data.Dataset, iteration, patience, epoch):
         for transformation_index in range(self.transformer.n_transforms):
             for x_val_batch in validation_ds:
-                x_transformed, transformation_indexes_oh = self.\
+                x_transformed, transformation_indexes_oh = self. \
                     _transform_evaluation_batch_and_get_transform_indexes_oh(
                     x_val_batch, transformation_index)
                 self.eval_step(x_transformed, transformation_indexes_oh)
@@ -246,10 +278,12 @@ if __name__ == '__main__':
         RankingTransformer
     from modules.data_loaders.hits_outlier_loader import HiTSOutlierLoader
     from modules.utils import set_soft_gpu_memory_growth
+
     set_soft_gpu_memory_growth()
 
     EPOCHS = 1000
-    ITERATIONS_TO_VALIDATE = 10  # 1000 # None
+    ITERATIONS_TO_VALIDATE = 100  # 1000 # None
+    ITERATIONS_TO_PRINT_TRAIN = 10
     PATIENCE = 0  # 0
 
     hits_params = {
@@ -275,28 +309,29 @@ if __name__ == '__main__':
     mdl.save_initial_weights(x_train, mdl.results_folder_path)
     mdl.fit(
         x_train, epochs=EPOCHS, x_validation=x_val, batch_size=128,
-        patience=PATIENCE, iterations_to_validate=ITERATIONS_TO_VALIDATE)
+        patience=PATIENCE, iterations_to_validate=ITERATIONS_TO_VALIDATE,
+        iterations_to_print_train=ITERATIONS_TO_PRINT_TRAIN)
     mdl.evaluate(x_train)
     mdl.evaluate(x_val)
-    print('\nResults with random Initial Weights')
-    mdl.load_weights(os.path.join(mdl.results_folder_path, 'init.ckpt'))
-    mdl.evaluate(x_train)
-    mdl.evaluate(x_val)
-    mdl.fit(
-        x_train, epochs=EPOCHS, x_validation=x_val, batch_size=128,
-        patience=PATIENCE, iterations_to_validate=ITERATIONS_TO_VALIDATE)
-    mdl.evaluate(x_train)
-    mdl.evaluate(x_val)
-
-    del mdl
-    mdl = StreamingTransformationsDeepHits(transformer)
-    mdl.load_weights(os.path.join(mdl.results_folder_path, 'checkpoints',
-                                  'best_weights.ckpt'))
-    print('\nResults with model loaded')
-    # mdl.evaluate(x_train, batch_size=1000)
-    # mdl.evaluate(x_train, batch_size=1000)
-    mdl.evaluate(x_train)
-    mdl.evaluate(x_train)
-    mdl.evaluate(x_val)
-    mdl.evaluate(x_val)
-    # mdl.evaluate(x_val, batch_size=256)
+    # print('\nResults with random Initial Weights')
+    # mdl.load_weights(os.path.join(mdl.results_folder_path, 'init.ckpt'))
+    # mdl.evaluate(x_train)
+    # mdl.evaluate(x_val)
+    # mdl.fit(
+    #     x_train, epochs=EPOCHS, x_validation=x_val, batch_size=128,
+    #     patience=PATIENCE, iterations_to_validate=ITERATIONS_TO_VALIDATE)
+    # mdl.evaluate(x_train)
+    # mdl.evaluate(x_val)
+    #
+    # del mdl
+    # mdl = StreamingTransformationsDeepHits(transformer)
+    # mdl.load_weights(os.path.join(mdl.results_folder_path, 'checkpoints',
+    #                               'best_weights.ckpt'))
+    # print('\nResults with model loaded')
+    # # mdl.evaluate(x_train, batch_size=1000)
+    # # mdl.evaluate(x_train, batch_size=1000)
+    # mdl.evaluate(x_train)
+    # mdl.evaluate(x_train)
+    # mdl.evaluate(x_val)
+    # mdl.evaluate(x_val)
+    # # mdl.evaluate(x_val, batch_size=256)

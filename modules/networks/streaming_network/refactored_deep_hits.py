@@ -27,10 +27,11 @@ class DeepHits(tf.keras.Model):
         self, n_classes, drop_rate=0.5, final_activation='softmax',
         name='deep_hits_refactored', results_folder_name=None):
         super().__init__(name=name)
-        self._init_layers(n_classes, drop_rate, final_activation)
-        self._init_builds()
         self.results_folder_path, self.best_model_weights_path = \
             self._create_model_paths(results_folder_name)
+        self._init_layers(n_classes, drop_rate, final_activation)
+        self._init_builds()
+
 
     def _init_layers(self, n_classes, drop_rate, final_activation):
         self.zp = tf.keras.layers.ZeroPadding2D(padding=(3, 3))
@@ -63,6 +64,10 @@ class DeepHits(tf.keras.Model):
         self.eval_loss = tf.keras.metrics.Mean(name='eval_loss')
         self.eval_accuracy = tf.keras.metrics.CategoricalAccuracy(
             name='eval_accuracy')
+        self.train_summary_writer = tf.summary.create_file_writer(
+            os.path.join(self.results_folder_path, 'tensorboard/train'))
+        self.val_summary_writer = tf.summary.create_file_writer(
+            os.path.join(self.results_folder_path, 'tensorboard/val'))
 
     def _reset_metrics(self):
         self.eval_loss.reset_states()
