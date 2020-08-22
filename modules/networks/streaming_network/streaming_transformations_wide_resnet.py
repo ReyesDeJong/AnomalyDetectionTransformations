@@ -37,12 +37,12 @@ class StreamingTransformationsWideResnet(StreamingTransformationsDeepHits):
         self.transformer = transformer
         self.input_channels = input_channels
         self.weight_decay = weight_decay
+        self.results_folder_path, self.best_model_weights_path = \
+            self._create_model_paths(results_folder_name)
         self._init_layers(
             self.transformer.n_transforms, depth, widen_factor, drop_rate,
             final_activation)
         self._init_builds()
-        self.results_folder_path, self.best_model_weights_path = \
-            self._create_model_paths(results_folder_name)
 
     def _init_layers(self, n_classes, depth, widen_factor, dropout_rate,
         final_activation):

@@ -58,9 +58,6 @@ class DeepHits(tf.keras.Model):
     def _init_builds(self):
         self.loss_object = tf.keras.losses.CategoricalCrossentropy()
         self.optimizer = tf.keras.optimizers.Adam()
-        self.train_loss = tf.keras.metrics.Mean(name='train_loss')
-        self.train_accuracy = tf.keras.metrics.CategoricalAccuracy(
-            name='train_accuracy')
         self.eval_loss = tf.keras.metrics.Mean(name='eval_loss')
         self.eval_accuracy = tf.keras.metrics.CategoricalAccuracy(
             name='eval_accuracy')
@@ -72,8 +69,6 @@ class DeepHits(tf.keras.Model):
     def _reset_metrics(self):
         self.eval_loss.reset_states()
         self.eval_accuracy.reset_states()
-        self.train_loss.reset_states()
-        self.train_accuracy.reset_states()
 
     def call(self, input_tensor, training=False, remove_top=False):
         x = self.zp(input_tensor)
@@ -102,8 +97,10 @@ class DeepHits(tf.keras.Model):
             loss = self.loss_object(labels, predictions)
         gradients = tape.gradient(loss, self.trainable_variables)
         self.optimizer.apply_gradients(zip(gradients, self.trainable_variables))
-        self.train_loss(loss)
-        self.train_accuracy(labels, predictions)
+        accuracy = tf.reduce_mean(tf.cast(
+            tf.argmax(labels, axis=-1) == tf.argmax(predictions, axis=-1),
+            tf.float32))
+        return loss, accuracy
 
     @tf.function
     def eval_step(self, images, labels):
@@ -162,7 +159,7 @@ class DeepHits(tf.keras.Model):
             (validation_data[0], validation_data[1])).batch(1024)
         for epoch in range(epochs):
             for it_i, (images, labels) in enumerate(train_ds):
-                self.train_step(images, labels)
+                step_loss, step_accuracy = self.train_step(images, labels)
                 it_i = it_i + (epoch * self.n_iterations_in_epoch)
                 if it_i % iterations_to_validate == 0:
                     for validation_images, validation_labels in validation_ds:
@@ -174,8 +171,8 @@ class DeepHits(tf.keras.Model):
                             patience-self.best_model_so_far[
                                 general_keys.COUNT_MODEL_NOT_IMPROVED_AT_EPOCH],
                             epoch,
-                            self.train_loss.result(),
-                            self.train_accuracy.result() * 100,
+                            step_loss,
+                            step_accuracy * 100,
                             self.eval_loss.result(),
                             self.eval_accuracy.result() * 100,
                             delta_timer(

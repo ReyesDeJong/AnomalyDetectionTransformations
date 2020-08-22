@@ -29,7 +29,7 @@ class StreamingWideResnetWait1Epoch(StreamingTransformationsWideResnet):
 
     def __init__(self, input_channels, transformer: AbstractTransformer,
         depth=10, widen_factor=4, drop_rate=0.0, weight_decay=WEIGHT_DECAY,
-        final_activation='softmax', name='WRN_Streaming_Trfs',
+        final_activation='softmax', name='WRN_Streaming_Trfs_Wait1Epoch',
         results_folder_name=None):
         super().__init__(
             input_channels, transformer, depth, widen_factor, drop_rate,
@@ -43,10 +43,13 @@ class StreamingWideResnetWait1Epoch(StreamingTransformationsWideResnet):
 
     # TODO: implement some kind of train_loggin
     def fit(self, x_train, epochs, x_validation=None, batch_size=128,
-        iterations_to_validate=None, patience=None, verbose=True,
-        wait_first_epoch=False):
+        iterations_to_print_train=None, iterations_to_validate=None,
+        patience=None, verbose=True, wait_first_epoch=False,
+        log_file='train.log'):
         validation_batch_size = 1024
         print_manager = PrintManager().verbose_printing(verbose)
+        file = open(os.path.join(self.results_folder_path, log_file), 'w')
+        print_manager.file_printing(file)
         print('\nTraining Initiated\n')
         self._initialize_training_attributes(x_train, batch_size)
         # if validation_data is None:
@@ -54,6 +57,8 @@ class StreamingWideResnetWait1Epoch(StreamingTransformationsWideResnet):
         assert patience is not None
         iterations_to_validate = self._set_validation_at_epochs_end_if_none(
             iterations_to_validate)
+        if iterations_to_print_train is None:
+            iterations_to_print_train = iterations_to_validate
         train_ds = self._get_training_dataset(x_train, batch_size)
         validation_ds = tf.data.Dataset.from_tensor_slices(
             (x_validation)).batch(validation_batch_size)
@@ -74,13 +79,17 @@ class StreamingWideResnetWait1Epoch(StreamingTransformationsWideResnet):
                     images_transformed, transformation_indexes_oh = \
                         self._transform_train_batch_and_get_transform_indxs_oh(
                             x_batch_train)
-                    self.train_step(
+                    step_loss, step_accuracy = self.train_step(
                         images_transformed, transformation_indexes_oh)
+                    if iteration % iterations_to_print_train == 0:
+                        self._print_at_train(
+                            step_accuracy, step_loss, iteration, epoch)
         self.load_weights(
             self.best_model_weights_path)
         self._print_training_end()
         self._reset_metrics()
         print_manager.close()
+        file.close()
 
     def _validate(
         self, validation_ds: tf.data.Dataset, iteration, patience, epoch,
@@ -127,8 +136,9 @@ if __name__ == '__main__':
     set_soft_gpu_memory_growth()
 
     EPOCHS = 1000
-    ITERATIONS_TO_VALIDATE = 50  # 1000 # None
-    PATIENCE = 0  # 0
+    ITERATIONS_TO_VALIDATE = 100  # 1000 # None
+    ITERATIONS_TO_PRINT_TRAIN = 10
+    PATIENCE = 1  # 0
 
     hits_params = {
         loader_keys.DATA_PATH: os.path.join(
@@ -153,31 +163,31 @@ if __name__ == '__main__':
     mdl.save_initial_weights(x_train, mdl.results_folder_path)
     mdl.fit(
         x_train, epochs=EPOCHS, x_validation=x_val, batch_size=128,
-        patience=PATIENCE, iterations_to_validate=ITERATIONS_TO_VALIDATE,
-        wait_first_epoch=True)
+        patience=PATIENCE, iterations_to_print_train=ITERATIONS_TO_PRINT_TRAIN,
+        iterations_to_validate=ITERATIONS_TO_VALIDATE, wait_first_epoch=True)
     mdl.evaluate(x_train)
     mdl.evaluate(x_val)
-    print('\nResults with random Initial Weights')
-    mdl.load_weights(os.path.join(mdl.results_folder_path, 'init.ckpt'))
-    mdl.evaluate(x_train)
-    mdl.evaluate(x_val)
-    mdl.fit(
-        x_train, epochs=EPOCHS, x_validation=x_val, batch_size=128,
-        patience=PATIENCE, iterations_to_validate=ITERATIONS_TO_VALIDATE)
-    mdl.evaluate(x_train)
-    mdl.evaluate(x_val)
-    results_folder_path = mdl.results_folder_path
-    print(os.path.abspath(results_folder_path))
-
-    del mdl
-    mdl = StreamingTransformationsWideResnet(x_train.shape[:-1], transformer)
-    mdl.load_weights(os.path.join(results_folder_path, 'checkpoints',
-                                  'best_weights.ckpt'))
-    print('\nResults with model loaded')
-    # mdl.evaluate(x_train, batch_size=1000)
-    # mdl.evaluate(x_train, batch_size=1000)
-    mdl.evaluate(x_train)
-    mdl.evaluate(x_train)
-    mdl.evaluate(x_val)
-    mdl.evaluate(x_val)
-    # mdl.evaluate(x_val, batch_size=256)
+    # print('\nResults with random Initial Weights')
+    # mdl.load_weights(os.path.join(mdl.results_folder_path, 'init.ckpt'))
+    # mdl.evaluate(x_train)
+    # mdl.evaluate(x_val)
+    # mdl.fit(
+    #     x_train, epochs=EPOCHS, x_validation=x_val, batch_size=128,
+    #     patience=PATIENCE, iterations_to_validate=ITERATIONS_TO_VALIDATE)
+    # mdl.evaluate(x_train)
+    # mdl.evaluate(x_val)
+    # results_folder_path = mdl.results_folder_path
+    # print(os.path.abspath(results_folder_path))
+    #
+    # del mdl
+    # mdl = StreamingTransformationsWideResnet(x_train.shape[:-1], transformer)
+    # mdl.load_weights(os.path.join(results_folder_path, 'checkpoints',
+    #                               'best_weights.ckpt'))
+    # print('\nResults with model loaded')
+    # # mdl.evaluate(x_train, batch_size=1000)
+    # # mdl.evaluate(x_train, batch_size=1000)
+    # mdl.evaluate(x_train)
+    # mdl.evaluate(x_train)
+    # mdl.evaluate(x_val)
+    # mdl.evaluate(x_val)
+    # # mdl.evaluate(x_val, batch_size=256)

@@ -61,20 +61,6 @@ class StreamingTransformationsDeepHits(DeepHits):
             shuffle(10000).batch(batch_size, drop_remainder=True)
         return train_ds
 
-    @tf.function
-    def train_step(self, images, labels):
-        with tf.GradientTape() as tape:
-            predictions = self.call(images, training=True)
-            loss = self.loss_object(labels, predictions)
-        gradients = tape.gradient(loss, self.trainable_variables)
-        self.optimizer.apply_gradients(zip(gradients, self.trainable_variables))
-        self.train_loss(loss)
-        self.train_accuracy(labels, predictions)
-        accuracy = tf.reduce_mean(tf.cast(
-            tf.argmax(labels, axis=-1) == tf.argmax(predictions, axis=-1),
-            tf.float32))
-        return loss, accuracy
-
     # this method cannot use tf.function because of conflict with getting
     # transformation_ops from a list by tensor indixes, thus it is SLOW!
     def _transform_train_batch_and_get_transform_indxs_oh(
@@ -145,11 +131,11 @@ class StreamingTransformationsDeepHits(DeepHits):
                     images_transformed, transformation_indexes_oh = \
                         self._transform_train_batch_and_get_transform_indxs_oh(
                             x_batch_train)
-                    set_loss, step_accuracy = self.train_step(
+                    step_loss, step_accuracy = self.train_step(
                         images_transformed, transformation_indexes_oh)
                     if iteration % iterations_to_print_train == 0:
                         self._print_at_train(
-                            step_accuracy, set_loss, iteration, epoch)
+                            step_accuracy, step_loss, iteration, epoch)
         self.load_weights(
             self.best_model_weights_path)
         self._print_training_end()
@@ -170,18 +156,13 @@ class StreamingTransformationsDeepHits(DeepHits):
     def _print_at_validate(self, iteration, patience, epoch,
         best_model_missing_message):
         template = 'Time usage: %s\nEpoch %i Iteration %i Patience left %i' \
-                   ' (train): loss %.6f, acc %.6f\n' \
-                   '(validation): loss %.6f, acc %.6f %s'
+                   ' (validation): loss %.6f, acc %.6f %s'
         print(template % (
             delta_timer(time.time() - self.training_star_time),
-            # (iteration!=0)+1 is added so in first val epochs = 0 and +1
-            # in rest
-            epoch,  # + (iteration!=0)*1,
+            epoch,
             iteration,
             patience - self.best_model_so_far[
                 general_keys.COUNT_MODEL_NOT_IMPROVED_AT_EPOCH],
-            self.train_loss.result(),
-            self.train_accuracy.result(),
             self.eval_loss.result(),
             self.eval_accuracy.result(),
             best_model_missing_message
@@ -284,7 +265,7 @@ if __name__ == '__main__':
     EPOCHS = 1000
     ITERATIONS_TO_VALIDATE = 100  # 1000 # None
     ITERATIONS_TO_PRINT_TRAIN = 10
-    PATIENCE = 0  # 0
+    PATIENCE = 1  # 0
 
     hits_params = {
         loader_keys.DATA_PATH: os.path.join(
