@@ -28,7 +28,7 @@ class GeoTransformAlphasWRN1Epoch(GeoTransformBaseDirichletAlphasSaved):
 
     def fit(self, x_train, epochs, x_validation=None, batch_size=128,
         iterations_to_validate=None, patience=None, wait_first_epoch=False,
-        verbose=True):
+        verbose=True, iterations_to_print_train=None):
         print_manager = PrintManager().verbose_printing(verbose)
         if epochs is None:
             epochs = self._get_original_paper_epochs()
@@ -36,7 +36,8 @@ class GeoTransformAlphasWRN1Epoch(GeoTransformBaseDirichletAlphasSaved):
         self.classifier.fit(
             x_train, epochs, x_validation, batch_size,
             iterations_to_validate,
-            patience, verbose, wait_first_epoch)
+            patience, verbose, wait_first_epoch,
+            iterations_to_print_train=iterations_to_print_train)
         self._update_dirichlet_alphas(x_train, verbose)
         if x_validation is None:
             x_validation = x_train

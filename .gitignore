@@ -21,6 +21,8 @@ checkpoint
 *.iml
 *.xml
 *.swp
+*.tfevents*
+events.out.tfevents.*
 aux_weights/
 .idea/
 /.idea

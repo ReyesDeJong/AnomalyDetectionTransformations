@@ -16,7 +16,8 @@ from parameters import general_keys
 import numpy as np
 from modules import dirichlet_utils, utils
 from sklearn.metrics import roc_curve, precision_recall_curve, auc
-from modules.metrics import accuracies_by_threshold, accuracy_at_thr
+from modules.metrics import accuracies_by_threshold, accuracy_at_thr, \
+    precision_at_thr, recall_at_thr
 import datetime
 from tqdm import tqdm
 import matplotlib.pyplot as plt
@@ -55,20 +56,22 @@ class GeoTransformBase(tf.keras.Model):
             results_folder_path = os.path.join(
                 PROJECT_PATH, 'results', results_folder_name,
                 '%s_%s_%s' % (self.name, self.classifier.name, self.date))
-        # utils.check_path(results_folder_path)
+        utils.check_path(results_folder_path)
         return results_folder_path
 
     def _get_original_paper_epochs(self):
         return int(np.ceil(200 / self.transformer.n_transforms))
 
     def fit(self, x_train, epochs, x_validation=None, batch_size=128,
-        iterations_to_validate=None, patience=None, verbose=True):
+        iterations_to_validate=None, patience=None, verbose=True,
+        iterations_to_print_train=None):
         if epochs is None:
             epochs = self._get_original_paper_epochs()
             patience = int(1e100)
         self.classifier.fit(
             x_train, epochs, x_validation, batch_size, iterations_to_validate,
-            patience, verbose)
+            patience, verbose,
+            iterations_to_print_train=iterations_to_print_train)
 
     # TODO: avoid apply_all_transforms at once
     def _predict_matrix_probabilities(self, x_data, transform_batch_size=512,
@@ -146,9 +149,13 @@ class GeoTransformBase(tf.keras.Model):
         class_name='inlier', x_validation=None, transform_batch_size=512,
         evaluation_batch_size=1024, save_metrics=False,
         additional_score_save_path_list=None, save_histogram=False,
-        get_auroc_acc_only=False, verbose=True):
+        get_auroc_acc_only=False, verbose=True, log_file='evaluate.log'):
         print_manager = PrintManager().verbose_printing(verbose)
+        file = open(os.path.join(self.model_results_path, log_file), 'a')
+        print_manager.file_printing(file)
         print('\nEvaluating model...')
+        print(dataset_name)
+        print(x_eval.shape)
         start_time = time.time()
         # validatioon is ussed to set accuracy thresholds
         if x_validation is None:
@@ -166,7 +173,8 @@ class GeoTransformBase(tf.keras.Model):
             save_histogram)
         self._print_final_metrics(
             metrics, keys_to_keep=[
-                'roc_auc', 'acc_at_percentil', 'pr_auc_norm'])
+                'roc_auc', 'acc_at_percentil', 'pr_auc_norm',
+                'rec_out_at_percentil', 'prec_out_at_percentil'])
         metrics = self._filter_metrics_to_return(
             metrics, get_auroc_acc_only,
             keys_to_keep=['roc_auc', 'acc_at_percentil'])
@@ -178,6 +186,7 @@ class GeoTransformBase(tf.keras.Model):
         print("\nEvaluation time: %s" % utils.timer(
                 start_time, time.time()))
         print_manager.close()
+        file.close()
         return metrics
 
     def _print_final_metrics(
@@ -346,6 +355,10 @@ class GeoTransformBase(tf.keras.Model):
         # anormal
         thr = np.percentile(scores_val, 100 - self.percentile)
         acc_at_percentil = accuracy_at_thr(labels, scores, thr)
+        recall_outliers_at_percentil = recall_at_thr(labels, scores, thr,
+                                                     over_outliers=True)
+        precision_outliers_at_percentil = precision_at_thr(labels, scores, thr,
+                                                           over_outliers=True)
         # pr curve where "normal" is the positive class
         precision_norm, recall_norm, pr_thresholds_norm = \
             precision_recall_curve(divided_labels, divided_scores)
@@ -369,7 +382,10 @@ class GeoTransformBase(tf.keras.Model):
                         'pr_auc_anom': pr_auc_anom,
                         'accuracies': accuracies,
                         'max_accuracy': np.max(accuracies),
-                        'acc_at_percentil': acc_at_percentil}
+                        'acc_at_percentil': acc_at_percentil,
+                        'rec_out_at_percentil': recall_outliers_at_percentil,
+                        'prec_out_at_percentil': precision_outliers_at_percentil
+                        }
         return metrics_dict
 
     def save_weights(self, path):
@@ -403,8 +419,9 @@ if __name__ == '__main__':
     matplotlib.use('Agg')
 
     EPOCHS = 1000
-    ITERATIONS_TO_VALIDATE = 0
-    PATIENCE = 0
+    ITERATIONS_TO_VALIDATE = 100
+    ITERATIONS_TO_PRINT_TRAIN = 10
+    PATIENCE = 1
     VERBOSE = True
 
     utils.set_soft_gpu_memory_growth()
@@ -440,7 +457,7 @@ if __name__ == '__main__':
     model.fit(
         x_train, epochs=EPOCHS, x_validation=x_val,
         iterations_to_validate=ITERATIONS_TO_VALIDATE, patience=PATIENCE,
-        verbose=VERBOSE)
+        verbose=VERBOSE, iterations_to_print_train=ITERATIONS_TO_PRINT_TRAIN)
     model.evaluate(
         x_train, x_test, y_test, outlier_loader.name, 'real', x_val,
         save_metrics=True, save_histogram=True, get_auroc_acc_only=True,

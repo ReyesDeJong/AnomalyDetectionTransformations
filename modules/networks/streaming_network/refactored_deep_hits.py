@@ -61,6 +61,8 @@ class DeepHits(tf.keras.Model):
         self.eval_loss = tf.keras.metrics.Mean(name='eval_loss')
         self.eval_accuracy = tf.keras.metrics.CategoricalAccuracy(
             name='eval_accuracy')
+
+    def _init_tensorboard_summaries(self):
         self.train_summary_writer = tf.summary.create_file_writer(
             os.path.join(self.results_folder_path, 'tensorboard/train'))
         self.val_summary_writer = tf.summary.create_file_writer(

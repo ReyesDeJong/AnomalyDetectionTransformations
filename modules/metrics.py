@@ -58,3 +58,36 @@ def accuracy_at_thr(labels, scores, threshold):
   accuracy_at_thr = np.mean(scores_preds == np.concatenate(
       [np.ones_like(inliers_scores), np.zeros_like(outliers_scores)]))
   return accuracy_at_thr
+
+def precision_at_thr(labels, scores, threshold, over_outliers=True):
+  label_value_to_calculate_on = (not over_outliers)*1
+  # print('precision [!!!!!!!!!!!] ', label_value_to_calculate_on)
+  # inliers_preds = (inliers_scores) ) * 1
+  # print(labels == label_value_to_calculate_on)
+  # print(labels[labels == label_value_to_calculate_on])
+  # P = len(scores[labels == label_value_to_calculate_on])
+  # print(P)
+  # print(np.unique((scores[labels == label_value_to_calculate_on] > threshold) * 1, return_counts=True))
+  TP = np.sum((scores[labels == label_value_to_calculate_on] > threshold) * 1
+              == label_value_to_calculate_on)
+  # print(TP)
+  FP = np.sum((scores[labels != label_value_to_calculate_on] > threshold) * 1
+              == label_value_to_calculate_on)
+  # print(FP)
+  precision_at_thr = TP/(TP+FP)
+  return precision_at_thr
+
+def recall_at_thr(labels, scores, threshold, over_outliers=True):
+  label_value_to_calculate_on = (not over_outliers)*1
+  # print('recall [!!!!!!!!!!!] ', label_value_to_calculate_on)
+  # inliers_preds = (inliers_scores) ) * 1
+  # print(labels == label_value_to_calculate_on)
+  # print(labels[labels == label_value_to_calculate_on])
+  P = len(scores[labels == label_value_to_calculate_on])
+  # print(P)
+  # print(np.unique((scores[labels == label_value_to_calculate_on] > threshold) * 1, return_counts=True))
+  TP = np.sum((scores[labels == label_value_to_calculate_on] > threshold) * 1
+              == label_value_to_calculate_on)
+  # print(TP)
+  recall_at_thr = TP/P
+  return recall_at_thr

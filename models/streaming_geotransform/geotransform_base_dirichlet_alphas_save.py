@@ -21,7 +21,8 @@ from modules.networks.streaming_network.streaming_transformations_deep_hits \
     import StreamingTransformationsDeepHits
 from modules.print_manager import PrintManager
 from sklearn.metrics import roc_curve, precision_recall_curve, auc
-from modules.metrics import accuracies_by_threshold, accuracy_at_thr
+from modules.metrics import accuracies_by_threshold, accuracy_at_thr, \
+    precision_at_thr, recall_at_thr
 import matplotlib.pyplot as plt
 
 
@@ -65,14 +66,16 @@ class GeoTransformBaseDirichletAlphasSaved(GeoTransformBase):
 
 
     def fit(self, x_train, epochs, x_validation=None, batch_size=128,
-        iterations_to_validate=None, patience=None, verbose=True):
+        iterations_to_validate=None, patience=None, verbose=True,
+        iterations_to_print_train=None):
         print_manager = PrintManager().verbose_printing(verbose)
         if epochs is None:
             epochs = self._get_original_paper_epochs()
             patience = int(1e100)
         self.classifier.fit(
             x_train, epochs, x_validation, batch_size, iterations_to_validate,
-            patience, verbose)
+            patience, verbose,
+            iterations_to_print_train=iterations_to_print_train)
         self._update_dirichlet_alphas(x_train, verbose)
         if x_validation is None:
             x_validation = x_train
@@ -116,6 +119,10 @@ class GeoTransformBaseDirichletAlphasSaved(GeoTransformBase):
         # anormal
         thr = self.prediction_threshold
         acc_at_percentil = accuracy_at_thr(labels, scores, thr)
+        recall_outliers_at_percentil = recall_at_thr(labels, scores, thr,
+                                                     over_outliers=True)
+        precision_outliers_at_percentil = precision_at_thr(labels, scores, thr,
+                                                           over_outliers=True)
         # pr curve where "normal" is the positive class
         precision_norm, recall_norm, pr_thresholds_norm = \
             precision_recall_curve(divided_labels, divided_scores)
@@ -139,7 +146,10 @@ class GeoTransformBaseDirichletAlphasSaved(GeoTransformBase):
                         'pr_auc_anom': pr_auc_anom,
                         'accuracies': accuracies,
                         'max_accuracy': np.max(accuracies),
-                        'acc_at_percentil': acc_at_percentil}
+                        'acc_at_percentil': acc_at_percentil,
+                        'rec_out_at_percentil': recall_outliers_at_percentil,
+                        'prec_out_at_percentil': precision_outliers_at_percentil
+                        }
         return metrics_dict
 
     def _save_histogram(self, score_metric_dict, score_name, dataset_name,
@@ -202,9 +212,13 @@ class GeoTransformBaseDirichletAlphasSaved(GeoTransformBase):
         class_name='inlier', transform_batch_size=512,
         evaluation_batch_size=1024, save_metrics=False,
         additional_score_save_path_list=None, save_histogram=False,
-        get_auroc_acc_only=False, verbose=True):
+        get_auroc_acc_only=False, verbose=True, log_file='evaluate.log'):
         print_manager = PrintManager().verbose_printing(verbose)
+        file = open(os.path.join(self.model_results_path, log_file), 'a')
+        print_manager.file_printing(file)
         print('\nEvaluating model...')
+        print(dataset_name)
+        print(x_eval.shape)
         start_time = time.time()
         dirichlet_scores_eval = self.predict_dirichlet_score(
             x_eval, transform_batch_size, evaluation_batch_size, verbose)
@@ -215,7 +229,8 @@ class GeoTransformBaseDirichletAlphasSaved(GeoTransformBase):
             save_histogram)
         self._print_final_metrics(
             metrics, keys_to_keep=[
-                'roc_auc', 'acc_at_percentil', 'pr_auc_norm'])
+                'roc_auc', 'acc_at_percentil', 'pr_auc_norm',
+                'rec_out_at_percentil', 'prec_out_at_percentil'])
         metrics = self._filter_metrics_to_return(
             metrics, get_auroc_acc_only,
             keys_to_keep=['roc_auc', 'acc_at_percentil'])
@@ -227,6 +242,7 @@ class GeoTransformBaseDirichletAlphasSaved(GeoTransformBase):
         print("\nEvaluation time: %s" % utils.timer(
             start_time, time.time()))
         print_manager.close()
+        file.close()
         return metrics
 
     def save_model(self, path):
@@ -309,9 +325,9 @@ if __name__ == '__main__':
 
     matplotlib.use('Agg')
 
-    EPOCHS = 1#1000
-    # 000
-    ITERATIONS_TO_VALIDATE = 2#0
+    EPOCHS = 1000
+    ITERATIONS_TO_VALIDATE = 10
+    ITERATIONS_TO_PRINT_TRAIN = 1
     PATIENCE = 0
     VERBOSE = True
 
@@ -335,8 +351,8 @@ if __name__ == '__main__':
         loader_keys.TRANSFORMATION_INLIER_CLASS_VALUE: 1
     }
     hits_loader = HiTSOutlierLoader(hits_params)
-    # outlier_loader = ztf_loader
-    outlier_loader = hits_loader
+    outlier_loader = ztf_loader
+    # outlier_loader = hits_loader
 
     (x_train, y_train), (x_val, y_val), (
         x_test, y_test) = outlier_loader.get_outlier_detection_datasets()
@@ -354,38 +370,38 @@ if __name__ == '__main__':
     model.fit(
         x_train, epochs=EPOCHS, x_validation=x_val,
         iterations_to_validate=ITERATIONS_TO_VALIDATE, patience=PATIENCE,
-        verbose=VERBOSE)
+        verbose=VERBOSE, iterations_to_print_train=ITERATIONS_TO_PRINT_TRAIN)
     model.evaluate(
         x_test, y_test, outlier_loader.name, 'real', save_metrics=True,
         save_histogram=True, get_auroc_acc_only=True, verbose=VERBOSE)
-    model_results_folder = model.model_results_path
-    model_weights_path = model.classifier.best_model_weights_path
-    del model
-    del clf
-    # clf = StreamingTransformationsDeepHits(transformer)
-    clf = StreamingTransformationsWideResnet(x_train.shape[:-1],
-                                             transformer)
-    model = GeoTransformBaseDirichletAlphasSaved(
-        classifier=clf, transformer=transformer,
-        results_folder_name='test_base')
-    model.set_model_results_path(model_results_folder)
-    model.load_model(model_weights_path)
-    model.evaluate(
-        x_test, y_test, outlier_loader.name, 'real', save_metrics=True,
-        save_histogram=True, get_auroc_acc_only=True, verbose=VERBOSE)
-    print(np.mean(model.predict(x_test) == y_test))
-    # model = GeoTransformBase(
+    # model_results_folder = model.model_results_path
+    # model_weights_path = model.classifier.best_model_weights_path
+    # del model
+    # del clf
+    # # clf = StreamingTransformationsDeepHits(transformer)
+    # clf = StreamingTransformationsWideResnet(x_train.shape[:-1],
+    #                                          transformer)
+    # model = GeoTransformBaseDirichletAlphasSaved(
     #     classifier=clf, transformer=transformer,
-    #     results_folder_name=None)
-    # model_weights_folder = os.path.join(
-    #     PROJECT_PATH,
-    #     'results/test_base/GeoTransform_Base_DH_'
-    #     'Streaming_Trfs_20200729-230251/')
-    # model_weights_path = os.path.join(model_weights_folder, 'checkpoints',
-    #                                   'best_weights.ckpt')
-    # model.load_weights(model_weights_path)
-    # model.set_model_results_path(model_weights_folder)
+    #     results_folder_name='test_base')
+    # model.set_model_results_path(model_results_folder)
+    # model.load_model(model_weights_path)
     # model.evaluate(
-    #     x_test, y_test, outlier_loader.name, 'real', x_val,
-    #     save_metrics=False, save_histogram=True, get_auroc_acc_only=True,
-    #     verbose=VERBOSE)
+    #     x_test, y_test, outlier_loader.name, 'real', save_metrics=True,
+    #     save_histogram=True, get_auroc_acc_only=True, verbose=VERBOSE)
+    # print(np.mean(model.predict(x_test) == y_test))
+    # # model = GeoTransformBase(
+    # #     classifier=clf, transformer=transformer,
+    # #     results_folder_name=None)
+    # # model_weights_folder = os.path.join(
+    # #     PROJECT_PATH,
+    # #     'results/test_base/GeoTransform_Base_DH_'
+    # #     'Streaming_Trfs_20200729-230251/')
+    # # model_weights_path = os.path.join(model_weights_folder, 'checkpoints',
+    # #                                   'best_weights.ckpt')
+    # # model.load_weights(model_weights_path)
+    # # model.set_model_results_path(model_weights_folder)
+    # # model.evaluate(
+    # #     x_test, y_test, outlier_loader.name, 'real', x_val,
+    # #     save_metrics=False, save_histogram=True, get_auroc_acc_only=True,
+    # #     verbose=VERBOSE)

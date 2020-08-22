@@ -98,9 +98,10 @@ class StreamingTransformationsDeepHits(DeepHits):
 
     # TODO: implement some kind of train_loggin
     def fit(self, x_train, epochs, x_validation=None, batch_size=128,
-        iterations_to_print_train=None, iterations_to_validate=None,
-        patience=None, verbose=True, log_file='train.log'):
+        iterations_to_validate=None, patience=None, verbose=True,
+        log_file='train.log', iterations_to_print_train=None):
         validation_batch_size = 1024
+        self._init_tensorboard_summaries()
         print_manager = PrintManager().verbose_printing(verbose)
         file = open(os.path.join(self.results_folder_path, log_file), 'w')
         print_manager.file_printing(file)
