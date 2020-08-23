@@ -212,7 +212,7 @@ class GeoTransformBaseDirichletAlphasSaved(GeoTransformBase):
         class_name='inlier', transform_batch_size=512,
         evaluation_batch_size=1024, save_metrics=False,
         additional_score_save_path_list=None, save_histogram=False,
-        get_auroc_acc_only=False, verbose=True, log_file='evaluate.log'):
+        get_specific_metrics=False, verbose=True, log_file='evaluate.log'):
         print_manager = PrintManager().verbose_printing(verbose)
         file = open(os.path.join(self.model_results_path, log_file), 'a')
         print_manager.file_printing(file)
@@ -232,8 +232,9 @@ class GeoTransformBaseDirichletAlphasSaved(GeoTransformBase):
                 'roc_auc', 'acc_at_percentil', 'pr_auc_norm',
                 'rec_out_at_percentil', 'prec_out_at_percentil'])
         metrics = self._filter_metrics_to_return(
-            metrics, get_auroc_acc_only,
-            keys_to_keep=['roc_auc', 'acc_at_percentil'])
+            metrics, get_specific_metrics,
+            keys_to_keep=['roc_auc', 'acc_at_percentil', 'pr_auc_norm',
+                          'rec_out_at_percentil', 'prec_out_at_percentil'])
         metrics_save_path = self.get_metrics_save_path(
             general_keys.DIRICHLET, dataset_name, class_name)
         self._save_metrics_on_paths(
@@ -373,7 +374,7 @@ if __name__ == '__main__':
         verbose=VERBOSE, iterations_to_print_train=ITERATIONS_TO_PRINT_TRAIN)
     model.evaluate(
         x_test, y_test, outlier_loader.name, 'real', save_metrics=True,
-        save_histogram=True, get_auroc_acc_only=True, verbose=VERBOSE)
+        save_histogram=True, get_specific_metrics=True, verbose=VERBOSE)
     # model_results_folder = model.model_results_path
     # model_weights_path = model.classifier.best_model_weights_path
     # del model

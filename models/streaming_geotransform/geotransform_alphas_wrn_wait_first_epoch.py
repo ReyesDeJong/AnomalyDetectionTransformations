@@ -30,6 +30,7 @@ class GeoTransformAlphasWRN1Epoch(GeoTransformBaseDirichletAlphasSaved):
         iterations_to_validate=None, patience=None, wait_first_epoch=False,
         verbose=True, iterations_to_print_train=None):
         print_manager = PrintManager().verbose_printing(verbose)
+        print(self.name)
         if epochs is None:
             epochs = self._get_original_paper_epochs()
             patience = int(1e100)

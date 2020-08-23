@@ -106,6 +106,7 @@ class StreamingTransformationsDeepHits(DeepHits):
         file = open(os.path.join(self.results_folder_path, log_file), 'w')
         print_manager.file_printing(file)
         print('\nTraining Initiated\n')
+        print(x_train.shape)
         self._initialize_training_attributes(x_train, batch_size)
         # if validation_data is None:
         #     return self._fit_without_validation(x, y, batch_size, epochs)

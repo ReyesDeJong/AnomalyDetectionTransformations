@@ -78,5 +78,5 @@ if __name__ == '__main__':
         model.load_model(weights_path)
         model.evaluate(
             x_test, y_test, outlier_loader.name, save_histogram=True,
-            get_auroc_acc_only=True, verbose=VERBOSE)
+            get_specific_metrics=True, verbose=VERBOSE)
         del model
