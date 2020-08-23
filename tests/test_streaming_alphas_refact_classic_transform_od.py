@@ -125,7 +125,7 @@ def evaluate_pipeline_transformer(
 def get_best_transformation_tuples(data_loader: HiTSOutlierLoader, add_zeros=True):
     if 'hits' in data_loader.name:
         return get_best_hits_tuples(add_zeros)
-    elif 'ztf' in data_loader.name:
+    elif 'ztf' in data_loader.name or 'new_small' in data_loader.name:
         return get_best_ztf_tuples(add_zeros)
     else:
         return None
