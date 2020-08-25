@@ -11,19 +11,15 @@ PROJECT_PATH = os.path.abspath(
     os.path.join(os.path.dirname(__file__), '..', '..', '..'))
 sys.path.append(PROJECT_PATH)
 
-from modules.utils import delta_timer
-import time
-import numpy as np
 from parameters import loader_keys, general_keys
 from modules.networks.streaming_network.streaming_transformations_wide_resnet \
     import StreamingTransformationsWideResnet
 from modules.geometric_transform.streaming_transformers. \
     abstract_streaming_transformer import AbstractTransformer
-from modules.networks.train_step_tf2.wide_residual_network import ResnetBlock
-from parameters import constants
 from modules.print_manager import PrintManager
 
 WEIGHT_DECAY = 0.5 * 0.0005
+
 
 class StreamingWideResnetWait1Epoch(StreamingTransformationsWideResnet):
 
@@ -41,11 +37,47 @@ class StreamingWideResnetWait1Epoch(StreamingTransformationsWideResnet):
         else:
             return epoch == 0
 
+    # TODO: do something to keep model with best weights
+    def _fit_without_validation(self, x_train, epochs, batch_size, verbose,
+        log_file, iterations_to_print_train):
+        self._init_tensorboard_summaries()
+        print_manager = PrintManager().verbose_printing(verbose)
+        file = open(os.path.join(self.results_folder_path, log_file), 'w')
+        print_manager.file_printing(file)
+        print('\nTraining Initiated\n')
+        self._initialize_training_attributes(x_train, batch_size)
+        iterations_to_print_train = self._set_validation_at_epochs_end_if_none(
+            iterations_to_print_train)
+        train_ds = self._get_training_dataset(x_train, batch_size)
+        for epoch in range(epochs):
+            for transformation_index in range(self.transformer.n_transforms):
+                for iteration_i, x_batch_train in enumerate(train_ds):
+                    iteration = self._get_iteration_wrt_train_initialization(
+                        iteration_i, epoch, transformation_index, batch_size,
+                        x_train)
+                    images_transformed, transformation_indexes_oh = \
+                        self._transform_train_batch_and_get_transform_indxs_oh(
+                            x_batch_train)
+                    step_loss, step_accuracy = self.train_step(
+                        images_transformed, transformation_indexes_oh)
+                    if iteration % iterations_to_print_train == 0:
+                        self._print_at_train(
+                            step_accuracy, step_loss, iteration, epoch)
+        self.save_weights(self.best_model_weights_path)
+        self._print_training_end()
+        self._reset_metrics()
+        print_manager.close()
+        file.close()
+
     # TODO: implement some kind of train_loggin
     def fit(self, x_train, epochs, x_validation=None, batch_size=128,
         iterations_to_validate=None, patience=None, verbose=True,
         wait_first_epoch=False, log_file='train.log',
         iterations_to_print_train=None):
+        if x_validation is None:
+            return self._fit_without_validation(
+                x_train, epochs, batch_size, verbose, log_file,
+                iterations_to_print_train)
         validation_batch_size = 1024
         self._init_tensorboard_summaries()
         print_manager = PrintManager().verbose_printing(verbose)
@@ -53,8 +85,6 @@ class StreamingWideResnetWait1Epoch(StreamingTransformationsWideResnet):
         print_manager.file_printing(file)
         print('\nTraining Initiated\n')
         self._initialize_training_attributes(x_train, batch_size)
-        # if validation_data is None:
-        #     return self._fit_without_validation(x, y, batch_size, epochs)
         assert patience is not None
         iterations_to_validate = self._set_validation_at_epochs_end_if_none(
             iterations_to_validate)
@@ -97,7 +127,7 @@ class StreamingWideResnetWait1Epoch(StreamingTransformationsWideResnet):
         wait_first_epoch):
         for transformation_index in range(self.transformer.n_transforms):
             for x_val_batch in validation_ds:
-                x_transformed, transformation_indexes_oh = self.\
+                x_transformed, transformation_indexes_oh = self. \
                     _transform_evaluation_batch_and_get_transform_indexes_oh(
                     x_val_batch, transformation_index)
                 self.eval_step(x_transformed, transformation_indexes_oh)
@@ -116,7 +146,8 @@ class StreamingWideResnetWait1Epoch(StreamingTransformationsWideResnet):
         if self._in_first_epoch_wait(wait_first_epoch, epoch):
             self.best_model_so_far[
                 general_keys.COUNT_MODEL_NOT_IMPROVED_AT_EPOCH] = 0
-        elif self.eval_loss.result() < self.best_model_so_far[general_keys.LOSS]:
+        elif self.eval_loss.result() < self.best_model_so_far[
+            general_keys.LOSS]:
             self.best_model_so_far[general_keys.LOSS] = self.eval_loss.result()
             self.best_model_so_far[
                 general_keys.COUNT_MODEL_NOT_IMPROVED_AT_EPOCH] = 0
@@ -130,13 +161,16 @@ class StreamingWideResnetWait1Epoch(StreamingTransformationsWideResnet):
 
 
 if __name__ == '__main__':
-    from modules.geometric_transform.\
+    from modules.geometric_transform. \
         streaming_transformers.transformer_ranking import RankingTransformer
     from modules.data_loaders.hits_outlier_loader import HiTSOutlierLoader
     from modules.utils import set_soft_gpu_memory_growth
+    import numpy as np
+
     set_soft_gpu_memory_growth()
 
-    EPOCHS = 1000
+    #EPOCHS = 1000
+    EPOCHS = int(np.round(200/72))
     ITERATIONS_TO_VALIDATE = 100  # 1000 # None
     ITERATIONS_TO_PRINT_TRAIN = 10
     PATIENCE = 1  # 0
@@ -163,7 +197,9 @@ if __name__ == '__main__':
     mdl = StreamingWideResnetWait1Epoch(x_train.shape[:-1], transformer)
     mdl.save_initial_weights(x_train, mdl.results_folder_path)
     mdl.fit(
-        x_train, epochs=EPOCHS, x_validation=x_val, batch_size=128,
+        x_train, epochs=EPOCHS,
+        #x_validation=x_val,
+        batch_size=128,
         patience=PATIENCE, iterations_to_print_train=ITERATIONS_TO_PRINT_TRAIN,
         iterations_to_validate=ITERATIONS_TO_VALIDATE, wait_first_epoch=True)
     mdl.evaluate(x_train)
