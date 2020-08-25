@@ -19,13 +19,13 @@ from modules.print_manager import PrintManager
 from models.streaming_geotransform.geotransform_alphas_wrn_wait_first_epoch \
     import GeoTransformAlphasWRN1Epoch
 from tests.test_streaming_alphas_refact_classic_transform_od import \
-    print_mean_results, get_best_transformation_tuples
+    print_mean_results
 from typing import Callable, List
 from modules.geometric_transform.streaming_transformers. \
     abstract_streaming_transformer import AbstractTransformer
 import matplotlib
 from tqdm import trange
-from scripts.train_large_datasets.ztf_v7.\
+from scripts.train_large_datasets.ztf_v7. \
     train_ztfv7_different_sampling_strategies import get_test_data_loaders
 
 matplotlib.use('Agg')
@@ -150,8 +150,6 @@ if __name__ == '__main__':
             # print(train_loader.name)
             # Create transformer
             transformer = Original72Transformer()
-            transformer.set_transformations_to_perform(
-                get_best_transformation_tuples(train_loader))
             # Train model N times
             print_manager = PrintManager()
             test_log_path = os.path.join(
