@@ -45,7 +45,7 @@ def fit_and_evaluate_model_n_times_alphas(
             n_channels=x_train.shape[:-1], transformer=transformer,
             results_folder_name=results_folder_name,
             name='%s_%s' % (train_loader.name, model_base_name))
-        if model_params['x_validation'] is None:
+        if 'x_validation' in model_params:
             model.fit(
                 x_train=x_train,
                 # x_validation=x_val,
