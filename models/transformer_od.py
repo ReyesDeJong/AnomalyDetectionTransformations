@@ -125,6 +125,10 @@ class TransformODModel(tf.keras.Model):
           monitor='val_loss', mode='min', verbose=1, patience=1e100,
           restore_best_weights=False)
     print(x_train_transform.shape)
+    train_trf_idexes = np.arange(len(x_train_transform))
+    np.random.shuffle(train_trf_idexes)
+    x_train_transform = x_train_transform[train_trf_idexes]
+    y_train_transform = y_train_transform[train_trf_idexes]
     self.network.fit(
         x=x_train_transform, y=tf.keras.utils.to_categorical(y_train_transform),
         # validation_data=None,
