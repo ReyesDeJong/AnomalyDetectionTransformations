@@ -45,6 +45,7 @@ class StreamingWideResnetWait1Epoch(StreamingTransformationsWideResnet):
         file = open(os.path.join(self.results_folder_path, log_file), 'w')
         print_manager.file_printing(file)
         print('\nTraining Initiated\n')
+        print(x_train.shape)
         self._initialize_training_attributes(x_train, batch_size)
         iterations_to_print_train = self._set_validation_at_epochs_end_if_none(
             iterations_to_print_train)
@@ -84,6 +85,7 @@ class StreamingWideResnetWait1Epoch(StreamingTransformationsWideResnet):
         file = open(os.path.join(self.results_folder_path, log_file), 'w')
         print_manager.file_printing(file)
         print('\nTraining Initiated\n')
+        print(x_train.shape)
         self._initialize_training_attributes(x_train, batch_size)
         assert patience is not None
         iterations_to_validate = self._set_validation_at_epochs_end_if_none(

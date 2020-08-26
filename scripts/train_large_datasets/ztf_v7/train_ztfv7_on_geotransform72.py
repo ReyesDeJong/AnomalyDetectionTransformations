@@ -74,8 +74,8 @@ def fit_and_evaluate_model_n_times_alphas(
 if __name__ == '__main__':
     # Training dataset sampling strategies names
     train_dataset_file_names = [
-        # 'new_small_od_dataset_tuples.pkl',
-        'v7_ztf_disjoint_test.pkl',
+        'new_small_od_dataset_tuples.pkl',
+        # 'v7_ztf_disjoint_test.pkl',
         # 'v7_ztf_oversample_disjoint_test.pkl',
         # 'v7_ztf_undersample_disjoint_test.pkl',
         # 'v7_ztf_under_over_sample_disjoint_test.pkl'
@@ -83,9 +83,9 @@ if __name__ == '__main__':
 
     # Base parameters
     EPOCHS = 1000
-    VERBOSE = False
-    TRAIN_N_TIME = 10
-    RESULTS_FOLDER_NAME = 'ztf_v7_geotransform72'
+    VERBOSE = True
+    TRAIN_N_TIME = 1
+    RESULTS_FOLDER_NAME = 'small_ztf_onv7_geotransform72'
 
     # Set soft growth of gpus
     utils.set_soft_gpu_memory_growth()
@@ -100,14 +100,14 @@ if __name__ == '__main__':
 
     # Model Parameters Dict {'Base_name': {params}}
     model_params_dict = {
-        'GeoTrfSOTA': {
-            'epochs': None,
-            'x_validation': None,
-            'iterations_to_validate': None,
-            'patience': None,
-            'wait_first_epoch': None,
-            'verbose': VERBOSE,
-            'iterations_to_print_train': 50},
+        # 'GeoTrfSOTA': {
+        #     'epochs': None,
+        #     'x_validation': None,
+        #     'iterations_to_validate': None,
+        #     'patience': None,
+        #     'wait_first_epoch': None,
+        #     'verbose': VERBOSE,
+        #     'iterations_to_print_train': 50},
         'GeoTrfWaitFirstEpochValEvery50': {
             'epochs': EPOCHS,
             'iterations_to_validate': 50,
@@ -115,20 +115,20 @@ if __name__ == '__main__':
             'wait_first_epoch': True,
             'verbose': VERBOSE,
             'iterations_to_print_train': 50},
-        'GeoTrfWaitFirstEpochValEvery200Patience20': {
-            'epochs': EPOCHS,
-            'iterations_to_validate': 200,
-            'patience': 20,
-            'wait_first_epoch': True,
-            'verbose': VERBOSE,
-            'iterations_to_print_train': 50},
-        'GeoTrfEndEpochVal': {
-            'epochs': EPOCHS,
-            'iterations_to_validate': 0,
-            'patience': 0,
-            'wait_first_epoch': False,
-            'verbose': VERBOSE,
-            'iterations_to_print_train': 100},
+        # 'GeoTrfWaitFirstEpochValEvery200Patience20': {
+        #     'epochs': EPOCHS,
+        #     'iterations_to_validate': 200,
+        #     'patience': 20,
+        #     'wait_first_epoch': True,
+        #     'verbose': VERBOSE,
+        #     'iterations_to_print_train': 50},
+        # 'GeoTrfEndEpochVal': {
+        #     'epochs': EPOCHS,
+        #     'iterations_to_validate': 0,
+        #     'patience': 0,
+        #     'wait_first_epoch': False,
+        #     'verbose': VERBOSE,
+        #     'iterations_to_print_train': 100},
     }
 
     # Train all models

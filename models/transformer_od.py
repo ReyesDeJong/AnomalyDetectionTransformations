@@ -124,12 +124,19 @@ class TransformODModel(tf.keras.Model):
       es = tf.keras.callbacks.EarlyStopping(
           monitor='val_loss', mode='min', verbose=1, patience=1e100,
           restore_best_weights=False)
+    print(x_train_transform.shape)
     self.network.fit(
         x=x_train_transform, y=tf.keras.utils.to_categorical(y_train_transform),
+        # validation_data=None,
         validation_data=(
           x_val_transform, tf.keras.utils.to_categorical(y_val_transform)),
         batch_size=train_batch_size,
         epochs=epochs, callbacks=[es], **kwargs)
+    print('train eval')
+    self.network.eval_tf(x_train_transform, tf.keras.utils.to_categorical(y_train_transform))
+    print('val eval')
+    self.network.eval_tf(x_val_transform, tf.keras.utils.to_categorical(y_val_transform))
+
     # self.network.eval_tf(x_val_transform, tf.keras.utils.to_categorical(y_val_transform))
     weight_path = os.path.join(self.checkpoint_folder,
                                'final_weights.ckpt')
@@ -497,8 +504,10 @@ class TransformODModel(tf.keras.Model):
 
 if __name__ == '__main__':
   from modules.data_loaders.hits_outlier_loader import HiTSOutlierLoader
+  from modules.data_loaders.ztf_small_outlier_loader import ZTFSmallOutlierLoader
   from parameters import loader_keys
   from modules.geometric_transform.transformer_for_ranking import RankingTransformer
+  from modules.geometric_transform import transformations_tf
 
 
   gpus = tf.config.experimental.list_physical_devices('GPU')
@@ -515,21 +524,50 @@ if __name__ == '__main__':
   #   loader_keys.TRANSFORMATION_INLIER_CLASS_VALUE: 1
   # }
   # outlier_loader = ZTFOutlierLoader(data_loader_params)
-  hits_params = {
+  # hits_params = {
+  #   loader_keys.DATA_PATH: os.path.join(
+  #       PROJECT_PATH, '../datasets/HiTS2013_300k_samples.pkl'),
+  #   loader_keys.N_SAMPLES_BY_CLASS: 10000,
+  #   loader_keys.TEST_PERCENTAGE: 0.2,
+  #   loader_keys.VAL_SET_INLIER_PERCENTAGE: 0.1,
+  #   loader_keys.USED_CHANNELS: [0, 1, 2, 3],#[2],  #
+  #   loader_keys.CROP_SIZE: 21,
+  #   general_keys.RANDOM_SEED: 42,
+  #   loader_keys.TRANSFORMATION_INLIER_CLASS_VALUE: 1
+  # }
+  # outlier_loader = HiTSOutlierLoader(hits_params)
+  ztf_params = {
     loader_keys.DATA_PATH: os.path.join(
-        PROJECT_PATH, '../datasets/HiTS2013_300k_samples.pkl'),
-    loader_keys.N_SAMPLES_BY_CLASS: 10000,
-    loader_keys.TEST_PERCENTAGE: 0.2,
-    loader_keys.VAL_SET_INLIER_PERCENTAGE: 0.1,
-    loader_keys.USED_CHANNELS: [0, 1, 2, 3],#[2],  #
-    loader_keys.CROP_SIZE: 21,
-    general_keys.RANDOM_SEED: 42,
-    loader_keys.TRANSFORMATION_INLIER_CLASS_VALUE: 1
+        PROJECT_PATH,
+        '../datasets/ALeRCE_data/new_small_od_dataset_tuples.pkl'),
   }
-  outlier_loader = HiTSOutlierLoader(hits_params)
+  outlier_loader = ZTFSmallOutlierLoader(ztf_params)
+
   (x_train, y_train), (x_val, y_val), (
     x_test, y_test) = outlier_loader.get_outlier_detection_datasets()
-  transformer = RankingTransformer()
+  transformer = transformations_tf.PlusKernelTransformer()#RankingTransformer()
+  new_trfs_list = [(0, 0, 0, 0, 0, 0), (0, 0, -8, 0, 0, 0),
+                    (0, 0, 8, 0, 0, 0), (0, -8, 0, 0, 0, 0),
+                    (0, -8, -8, 0, 0, 0), (0, -8, 8, 0, 0, 0),
+                    (0, 8, 0, 0, 0, 0), (0, 8, -8, 0, 0, 0),
+                    (0, 8, 8, 0, 0, 0),
+
+                    (0, 0, 0, 0, 1, 0), (0, 8, -8, 0, 1, 0),
+
+                    (0, 0, 0, 0, 0, 1), (0, 0, -8, 0, 0, 1),
+                    (0, 0, 8, 0, 0, 1), (0, -8, 0, 0, 0, 1),
+                    (0, -8, -8, 0, 0, 1), (0, -8, 8, 0, 0, 1),
+                    (0, 8, 0, 0, 0, 1), (0, 8, -8, 0, 0, 1),
+                    (0, 8, 8, 0, 0, 1),
+
+                    (0, 0, 0, 0, 1, 1),
+                    (0, 0, -8, 0, 1, 1), (0, 0, 8, 0, 1, 1),
+                    (0, -8, 0, 0, 1, 1), (0, -8, -8, 0, 1, 1),
+                    (0, -8, 8, 0, 1, 1), (0, 8, 0, 0, 1, 1),
+                    (0, 8, -8, 0, 1, 1), (0, 8, 8, 0, 1, 1)
+                      ]
+  transformer.set_transformations_to_perform(new_trfs_list)
+  print(transformer.n_transforms)
   model = TransformODModel(
       data_loader=outlier_loader, transformer=transformer,
       input_shape=x_train.shape[1:])
@@ -540,7 +578,7 @@ if __name__ == '__main__':
   # # if os.path.exists(weight_path):
   # #   model.load_weights(weight_path)
   # # else:
-  model.fit(x_train, x_val, epochs=1, patience=0)
+  model.fit(x_train, x_val, epochs=10000, patience=0)
 
   start_time = time.time()
   met_dict = model.evaluate_od(
