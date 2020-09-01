@@ -38,7 +38,7 @@ class HiTSLoader(object):
     self.first_n_samples_by_class = first_n_samples_by_class
     self.label_value = label_value
     self.channel_to_get = channels_to_get
-    self.first_n_samples_random_seed = 42
+    self.first_n_samples_random_seed = params[general_keys.RANDOM_SEED]
 
   def _init_datasets_dict(self):
     datasets_dict = {
@@ -59,7 +59,7 @@ class HiTSLoader(object):
     # print(labels.shape)
     label_value_idxs = np.where(labels == label_value)[0]
     # print(label_value_idxs.shape)
-    np.random.RandomState(seed=self.first_n_samples_by_class).shuffle(
+    np.random.RandomState(seed=self.first_n_samples_random_seed).shuffle(
       label_value_idxs)
     label_idxs_to_get = label_value_idxs[:n_samples]
     data_dict[general_keys.IMAGES] = images[label_idxs_to_get]

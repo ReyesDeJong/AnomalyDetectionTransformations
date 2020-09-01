@@ -78,7 +78,8 @@ class HiTSOutlierLoader(object):
     # is not useful, becuse data is already 0-1
     params = {
       param_keys.DATA_PATH_TRAIN: self.data_path,
-      param_keys.BATCH_SIZE: 0
+      param_keys.BATCH_SIZE: 0,
+      general_keys.RANDOM_SEED: self.random_seed
     }
     # TODO: check None thing, labels value is None
     #  because it is not used, retrieving both labels
