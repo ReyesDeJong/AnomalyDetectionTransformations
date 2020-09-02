@@ -3,6 +3,8 @@
 *.pkl
 *.pickle
 *.h5
+*.jpg
+*.jpeg
 *.npz
 *.pickle
 *.pkl

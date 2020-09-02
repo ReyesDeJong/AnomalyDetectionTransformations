@@ -118,5 +118,6 @@ if __name__ == '__main__':
         plot_hits_image(dataset.data_array[dataset.data_label != 1][i],
                         show=SHOW, name='outlier_%i' % i, plot_titles=not i,
                         save_folder_name=SAVE_FOLDER_NAME, n_channels_to_plot=data_array.shape[-1])
+
     # plot_hits_many_images(dataset.data_array[dataset.data_label == 1][:4], show=True,
     #                name='aux')
