@@ -17,7 +17,7 @@ from modules import utils
 
 
 def plot_ztf_image(image, n_channels_to_plot=3, name=None, show=False,
-    plot_titles=False, save_folder_name=''):
+    plot_titles=False, save_folder_name='', title=None):
     # fill titles with blanks
     titles = ['Template', 'Science', 'Difference']
     for i in range(n_channels_to_plot):
@@ -31,6 +31,8 @@ def plot_ztf_image(image, n_channels_to_plot=3, name=None, show=False,
         plt.axis('off')
         if plot_titles:
             plt.title(titles[i], fontdict={'fontsize': 15})
+    if title:
+        plt.suptitle(title)
     plt.gca().set_axis_off()
     plt.subplots_adjust(top=1, bottom=0, right=1, left=0,
                         hspace=0, wspace=0.1)
