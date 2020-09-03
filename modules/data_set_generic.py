@@ -21,7 +21,7 @@ class Dataset(object):
   Constructor
   """
 
-  def __init__(self, data_array, data_label, batch_size, meta_data=None):
+  def __init__(self, data_array, data_label, batch_size=None, meta_data=None):
     self.batch_counter = 0
     self.batch_counter_val = 0
     self.batch_size = batch_size
@@ -171,3 +171,8 @@ class Dataset(object):
   def get_max_min_label_count(self):
     _, labels_count = np.unique(self.data_label, return_counts=True)
     return np.amax(labels_count), np.amin(labels_count)
+
+  def append_dataset(self, dataset):
+      self.data_array = np.concatenate([self.data_array, dataset.data_array])
+      self.data_label = np.concatenate([self.data_label, dataset.data_label])
+      self.meta_data = np.concatenate([self.meta_data, dataset.meta_data])

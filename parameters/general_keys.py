@@ -55,6 +55,7 @@ TIME_RANDOM = 'time_random'
 GENERATED_MAGNITUDE = 'generated_magnitude'
 IMAGES = 'images'
 LABELS = 'labels'
+FEATURES = 'features'
 
 #noise vector names
 IN_NORMAL_RADIUS = 'in_normal_radius'
