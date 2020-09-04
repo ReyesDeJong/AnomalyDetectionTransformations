@@ -18,6 +18,8 @@ from modules import utils
 
 def plot_ztf_image(image, n_channels_to_plot=3, name=None, show=False,
     plot_titles=False, save_folder_name='', title=None):
+    if len(image.shape)==4:
+        image = image[np.random.randint(len(image))]
     # fill titles with blanks
     titles = ['Template', 'Science', 'Difference']
     for i in range(n_channels_to_plot):

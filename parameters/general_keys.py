@@ -55,6 +55,7 @@ TIME_RANDOM = 'time_random'
 GENERATED_MAGNITUDE = 'generated_magnitude'
 IMAGES = 'images'
 LABELS = 'labels'
+OUTLIER_LABELS = 'outlier_labels'
 FEATURES = 'features'
 
 #noise vector names
