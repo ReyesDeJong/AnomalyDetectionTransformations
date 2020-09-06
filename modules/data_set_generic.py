@@ -176,3 +176,4 @@ class Dataset(object):
       self.data_array = np.concatenate([self.data_array, dataset.data_array])
       self.data_label = np.concatenate([self.data_label, dataset.data_label])
       self.meta_data = np.concatenate([self.meta_data, dataset.meta_data])
+      return self

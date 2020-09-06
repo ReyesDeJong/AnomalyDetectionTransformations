@@ -81,7 +81,7 @@ if __name__ == '__main__':
     SHOW = False
     LARGE_TRAIN_SET_PERCENTAGE = 0.9
     N_SAMPLES_TO_PLOT_PER_LABEL = 1
-    RANDOM_SEED = 42
+    RANDOM_SEED = 4
     SAVE_FOLDER_PATH = os.path.join(
         PROJECT_PATH, '..', 'datasets', 'thesis_data')
     outlier_original_label_value = 4
@@ -247,8 +247,8 @@ if __name__ == '__main__':
                                       small_y_val)},
         general_keys.TEST: {general_keys.IMAGES: small_x_test,
                             general_keys.LABELS: small_y_test,
-                            general_keys.OUTLIER_LABELS: np.ones_like(
-                                small_y_test_01_outlier_labels)},
+                            general_keys.OUTLIER_LABELS:
+                                small_y_test_01_outlier_labels},
     }
     utils.save_pickle(small_dataset_dict, os.path.join(
         SAVE_FOLDER_PATH, 'ztf_small_dict.pkl'))
@@ -364,8 +364,8 @@ if __name__ == '__main__':
                                       large_y_val)},
         general_keys.TEST: {general_keys.IMAGES: large_x_test,
                             general_keys.LABELS: large_y_test,
-                            general_keys.OUTLIER_LABELS: np.ones_like(
-                                large_y_test_01_outlier_labels)},
+                            general_keys.OUTLIER_LABELS:
+                                large_y_test_01_outlier_labels},
     }
     utils.save_pickle(large_dataset_dict, os.path.join(
         SAVE_FOLDER_PATH, 'ztf_large_dict.pkl'))
