@@ -16,11 +16,12 @@ import numpy as np
 from modules import utils
 from figure_creation.thesis.ztf_sample_visualization import plot_ztf_image
 from modules.data_set_generic import Dataset
+from data_generator.thesis_ztf import display_dataset
 
 
 def get_dataset(path) -> Dataset:
     params = {
-        param_keys.DATA_PATH_TRAIN: data_path,
+        param_keys.DATA_PATH_TRAIN: path,
         param_keys.BATCH_SIZE: None,
         param_keys.N_INPUT_CHANNELS: 3,
         param_keys.CHANNELS_TO_USE: [0, 1, 2],
@@ -49,31 +50,29 @@ def get_dataset(path) -> Dataset:
 
 if __name__ == '__main__':
     SHOW = True
-    N_SAMPLES_TO_PLOT = 5
+    N_SAMPLES_TO_PLOT = 10
     RANDOM_SEED = 234
     SAVE_FOLDER_NAME = 'bogus_phase_ztf'
 
     # data loader
     data_name = 'training_set_Aug-07-2020.pkl'
     data_folder = "/home/ereyes/Projects/Thesis/stamp_classifier_updater/data/"
-    data_path = os.path.join(data_folder, data_name)
+    alerce_data_path = os.path.join(data_folder, data_name)
+    ashish_data_path = "/home/ereyes/Projects/Alerce/pickles/bogus_ashish.pkl"
     # getting stamp_clf data
-    dataset = get_dataset(data_path)
-    dataset.shuffle_data(RANDOM_SEED)
-    data_array = dataset.data_array
-    data_labels = dataset.data_label
-    print(dataset.data_array.shape)
-    print('Data values per channel Min %s Max %s  Mean %s' % (
-        np.mean(np.min(data_array, axis=(1, 2)), axis=0),
-        np.mean(np.max(data_array, axis=(1, 2)), axis=0),
-        np.mean(np.mean(data_array, axis=(1, 2)), axis=0)))
-    print(np.unique(dataset.data_label, return_counts=True))
+    alerce_dataset = get_dataset(alerce_data_path)
+    alerce_dataset.shuffle_data(RANDOM_SEED)
+    ashish_dataset = get_dataset(ashish_data_path)
+    ashish_dataset.shuffle_data(RANDOM_SEED)
+    display_dataset(alerce_dataset, 0, False, 'alerce')
+    display_dataset(ashish_dataset, 0, False, 'ashish')
     # get Outliers
     for i in range(N_SAMPLES_TO_PLOT):
-        plot_ztf_image(dataset.data_array[dataset.data_label == 4][i],
-                       show=SHOW, name='outlier_%i' % i, plot_titles=not i,
+        plot_ztf_image(alerce_dataset.data_array[alerce_dataset.data_label == 4][i],
+                       show=SHOW, name='alerce_outlier_%i' % i, plot_titles=not i,
                        save_folder_name=SAVE_FOLDER_NAME,
-                       n_channels_to_plot=data_array.shape[-1])
-
-    # plot_hits_many_images(dataset.data_array[dataset.data_label == 1][:4], show=True,
-    #                name='aux')
+                       n_channels_to_plot=3)
+        plot_ztf_image(ashish_dataset.data_array[i],
+                       show=SHOW, name='ashish_outlier_%i' % i, plot_titles=not i,
+                       save_folder_name=SAVE_FOLDER_NAME,
+                       n_channels_to_plot=3)

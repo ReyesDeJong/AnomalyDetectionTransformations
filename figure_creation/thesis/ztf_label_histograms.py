@@ -29,7 +29,7 @@ if __name__ == '__main__':
 
     # data loading
     folder_save_root_path = os.path.join(
-        PROJECT_PATH, 'figure_creation/thesis/figs')
+        PROJECT_PATH, 'figure_creation/thesis/figs', FOLDER_SAVE_NAME)
     utils.check_path(folder_save_root_path)
     # stmp_clf_data
     train_set, val_set, test_set = load_ztf_stamp_clf_datasets()
@@ -68,7 +68,7 @@ if __name__ == '__main__':
     if SAVE_FIG:
         plt.savefig(
             os.path.join(
-                folder_save_root_path, folder_save_root_path,
+                folder_save_root_path,
                 '%s.%s' % (fig_name, FIG_FORMAT)), dpi=DPI, format=FIG_FORMAT,
             bbox_inches='tight', pad_inches=0, transparent=False)
 
@@ -109,6 +109,6 @@ if __name__ == '__main__':
     if SAVE_FIG:
         plt.savefig(
             os.path.join(
-                folder_save_root_path, folder_save_root_path,
+                folder_save_root_path,
                 '%s.%s' % (fig_name, FIG_FORMAT)), dpi=DPI, format=FIG_FORMAT,
             bbox_inches='tight', pad_inches=0, transparent=False)
