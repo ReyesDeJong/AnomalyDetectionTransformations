@@ -17,7 +17,7 @@ from modules import utils
 
 
 def plot_hits_image(image, n_channels_to_plot=3, name=None, show=False,
-    plot_titles=False, save_folder_name='', title=None):
+    plot_titles=False, save_folder_name='', title=None, file_format='png'):
     # fill titles with blanks
     titles = ['Template', 'Science', 'Difference', 'SNR difference']
     for i in range(n_channels_to_plot):
@@ -40,11 +40,12 @@ def plot_hits_image(image, n_channels_to_plot=3, name=None, show=False,
                                         save_folder_name)
         utils.check_path(save_folder_name)
         plt.savefig(
-            os.path.join(save_folder_name, '%s.svg' % name),
-            format='svg', dpi=600, bbox_inches='tight', pad_inches=0,
+            os.path.join(save_folder_name, '%s.%s' % (name, file_format)),
+            format=file_format, dpi=600, bbox_inches='tight', pad_inches=0,
             transparent=False)
     if show:
         plt.show()
+    plt.close()
 
 
 def plot_hits_many_images(images, n_channels_to_plot=3, name=None, show=False):
@@ -75,10 +76,11 @@ def plot_hits_many_images(images, n_channels_to_plot=3, name=None, show=False):
             transparent=False)
     if show:
         plt.show()
+    plt.close()
 
 
 if __name__ == '__main__':
-    SHOW = True
+    SHOW = False
     N_SAMPLES_TO_PLOT = 5
     RANDOM_SEED = 234
     SAVE_FOLDER_NAME = 'samples_hits'
@@ -113,12 +115,12 @@ if __name__ == '__main__':
     # get Inliers
     for i in range(N_SAMPLES_TO_PLOT):
         plot_hits_image(dataset.data_array[dataset.data_label == 1][i],
-                        show=SHOW, name='inlier_%i' % i, plot_titles=not i,
+                        show=SHOW, name='inlier_%i' % i, plot_titles=False,#not i,
                         save_folder_name=SAVE_FOLDER_NAME, n_channels_to_plot=data_array.shape[-1])
     # get Outliers
     for i in range(N_SAMPLES_TO_PLOT):
         plot_hits_image(dataset.data_array[dataset.data_label != 1][i],
-                        show=SHOW, name='outlier_%i' % i, plot_titles=not i,
+                        show=SHOW, name='outlier_%i' % i, plot_titles=False,#not i,
                         save_folder_name=SAVE_FOLDER_NAME, n_channels_to_plot=data_array.shape[-1])
 
     # plot_hits_many_images(dataset.data_array[dataset.data_label == 1][:4], show=True,

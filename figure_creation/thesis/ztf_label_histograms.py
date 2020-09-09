@@ -22,9 +22,9 @@ from modules.data_set_generic import Dataset
 if __name__ == '__main__':
     SHOW = False
     SAVE_FIG = True
-    DPI = 300
+    DPI = 600
     ALPHA = 0.3
-    FIG_FORMAT = 'pdf'
+    FIG_FORMAT = 'png'
     FOLDER_SAVE_NAME = 'ztf_histograms'
 
     # data loading
@@ -60,7 +60,7 @@ if __name__ == '__main__':
     ax.set_xticklabels(x, minor=False)
     for i, v in enumerate(y):
         ax.text(i, v + np.max(y) * 0.005, str(v), color='black', ha='center')
-    plt.xlabel('Label names')
+    plt.xlabel('Label')
     plt.ylabel('Sample count')
     plt.grid(axis='y', linestyle='--')
     if SHOW:
@@ -71,6 +71,7 @@ if __name__ == '__main__':
                 folder_save_root_path,
                 '%s.%s' % (fig_name, FIG_FORMAT)), dpi=DPI, format=FIG_FORMAT,
             bbox_inches='tight', pad_inches=0, transparent=False)
+    plt.close()
 
     # plot inliers hist
     fig_name = 'ztf_inliers_label_hist'
@@ -100,7 +101,7 @@ if __name__ == '__main__':
     ax.set_xticks(ind)
     ax.set_xticklabels(x, minor=False)
     # plt.title('title')
-    plt.xlabel('Label names')
+    plt.xlabel('Label')
     plt.ylabel('Outlier detection inliers sample percentage')
     plt.legend(loc='upper right')
     plt.grid(axis='y', linestyle='--')
@@ -112,3 +113,4 @@ if __name__ == '__main__':
                 folder_save_root_path,
                 '%s.%s' % (fig_name, FIG_FORMAT)), dpi=DPI, format=FIG_FORMAT,
             bbox_inches='tight', pad_inches=0, transparent=False)
+    plt.close()

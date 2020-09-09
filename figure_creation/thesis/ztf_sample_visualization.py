@@ -17,7 +17,7 @@ from modules import utils
 
 
 def plot_ztf_image(image, n_channels_to_plot=3, name=None, show=False,
-    plot_titles=False, save_folder_name='', title=None):
+    plot_titles=False, save_folder_name='', title=None, file_format='png'):
     if len(image.shape)==4:
         image = image[np.random.randint(len(image))]
     # fill titles with blanks
@@ -47,15 +47,16 @@ def plot_ztf_image(image, n_channels_to_plot=3, name=None, show=False,
                                         save_folder_name)
         utils.check_path(save_folder_name)
         plt.savefig(
-            os.path.join(save_folder_name, '%s.svg' % name),
-            format='svg', dpi=600, bbox_inches='tight', pad_inches=0,
+            os.path.join(save_folder_name, '%s.%s' % (name, file_format)),
+            format=file_format, dpi=600, bbox_inches='tight', pad_inches=0,
             transparent=False)
     if show:
         plt.show()
+    plt.close()
 
 
 if __name__ == '__main__':
-    SHOW = True
+    SHOW = False
     N_SAMPLES_TO_PLOT = 5
     RANDOM_SEED = 234
     SAVE_FOLDER_NAME = 'samples_ztf'
@@ -110,13 +111,13 @@ if __name__ == '__main__':
         label_value = int(i % 4)
         plot_ztf_image(dataset.data_array[dataset.data_label == label_value][i],
                        show=SHOW, name='inlier_%i_class_%i' % (i, label_value),
-                       plot_titles=not i,
+                       plot_titles=False,#not i,
                        save_folder_name=SAVE_FOLDER_NAME,
                        n_channels_to_plot=data_array.shape[-1])
     # get Outliers
     for i in range(N_SAMPLES_TO_PLOT):
         plot_ztf_image(dataset.data_array[dataset.data_label == 4][i],
-                       show=SHOW, name='outlier_%i' % i, plot_titles=not i,
+                       show=SHOW, name='outlier_%i' % i, plot_titles=False,#not i,
                        save_folder_name=SAVE_FOLDER_NAME,
                        n_channels_to_plot=data_array.shape[-1])
 

@@ -49,7 +49,7 @@ def get_dataset(path) -> Dataset:
 
 
 if __name__ == '__main__':
-    SHOW = True
+    SHOW = False
     N_SAMPLES_TO_PLOT = 10
     RANDOM_SEED = 234
     SAVE_FOLDER_NAME = 'bogus_phase_ztf'
@@ -69,10 +69,10 @@ if __name__ == '__main__':
     # get Outliers
     for i in range(N_SAMPLES_TO_PLOT):
         plot_ztf_image(alerce_dataset.data_array[alerce_dataset.data_label == 4][i],
-                       show=SHOW, name='alerce_outlier_%i' % i, plot_titles=not i,
+                       show=SHOW, name='alerce_outlier_%i' % i, plot_titles=False,#not i,
                        save_folder_name=SAVE_FOLDER_NAME,
                        n_channels_to_plot=3)
         plot_ztf_image(ashish_dataset.data_array[i],
-                       show=SHOW, name='ashish_outlier_%i' % i, plot_titles=not i,
+                       show=SHOW, name='ashish_outlier_%i' % i, plot_titles=False, #not i,
                        save_folder_name=SAVE_FOLDER_NAME,
                        n_channels_to_plot=3)
