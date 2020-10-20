@@ -40,7 +40,7 @@ class HiTSLoader(object):
     self.channel_to_get = channels_to_get
     self.first_n_samples_random_seed = params[general_keys.RANDOM_SEED]
 
-  def _init_datasets_dict(self):
+  def _init_splits_dict(self):
     datasets_dict = {
       general_keys.TRAIN: None,
       general_keys.VALIDATION: None,
@@ -48,7 +48,7 @@ class HiTSLoader(object):
     }
     return datasets_dict
 
-  def _load_file(self, path):
+  def _load_pickle_file(self, path):
     infile = open(path, 'rb')
     data = pkl.load(infile)
     return data
@@ -91,13 +91,13 @@ class HiTSLoader(object):
     return data_dict
 
   def get_datasets(self) -> dict:
-    data_dict = self._load_file(self.path)
+    data_dict = self._load_pickle_file(self.path)
     data_dict = self._preprocess_data(data_dict, self.first_n_samples_by_class,
                                       self.label_value)
     dataset = Dataset(data_array=data_dict[general_keys.IMAGES],
                       data_label=data_dict[general_keys.LABELS],
                       batch_size=self.batch_size)
-    datasets_dict = self._init_datasets_dict()
+    datasets_dict = self._init_splits_dict()
     self.data_splitter.set_dataset_obj(dataset)
     train_dataset, test_dataset, val_dataset = \
       self.data_splitter.get_train_test_val_set_objs()
@@ -122,7 +122,7 @@ class HiTSLoader(object):
 
   def load_data(self):
     """get first n_samples_by_class data from each hits class"""
-    data_dict = self._load_file(self.path)
+    data_dict = self._load_pickle_file(self.path)
     # get dataset by label
     unique_label_values = np.unique(data_dict[general_keys.LABELS])
     list_of_data_dicts_by_label = []
@@ -150,7 +150,7 @@ class HiTSLoader(object):
   # Todo: refactor this and previous_method
   def get_single_dataset(self) -> Dataset:
     """get first n_samples_by_class data from each hits class"""
-    data_dict = self._load_file(self.path)
+    data_dict = self._load_pickle_file(self.path)
     # get dataset by label
     unique_label_values = np.unique(data_dict[general_keys.LABELS])
     list_of_data_dicts_by_label = []
@@ -179,7 +179,7 @@ if __name__ == "__main__":
   print('test %s' % str(datasets_dict[general_keys.TEST].data_array.shape))
   print('val %s' % str(datasets_dict[general_keys.VALIDATION].data_array.shape))
 
-  (X_train, y_train), (X_test, y_test) = data_loader.load_data()
+  (X_train, y_train), _, (X_test, y_test) = data_loader.load_data()
   print('All data train shape %s, label mean %.1f' % (str(X_train.shape),
                                                       np.mean(y_train)))
   print('All data test shape %s, label mean %.1f' % (str(X_test.shape),

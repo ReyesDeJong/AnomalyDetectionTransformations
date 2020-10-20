@@ -289,12 +289,12 @@ def load_ztf_real_bog(val_percentage_of_inliers=0.10,
   # instantiate laoder, set preprocessor, load dataset
   data_loader = FrameToInput(params)
   data_loader.dataset_preprocessor.set_pipeline(
-      [data_loader.dataset_preprocessor.check_single_image,
-       data_loader.dataset_preprocessor.clean_misshaped,
-       data_loader.dataset_preprocessor.select_channels,
-       data_loader.dataset_preprocessor.crop_at_center,
-       data_loader.dataset_preprocessor.normalize_by_image,
-       data_loader.dataset_preprocessor.nan_to_num
+      [data_loader.dataset_preprocessor.image_check_single_image,
+       data_loader.dataset_preprocessor.image_clean_misshaped,
+       data_loader.dataset_preprocessor.image_select_channels,
+       data_loader.dataset_preprocessor.image_crop_at_center,
+       data_loader.dataset_preprocessor.image_normalize_by_image_1_1,
+       data_loader.dataset_preprocessor.image_nan_to_num
        ])
   dataset = data_loader.get_single_dataset()
   # labels from 5 classes to 0-1 as bogus-real

@@ -11,8 +11,12 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import warnings
+
+import numpy as np
 from sklearn.model_selection import train_test_split
 
+from modules.data_set_generic import Dataset
 from modules.data_set_generic import Dataset as data_set_class
 
 
@@ -36,25 +40,43 @@ class DatasetDividerPercentage(object):
     self.check_size_type(validation_size)
 
   def check_size_type(self, value):
-    if type(value) != int:
+    if type(value) != float:
       raise ValueError('set size of value %s is not a float' % str(value))
 
   def set_dataset_obj(self, dataset_obj):
+    self.check_if_dataset_contains_labels(dataset_obj)
     self.data_set_obj = dataset_obj
     self.batch_size = self.data_set_obj.batch_size
 
+  def check_if_dataset_contains_labels(self, dataset: Dataset):
+    unique_labels = np.unique(dataset.data_label)
+    if len(unique_labels) == 1:
+      warnings.warn(
+          "Dataset object to be splitted has ONLY one type of label: %s."
+          " Split WON'T be label stratified!" % str(unique_labels[0]),
+          UserWarning)
+
+  def _train_test_split(self, data_array, data_label, test_size, random_state):
+    train_test_split(data_array, data_label, test_size=test_size,
+                     random_state=random_state, stratify=data_label)
+
   def _split_data_in_sets(self, data_set_obj, size, random_seed):
     self.check_size_type(size)
-    train_array, test_array, train_labels, test_labels = train_test_split(
-        data_set_obj.data_array,
+    train_idxs, test_idxs, _, _ = self._train_test_split(
+        np.arange(data_set_obj.data_array.shape[0]),
         data_set_obj.data_label,
         test_size=size,
-        random_state=random_seed)  # ,
-    # stratify=data_set_obj.data_label)
+        random_state=random_seed)
     train_data_set = data_set_class(
-        train_array, train_labels, self.batch_size)
+        data_set_obj.data_array[train_idxs],
+        data_set_obj.data_label[train_idxs],
+        meta_data=data_set_obj.meta_data[train_idxs],
+        batch_size=self.batch_size)
     test_data_set = data_set_class(
-        test_array, test_labels, self.batch_size)
+        data_set_obj.data_array[test_idxs],
+        data_set_obj.data_label[test_idxs],
+        meta_data=data_set_obj.meta_data[test_idxs],
+        batch_size=self.batch_size)
     return train_data_set, test_data_set
 
   def get_train_test_val_set_objs(self):

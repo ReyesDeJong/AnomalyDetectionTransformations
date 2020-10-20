@@ -36,7 +36,11 @@ INPUT_IMAGE_SIZE = 'input_image_size'
 SHUFFLE_BUFFER_SIZE = 'shuffle_buffer_size'
 PREFETCH_BUFFER_SIZE = 'prefetch_buffer_size'
 VALIDATION_RANDOM_SEED = 'validation_random_seed'
+TEST_RANDOM_SEED = 'test_random_seed'
 DATA_TYPES_DICT = 'data_types_dict'
+
+FEATURES_NAMES_LIST = "features_names_list"
+FEATURES_CLIPPING_DICT = 'features_clipping_dict'
 
 BATCH_SIZE_ORIGINAL = 'batch_size_original'
 BATCH_SIZE_ELASTIC = 'batch_size_elastic'
