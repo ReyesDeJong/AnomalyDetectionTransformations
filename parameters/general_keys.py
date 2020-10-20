@@ -57,6 +57,7 @@ IMAGES = 'images'
 LABELS = 'labels'
 OUTLIER_LABELS = 'outlier_labels'
 FEATURES = 'features'
+OBJECT_IDS = 'object_ids'
 
 #noise vector names
 IN_NORMAL_RADIUS = 'in_normal_radius'

@@ -2,14 +2,13 @@
 # -*- coding: utf-8 -*-
 """
 Created on Fri Jun 15 00:17:54 2018
-
 Data splitter by n samples to get
-
 @author: asceta
 """
 import warnings
 import numpy as np
 from modules.data_set_generic import Dataset as data_set_class
+from modules.data_set_generic import Dataset
 from modules.data_splitters.data_splitter_percentages import \
   DatasetDividerPercentage
 
@@ -27,7 +26,7 @@ class DatasetDividerInt(DatasetDividerPercentage):
                      val_random_seed)
 
   def check_size_type(self, value):
-    if type(value) != int and value != None:
+    if type(value) != int:
       raise ValueError('set size of value %s is not an int' % str(value))
 
   def _check_label_values_multiple_of_test_size(self, label_values, test_size):
@@ -46,8 +45,8 @@ class DatasetDividerInt(DatasetDividerPercentage):
     # print(label_values)
     for single_label_value in label_values:
       class_idxs = np.where(data_label == single_label_value)[0]
-      np.random.seed(random_state)
-      np.random.shuffle(class_idxs)
+      np.random.RandomState(random_state).shuffle(class_idxs)
+      # print(class_idxs)
       test_class_idxs = class_idxs[:n_labels_per_class]
       train_class_idxs = class_idxs[n_labels_per_class:]
       result_dict['train_array'].append(data_array[train_class_idxs])
@@ -62,20 +61,6 @@ class DatasetDividerInt(DatasetDividerPercentage):
            np.concatenate(result_dict['test_array']), \
            np.concatenate(result_dict['train_labels']), \
            np.concatenate(result_dict['test_labels'])
-
-  def _split_data_in_sets(self, data_set_obj, size, random_seed):
-    self.check_size_type(size)
-    train_array, test_array, train_labels, test_labels = self._train_test_split(
-        data_set_obj.data_array,
-        data_set_obj.data_label,
-        test_size=size,
-        random_state=random_seed)  # ,
-    # stratify=data_set_obj.data_label)
-    train_data_set = data_set_class(
-        train_array, train_labels, self.batch_size)
-    test_data_set = data_set_class(
-        test_array, test_labels, self.batch_size)
-    return train_data_set, test_data_set
 
   def get_train_test_val_set_objs(self):
     train_data_set, test_data_set = self.get_train_test_data_set_objs()

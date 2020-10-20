@@ -78,7 +78,11 @@ class FrameToInput(ZTFLoader):
         general_keys.LABELS: results_dict[general_keys.LABELS],
         general_keys.IMAGES: results_dict[general_keys.IMAGES],
         general_keys.FEATURES: None}
-      pickle.dump(aux_dict, open(self.converted_data_path, "wb"), protocol=2)
+      if self.params[param_keys.CONVERTED_DATA_SAVEPATH] is not None:
+        print(
+            'Dumping to %s...' % self.params[
+              param_keys.CONVERTED_DATA_SAVEPATH])
+        pickle.dump(aux_dict, open(self.converted_data_path, "wb"), protocol=2)
       return aux_dict
 
   def _group_multiproc_dicts(self, multiproc_result_dicts):
