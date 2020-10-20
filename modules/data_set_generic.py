@@ -3,7 +3,7 @@
 """
 Created on Mon Jun 18 18:05:40 2018
 Dataset Object
-Nit everything ready to handle features, but replication is
+
 @author: ereyes
 """
 from __future__ import absolute_import
@@ -116,7 +116,6 @@ class Dataset(object):
     self.data_label = self.data_label[idx]
     self.meta_data = self.meta_data[idx]
 
-  # TODO aboid data replication
   def balance_data_by_replication(self):
     # labels, label_indexes = np.unique(self.data_label, return_inverse=True, axis=0)
     print('Replicationg data from %s' % str(
@@ -145,7 +144,6 @@ class Dataset(object):
     print('to %s' % str(
         np.unique(self.data_label, return_counts=True)))
 
-  # TODO aboid data replication
   def undersample_data(self, max_n_sample_each_class, random_seed=42):
     print('Undersampling data from %s' % str(
         np.unique(self.data_label, return_counts=True)))
