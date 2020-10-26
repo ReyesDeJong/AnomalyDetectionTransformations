@@ -11,6 +11,7 @@ sys.path.append(PROJECT_PATH)
 from models.transformer_od import TransformODModel
 import time
 from modules.data_loaders.ztf_outlier_loaderv2 import ZTFOutlierLoaderv2
+from modules.data_loaders.hits_outlier_loaderv2 import HiTSOutlierLoaderv2
 from parameters import loader_keys
 from modules.geometric_transform import transformations_tf
 from modules import utils
@@ -18,13 +19,18 @@ from modules import utils
 if __name__ == '__main__':
     utils.set_soft_gpu_memory_growth()
     # data loader
-    ztf_params = {
+    # ztf_params = {
+    #     loader_keys.DATA_PATH: os.path.join(
+    #         PROJECT_PATH, '..', 'datasets', 'thesis_data', 'ztfv7',
+    #         'preprocessed_21', 'ztf_small_dict.pkl'),
+    # }
+    # outlier_loader = ZTFOutlierLoaderv2(ztf_params, 'small_ztfv7')
+    hits_params = {
         loader_keys.DATA_PATH: os.path.join(
-            PROJECT_PATH, '..', 'datasets', 'thesis_data', 'ztfv7',
-            'preprocessed_21', 'ztf_small_dict.pkl'
-        ),
+            PROJECT_PATH, '..', 'datasets', 'thesis_data', 'hits',
+            'hits_small_4c_tuples.pkl'),
     }
-    outlier_loader = ZTFOutlierLoaderv2(ztf_params, 'small_ztfv7')
+    outlier_loader = HiTSOutlierLoaderv2(hits_params, 'small_hits')
     (x_train, y_train), (x_val, y_val), (
         x_test, y_test) = outlier_loader.get_outlier_detection_datasets()
     # transformer

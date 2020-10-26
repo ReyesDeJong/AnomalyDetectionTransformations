@@ -33,7 +33,7 @@ class HiTSOutlierLoaderv2(HiTSOutlierLoader):
         pickles_usage=True):
         # super().__init__(params, dataset_name, pickles_usage)
         self.data_path = params.get(loader_keys.DATA_PATH, None)
-        self.name = dataset_name + '_%i_channels' % len(self.used_channels)
+        self.name = dataset_name# + '_%i_channels' % len(self.used_channels)
 
     def get_outlier_detection_datasets(self):
         return pd.read_pickle(self.data_path)

@@ -142,7 +142,7 @@ if __name__ == '__main__':
         SAVE_FOLDER_PATH, 'hits_large_%ic_tuples.pkl' % n_channels))
 
     # small sets
-    SHOW = True
+    # SHOW = True
     print('\n---small sets')
     small_train_n_samples = 7000
     small_val_n_samples = 1000
