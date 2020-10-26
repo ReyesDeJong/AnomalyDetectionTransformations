@@ -101,7 +101,7 @@ class TransformODModel(tf.keras.Model):
     utils.check_paths(
         [self.specific_model_folder, self.checkpoint_folder])
 
-  def fit(self, x_train, x_val, transform_batch_size=512, train_batch_size=128,
+  def fit(self, x_train, x_val=None, transform_batch_size=512, train_batch_size=128,
       epochs=2, patience=0, verbose=True, **kwargs):
     self.print_manager.verbose_printing(verbose)
     if epochs is None:
@@ -113,9 +113,14 @@ class TransformODModel(tf.keras.Model):
     x_train_transform, y_train_transform = \
       self.transformer.apply_all_transforms(
           x=x_train, batch_size=transform_batch_size)
-    x_val_transform, y_val_transform = \
-      self.transformer.apply_all_transforms(
-          x=x_val, batch_size=transform_batch_size)
+    validation_data = None
+    if x_val:
+      x_val_transform, y_val_transform = \
+        self.transformer.apply_all_transforms(
+            x=x_val, batch_size=transform_batch_size)
+      validation_data = (
+        x_val_transform, tf.keras.utils.to_categorical(y_val_transform))
+    del x_train, x_val
     es = tf.keras.callbacks.EarlyStopping(
         monitor='val_loss', mode='min', verbose=1, patience=patience,
         restore_best_weights=True)
@@ -131,20 +136,16 @@ class TransformODModel(tf.keras.Model):
     y_train_transform = y_train_transform[train_trf_idexes]
     self.network.fit(
         x=x_train_transform, y=tf.keras.utils.to_categorical(y_train_transform),
-        # validation_data=None,
-        validation_data=(
-          x_val_transform, tf.keras.utils.to_categorical(y_val_transform)),
+        validation_data=validation_data,
         batch_size=train_batch_size,
         epochs=epochs, callbacks=[es], **kwargs)
-    print('train eval')
+    print('\ntrain eval')
     self.network.eval_tf(x_train_transform, tf.keras.utils.to_categorical(y_train_transform))
-    print('val eval')
-    self.network.eval_tf(x_val_transform, tf.keras.utils.to_categorical(y_val_transform))
-
-    # self.network.eval_tf(x_val_transform, tf.keras.utils.to_categorical(y_val_transform))
+    if validation_data:
+      print('val eval')
+      self.network.eval_tf(x_val_transform, tf.keras.utils.to_categorical(y_val_transform))
     weight_path = os.path.join(self.checkpoint_folder,
                                'final_weights.ckpt')
-    del x_train, x_val, x_train_transform, x_val_transform, y_train_transform, y_val_transform
     self.save_weights(weight_path)
     self.print_manager.close()
 

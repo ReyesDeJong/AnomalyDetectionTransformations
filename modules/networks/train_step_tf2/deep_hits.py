@@ -129,16 +129,13 @@ class DeepHits(tf.keras.Model):
       for images, labels in train_ds:
         self.train_step(images, labels)
       if self.verbose:
-        self.eval_step(images, labels)
+        eval_results = self.eval_tf(x, y, verbose=False)
         template = 'Epoch {}, Loss: {}, Acc: {}, Time: {}'
         print(template.format(epoch + 1,
-                              self.eval_loss.result(),
-                              self.eval_accuracy.result() * 100,
+                              eval_results[general_keys.LOSS],
+                              eval_results[general_keys.ACCURACY] * 100,
                               delta_timer(time.time() - epoch_start_time)
                               ))
-        self.eval_loss.reset_states()
-        self.eval_accuracy.reset_states()
-        self.eval_tf(x, y, verbose=verbose)
     print('Total Training Time: {}'.format(
         delta_timer(time.time() - self.training_star_time)))
 
@@ -249,7 +246,6 @@ class DeepHits(tf.keras.Model):
 
 
   def eval_tf(self, x, y, batch_size=1024, verbose=1):
-    self.verbose = verbose
     self.eval_loss.reset_states()
     self.eval_accuracy.reset_states()
     dataset = tf.data.Dataset.from_tensor_slices(
@@ -257,7 +253,7 @@ class DeepHits(tf.keras.Model):
     start_time = time.time()
     for images, labels in dataset:
       self.eval_step(images, labels)
-    if self.verbose:
+    if verbose:
       template = 'Loss: {}, Acc: {}, Time: {}'
       print(template.format(
           self.eval_loss.result(),

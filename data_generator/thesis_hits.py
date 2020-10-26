@@ -21,7 +21,8 @@ if __name__ == '__main__':
     N_SAMPLES_TO_PLOT = 3
     RANDOM_SEED = 42
     SAVE_FOLDER_PATH = os.path.join(
-        PROJECT_PATH, '..', 'datasets', 'thesis_data')
+        PROJECT_PATH, '..', 'datasets', 'thesis_data', 'hits')
+    utils.check_path(SAVE_FOLDER_PATH)
     n_channels = len(CHANNELS_TO_USE)
     outlier_original_label_value = 0
     # data loader
@@ -68,7 +69,7 @@ if __name__ == '__main__':
                         n_channels_to_plot=n_channels, title='outlier')
 
     # large sets
-    print('\nlarge sets')
+    print('\n---large sets')
     large_train_n_samples = 70000
     large_val_n_samples = 10000
     large_test_n_samples = 30000
@@ -141,8 +142,8 @@ if __name__ == '__main__':
         SAVE_FOLDER_PATH, 'hits_large_%ic_tuples.pkl' % n_channels))
 
     # small sets
-    # SHOW = True
-    print('\nsmall sets')
+    SHOW = True
+    print('\n---small sets')
     small_train_n_samples = 7000
     small_val_n_samples = 1000
     small_test_n_samples = 3000
