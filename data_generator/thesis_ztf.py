@@ -9,6 +9,10 @@ Small test set first appearances is for stamp clf data
 label 5 to ashish boguses
 
 class 1 for inliers and 0 for outliers
+
+ashish outliers go half and half for small and large ds
+
+large train-val inliers contain small train-val inliers
 """
 
 import os
@@ -25,31 +29,69 @@ from modules import utils
 from typing import List
 import pandas as pd
 from modules.data_set_generic import Dataset
+import copy
 
+
+#TODO: include undersampling in data generation from stampcl to geotrf
 
 def dataset_from_dict(data_dict, set_key) -> Dataset:
     return Dataset(data_dict[set_key][general_keys.IMAGES],
-                   data_dict[set_key][general_keys.LABELS])
+                   data_dict[set_key][general_keys.LABELS],
+                   meta_data=data_dict[set_key][general_keys.FEATURES]
+                   )
 
-
-def load_ztf_stamp_clf_datasets() -> List[Dataset]:
-    data_path = os.path.join(
-        PROJECT_PATH, '..', 'datasets', 'thesis_data', 'ztfv7_stamp_clf_data',
-        'ztfv7_stamp_clf_processed.pkl')
-    data_dict = pd.read_pickle(data_path)
-    train_set = dataset_from_dict(data_dict, 'Train')
-    val_set = dataset_from_dict(data_dict, 'Validation')
-    test_set = dataset_from_dict(data_dict, 'Test')
+def get_ztf_stamp_clf_datasets(params=None,
+    alerce_df_path='', ashish_bogus_df_path='') -> List[Dataset]:
+    if params and alerce_df_path and ashish_bogus_df_path:
+        # train_set, val_set, test_set = get_preprocessed_dataset(
+        #     params, alerce_df_path, ashish_bogus_df_path)
+        return
+    else:
+        data_path = os.path.join(
+            PROJECT_PATH, '..', 'datasets', 'thesis_data', 'ztfv7_stamp_clf_data',
+            'ztfv7_stamp_clf_processed.pkl')
+        data_dict = pd.read_pickle(data_path)
+        train_set = dataset_from_dict(data_dict, 'Train')
+        val_set = dataset_from_dict(data_dict, 'Validation')
+        test_set = dataset_from_dict(data_dict, 'Test')
     return train_set, val_set, test_set
 
+def _get_source_only_data_for_geotransform(source, train_ztf_dataset:Dataset,
+    val_ztf_dataset:Dataset, random_seed=42, undersample_value=None) -> Dataset:
+    merged_dataset = copy.deepcopy(train_ztf_dataset)
+    merged_dataset.append_dataset(copy.deepcopy(val_ztf_dataset))
+    merged_dataset.data_array = merged_dataset.data_array[
+        merged_dataset.meta_data[:,1]==source]
+    merged_dataset.data_label = merged_dataset.data_label[
+        merged_dataset.meta_data[:, 1] == source]
+    merged_dataset.meta_data = merged_dataset.meta_data[
+        merged_dataset.meta_data[:, 1] == source]
+    # TODO: this shuffle may not be necessary
+    merged_dataset.shuffle_data(random_seed)
+    if undersample_value:
+        merged_dataset.undersample_data(undersample_value,
+                                        random_seed=random_seed)
+    merged_dataset.shuffle_data(random_seed)
+    return merged_dataset
 
-def load_ashish_remaining_dataset() -> Dataset:
-    data_path = os.path.join(
-        PROJECT_PATH, '..', 'datasets', 'thesis_data', 'ztfv7_stamp_clf_data',
-        'ashish_bogus_remaining_processed.pkl')
-    data_dict = pd.read_pickle(data_path)
-    return Dataset(data_dict[general_keys.IMAGES],
-                   data_dict[general_keys.LABELS])
+def get_only_alerce_data_for_geotransform(train_ztf_dataset:Dataset,
+    val_ztf_dataset:Dataset, random_seed=42, undersample_value=None) -> Dataset:
+    return _get_source_only_data_for_geotransform(
+        'alerce', train_ztf_dataset, val_ztf_dataset, random_seed,
+        undersample_value)
+
+def get_only_ashish_data_for_geotransform(train_ztf_dataset:Dataset,
+    val_ztf_dataset:Dataset, random_seed=42) -> Dataset:
+    return _get_source_only_data_for_geotransform(
+        'ashish', train_ztf_dataset, val_ztf_dataset, random_seed)
+
+# def load_ashish_remaining_dataset() -> Dataset:
+#     data_path = os.path.join(
+#         PROJECT_PATH, '..', 'datasets', 'thesis_data', 'ztfv7_stamp_clf_data',
+#         'ashish_bogus_remaining_processed.pkl')
+#     data_dict = pd.read_pickle(data_path)
+#     return Dataset(data_dict[general_keys.IMAGES],
+#                    data_dict[general_keys.LABELS])
 
 
 def plot_n_samples_per_class(dataset: Dataset, n_samples_per_class, show=False,
@@ -67,7 +109,7 @@ def plot_n_samples_per_class(dataset: Dataset, n_samples_per_class, show=False,
 def display_dataset(dataset: Dataset, n_samples_per_class, show=False,
     set_name=''):
     print(set_name)
-    print(dataset.data_label[-10:])
+    # print(dataset.data_label[-10:])
     print(dataset.data_array.shape)
     print('Data values per channel Min %s Max %s  Mean %s' % (
         np.mean(np.min(dataset.data_array, axis=(1, 2)), axis=0),
@@ -79,20 +121,23 @@ def display_dataset(dataset: Dataset, n_samples_per_class, show=False,
 
 if __name__ == '__main__':
     SHOW = False
+    UNDERSAMPLE_VALUE = None #20000
     LARGE_TRAIN_SET_PERCENTAGE = 0.9
-    N_SAMPLES_TO_PLOT_PER_LABEL = 1
+    N_SAMPLES_TO_PLOT_PER_LABEL = 3
     RANDOM_SEED = 4
     SAVE_FOLDER_PATH = os.path.join(
-        PROJECT_PATH, '..', 'datasets', 'thesis_data')
-    outlier_original_label_value = 4
+        PROJECT_PATH, '..', 'datasets', 'thesis_data', 'preprocessed_21')
+    utils.check_path(SAVE_FOLDER_PATH)
+    outlier_alerce_label_value = 4
 
     # data loader
-    train_set, val_set, test_set = load_ztf_stamp_clf_datasets()
-    bogus_ashish_set = load_ashish_remaining_dataset()
-    bogus_ashish_set.shuffle_data(random_seed=RANDOM_SEED)
+    train_set, val_set, test_set = get_ztf_stamp_clf_datasets()
+    bogus_ashish_set = get_only_ashish_data_for_geotransform(
+        train_set, val_set, RANDOM_SEED)
     # label 5 to ashish bogus
-    bogus_ashish_set.data_label = bogus_ashish_set.data_label + 5
-    print('\nDisplay stamp clf data')
+    # TODO: evaluate if this is necessary
+    bogus_ashish_set.data_label = bogus_ashish_set.data_label + 1
+    print('\n---Display stamp clf data')
     display_dataset(train_set, N_SAMPLES_TO_PLOT_PER_LABEL, SHOW, 'train_set')
     display_dataset(val_set, N_SAMPLES_TO_PLOT_PER_LABEL, SHOW, 'val_set')
     display_dataset(test_set, N_SAMPLES_TO_PLOT_PER_LABEL, SHOW, 'test_set')
@@ -100,29 +145,27 @@ if __name__ == '__main__':
     del test_set
 
     # separate inliers-outliers
-    print('\nseparate inliers-outliers')
-    merged_dataset = Dataset(train_set.data_array, train_set.data_label, meta_data=train_set.meta_data)
-    merged_dataset.append_dataset(val_set)
-    # merged_dataset.undersample_data(20000, random_seed=RANDOM_SEED)
-    merged_dataset.shuffle_data(RANDOM_SEED)
-    display_dataset(merged_dataset, N_SAMPLES_TO_PLOT_PER_LABEL, SHOW,
-                    'merged_set')
-    data_array = merged_dataset.data_array
-    data_labels = merged_dataset.data_label
-    inlier_stamps = data_array[data_labels != outlier_original_label_value]
-    inlier_labels = data_labels[data_labels != outlier_original_label_value]
+    print('\n---separate inliers-outliers')
+    alerce_geotrf_dataset = get_only_alerce_data_for_geotransform(
+        train_set, val_set, RANDOM_SEED, UNDERSAMPLE_VALUE)
+    display_dataset(alerce_geotrf_dataset, N_SAMPLES_TO_PLOT_PER_LABEL, SHOW,
+                    'alerce_geotrf')
+    data_array = alerce_geotrf_dataset.data_array
+    data_labels = alerce_geotrf_dataset.data_label
+    inlier_stamps = data_array[data_labels != outlier_alerce_label_value]
+    inlier_labels = data_labels[data_labels != outlier_alerce_label_value]
     for i in range(N_SAMPLES_TO_PLOT_PER_LABEL):
         plot_ztf_image(inlier_stamps, show=SHOW, plot_titles=True,
-                       title='inlier')
-    outlier_stamps = data_array[data_labels == outlier_original_label_value]
-    outlier_labels = data_labels[data_labels == outlier_original_label_value]
+                       title='alerce inlier')
+    outlier_stamps = data_array[data_labels == outlier_alerce_label_value]
+    outlier_labels = data_labels[data_labels == outlier_alerce_label_value]
     for i in range(N_SAMPLES_TO_PLOT_PER_LABEL):
         plot_ztf_image(outlier_stamps, show=SHOW, plot_titles=True,
-                       title='outlier')
+                       title='alerce outlier')
 
     # small sets
     # SHOW = True
-    print('\nsmall sets')
+    print('\n---small sets')
     small_train_n_samples = 7000
     small_val_n_samples = 1000
     small_test_n_samples = 3000
@@ -254,7 +297,7 @@ if __name__ == '__main__':
         SAVE_FOLDER_PATH, 'ztf_small_dict.pkl'))
 
     # large sets
-    print('\nlarge sets')
+    print('\n---large sets')
     # SHOW = True
     # test
     # outliers
@@ -290,7 +333,9 @@ if __name__ == '__main__':
     display_dataset(Dataset(large_outliers_x_test, large_outliers_y_test),
                     N_SAMPLES_TO_PLOT_PER_LABEL * 2, SHOW,
                     'large xtest outliers')
+    # SHOW = True
     # inliers
+    print('\nlarge test inliers')
     large_inlier_indexes = small_inlier_remaining_indexes
     print('initial_large_inlier_indexes ',
           len(large_inlier_indexes))
@@ -319,10 +364,11 @@ if __name__ == '__main__':
     print('large_y_test ', np.unique(large_y_test, return_counts=True))
     print('large_y_test_01_outlier_labels ',
           np.unique(large_y_test_01_outlier_labels, return_counts=True))
-    # SHOW = True
     display_dataset(Dataset(large_x_test, large_y_test),
                     N_SAMPLES_TO_PLOT_PER_LABEL, SHOW, 'large xtest')
     # train
+    print('\nlarge train inliers')
+    # SHOW = True
     #####
     # include of small train and vall inlier indexes
     #####
@@ -330,7 +376,7 @@ if __name__ == '__main__':
     np.random.RandomState(RANDOM_SEED).shuffle(large_inlier_remaining_indexes)
     print('train-val_large_inlier_indexes ',
           len(large_inlier_remaining_indexes))
-    large_train_n_samples = int(np.round(len(large_inlier_remaining_indexes) * 0.9))
+    large_train_n_samples = int(np.round(len(large_inlier_remaining_indexes) * LARGE_TRAIN_SET_PERCENTAGE))
     large_train_indexes = large_inlier_remaining_indexes[:large_train_n_samples]
     large_inlier_remaining_indexes = large_inlier_remaining_indexes[large_train_n_samples:]
     print('large_inlier_remaining_indexes ',
@@ -344,6 +390,7 @@ if __name__ == '__main__':
                     N_SAMPLES_TO_PLOT_PER_LABEL, show=SHOW,
                     set_name='large_train')
     # val
+    print('\nlarge val inliers')
     large_val_indexes = large_inlier_remaining_indexes
     print('large_inlier_remaining_indexes ',
           len(large_inlier_remaining_indexes))
