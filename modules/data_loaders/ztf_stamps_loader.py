@@ -42,6 +42,7 @@ class ZTFLoader(HiTSLoader):
     )
     self.channel_to_get = params[param_keys.CHANNELS_TO_USE]
     self.dataset_preprocessor = self._create_dataset_preprocessor(params)
+    self.undersampling = params.get(param_keys.UNDERSAMPLING, None)
 
   def _dict_to_dataset(self, data_dict: dict):
     keys = list(data_dict.keys())
@@ -104,6 +105,8 @@ class ZTFLoader(HiTSLoader):
   def get_preprocessed_dataset_unsplitted(self) -> Dataset:
     data_dict = self.get_datadict()
     dataset = self._get_preprocessed_dataset(data_dict)
+    if self.undersampling:
+      dataset.undersample_data(self.undersampling)
     return dataset
 
   def get_datasets(self) -> dict:

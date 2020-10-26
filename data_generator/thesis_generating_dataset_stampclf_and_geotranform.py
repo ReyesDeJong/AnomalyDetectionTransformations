@@ -55,19 +55,20 @@ def get_preprocessed_dataset(params, alerce_df_path, ashish_bogus_df_path,
     return train_set, val_set, test_set
 
 if __name__ == "__main__":
-    SAVE_DATA = False
+    SAVE_DATA = True
     RANDOM_SEED = 40
     data_name = 'training_set_Aug-07-2020.pkl'
     data_folder = "/home/ereyes/Projects/Thesis/stamp_classifier_updater/data/"
     alerce_df_path = os.path.join(data_folder, data_name)
     ashish_bogus_df_path = os.path.join(data_folder, 'bogus_ashish.pkl')
-    save_folder = '/home/ereyes/Projects/Thesis/datasets/thesis_data/ztfv7_stamp_clf_data2'
+    save_folder = '/home/ereyes/Projects/Thesis/datasets/thesis_data/ztfv7_stamp_clf_data'
     utils.check_path(save_folder)
 
     # Data loader params
     n_classes = 5
     params = {
         param_keys.BATCH_SIZE: None,
+        param_keys.UNDERSAMPLING: 20000,
         param_keys.CONVERTED_DATA_SAVEPATH: None,
         param_keys.DATA_PATH_TRAIN: None,
         param_keys.N_INPUT_CHANNELS: 3,
@@ -135,5 +136,6 @@ if __name__ == "__main__":
     # saving data
     if SAVE_DATA:
         # stamps clf data
-        save_path = os.path.join(save_folder, 'ztfv7_stamp_clf_processed.pkl')
+        save_path = os.path.join(save_folder,
+                                 'ztfv7_stamp_clf_processed_undersampled.pkl')
         utils.save_pickle(dataset_dict, save_path)

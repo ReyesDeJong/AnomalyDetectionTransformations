@@ -48,8 +48,8 @@ def get_ztf_stamp_clf_datasets(params=None,
             params, alerce_df_path, ashish_bogus_df_path)
     else:
         data_path = os.path.join(
-            PROJECT_PATH, '..', 'datasets', 'thesis_data', 'ztfv7_stamp_clf_data2',
-            'ztfv7_stamp_clf_processed.pkl')
+            PROJECT_PATH, '..', 'datasets', 'thesis_data', 'ztfv7_stamp_clf_data',
+            'ztfv7_stamp_clf_processed_undersampled.pkl')
         data_dict = pd.read_pickle(data_path)
         train_set = dataset_from_dict(data_dict, 'Train')
         val_set = dataset_from_dict(data_dict, 'Validation')
@@ -121,12 +121,12 @@ def display_dataset(dataset: Dataset, n_samples_per_class, show=False,
 
 if __name__ == '__main__':
     SHOW = False
-    UNDERSAMPLE_VALUE = None #20000
     LARGE_TRAIN_SET_PERCENTAGE = 0.9
     N_SAMPLES_TO_PLOT_PER_LABEL = 3
     RANDOM_SEED = 4
     SAVE_FOLDER_PATH = os.path.join(
-        PROJECT_PATH, '..', 'datasets', 'thesis_data')
+        PROJECT_PATH, '..', 'datasets', 'thesis_data', 'preprocessed_21')
+    utils.check_path(SAVE_FOLDER_PATH)
     outlier_alerce_label_value = 4
 
     # data loader
@@ -146,7 +146,7 @@ if __name__ == '__main__':
     # separate inliers-outliers
     print('\n---separate inliers-outliers')
     alerce_geotrf_dataset = get_only_alerce_data_for_geotransform(
-        train_set, val_set, RANDOM_SEED, UNDERSAMPLE_VALUE)
+        train_set, val_set, RANDOM_SEED)
     display_dataset(alerce_geotrf_dataset, N_SAMPLES_TO_PLOT_PER_LABEL, SHOW,
                     'alerce_geotrf')
     data_array = alerce_geotrf_dataset.data_array

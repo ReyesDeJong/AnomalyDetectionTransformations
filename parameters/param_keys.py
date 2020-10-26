@@ -41,6 +41,7 @@ DATA_TYPES_DICT = 'data_types_dict'
 
 FEATURES_NAMES_LIST = "features_names_list"
 FEATURES_CLIPPING_DICT = 'features_clipping_dict'
+UNDERSAMPLING = 'undersampling'
 
 BATCH_SIZE_ORIGINAL = 'batch_size_original'
 BATCH_SIZE_ELASTIC = 'batch_size_elastic'
