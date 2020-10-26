@@ -48,8 +48,8 @@ def get_ztf_stamp_clf_datasets(params=None,
             params, alerce_df_path, ashish_bogus_df_path)
     else:
         data_path = os.path.join(
-            PROJECT_PATH, '..', 'datasets', 'thesis_data', 'ztfv7_stamp_clf_data',
-            'ztfv7_stamp_clf_processed_undersampled.pkl')
+            PROJECT_PATH, '..', 'datasets', 'thesis_data', 'ztfv7',
+            'ztfv7_stamp_clf_processed_21_undersampled.pkl')
         data_dict = pd.read_pickle(data_path)
         train_set = dataset_from_dict(data_dict, 'Train')
         val_set = dataset_from_dict(data_dict, 'Validation')
@@ -125,7 +125,8 @@ if __name__ == '__main__':
     N_SAMPLES_TO_PLOT_PER_LABEL = 3
     RANDOM_SEED = 4
     SAVE_FOLDER_PATH = os.path.join(
-        PROJECT_PATH, '..', 'datasets', 'thesis_data', 'preprocessed_21')
+        PROJECT_PATH, '..', 'datasets', 'thesis_data', 'ztfv7',
+        'preprocessed_21')
     utils.check_path(SAVE_FOLDER_PATH)
     outlier_alerce_label_value = 4
 

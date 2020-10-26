@@ -61,7 +61,7 @@ if __name__ == "__main__":
     data_folder = "/home/ereyes/Projects/Thesis/stamp_classifier_updater/data/"
     alerce_df_path = os.path.join(data_folder, data_name)
     ashish_bogus_df_path = os.path.join(data_folder, 'bogus_ashish.pkl')
-    save_folder = '/home/ereyes/Projects/Thesis/datasets/thesis_data/ztfv7_stamp_clf_data'
+    save_folder = '/home/ereyes/Projects/Thesis/datasets/thesis_data/ztfv7'
     utils.check_path(save_folder)
 
     # Data loader params
@@ -136,6 +136,6 @@ if __name__ == "__main__":
     # saving data
     if SAVE_DATA:
         # stamps clf data
-        save_path = os.path.join(save_folder,
-                                 'ztfv7_stamp_clf_processed_undersampled.pkl')
+        save_path = os.path.join(
+            save_folder, 'ztfv7_stamp_clf_processed_21_undersampled.pkl')
         utils.save_pickle(dataset_dict, save_path)
