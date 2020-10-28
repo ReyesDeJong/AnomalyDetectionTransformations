@@ -35,7 +35,6 @@ from modules.print_manager import PrintManager
 from modules.networks.deep_hitsv2 import DeepHitsv2
 import warnings
 
-# this model must have streaming clf as input
 class GeoTransformBasev2(tf.keras.Model):
     def __init__(self, classifier: DeepHitsv2,
         transformer: AbstractTransformer, results_folder_name=None,
@@ -83,7 +82,7 @@ class GeoTransformBasev2(tf.keras.Model):
         self.prediction_threshold = np.percentile(
             dirichlet_scores_validation, 100 - self.percentile)
 
-    def fit(self, x_train, epochs, x_validation=None, batch_size=128,
+    def fit(self, x_train, epochs, x_val=None, batch_size=128,
         iterations_to_validate=None, patience=None, verbose=True,
         iterations_to_print_train=None):
         print_manager = PrintManager().verbose_printing(verbose)
@@ -97,10 +96,10 @@ class GeoTransformBasev2(tf.keras.Model):
             self.transformer.apply_all_transforms(
                 x=x_train, batch_size=transform_batch_size)
         validation_data = None
-        if x_validation is not None:
+        if x_val is not None:
             x_val_transform, y_val_transform = \
                 self.transformer.apply_all_transforms(
-                    x=x_validation, batch_size=transform_batch_size)
+                    x=x_val, batch_size=transform_batch_size)
             validation_data = (
                 x_val_transform, tf.keras.utils.to_categorical(y_val_transform))
         # fit classifier
@@ -111,12 +110,12 @@ class GeoTransformBasev2(tf.keras.Model):
             iterations_to_print_train=iterations_to_print_train)
         # update dirichlet params
         self._update_dirichlet_alphas(x_train, verbose)
-        if x_validation is None:
+        if x_val is None:
             warnings.warn("No x_validation, x_train will be used to calculate "
                           "prediction threshold, update it with "
                           "model.update_prediction_threshold(x_validation)")
-            x_validation = x_train
-        self.update_prediction_threshold(x_validation, verbose)
+            x_val = x_train
+        self.update_prediction_threshold(x_val, verbose)
         self.save_model(self.classifier.best_model_weights_path)
         print_manager.close()
 
