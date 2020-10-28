@@ -114,7 +114,7 @@ class TransformODModel(tf.keras.Model):
       self.transformer.apply_all_transforms(
           x=x_train, batch_size=transform_batch_size)
     validation_data = None
-    if x_val:
+    if x_val is not None:
       x_val_transform, y_val_transform = \
         self.transformer.apply_all_transforms(
             x=x_val, batch_size=transform_batch_size)
