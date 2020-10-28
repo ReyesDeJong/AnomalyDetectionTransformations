@@ -460,11 +460,12 @@ if __name__ == '__main__':
     from modules.data_loaders.hits_outlier_loaderv2 import HiTSOutlierLoaderv2
     from modules.geometric_transform import transformations_tf
     from parameters import loader_keys
+    from modules.networks.wide_residual_networkv2 import WideResnetv2
 
     EPOCHS = 1000
     ITERATIONS_TO_VALIDATE = None
     ITERATIONS_TO_PRINT_TRAIN = None
-    PATIENCE = 0
+    PATIENCE = 1
     VERBOSE = True
 
     utils.set_soft_gpu_memory_growth()
@@ -481,7 +482,8 @@ if __name__ == '__main__':
     transformer = transformations_tf.TransTransformer()
     print('n transformations: ', transformer.n_transforms)
     # model
-    clf = DeepHitsv2(transformer.n_transforms)
+    # clf = DeepHitsv2(transformer.n_transforms)
+    clf = WideResnetv2(transformer.n_transforms)
     # model = GeoTransformBasev2(
     #     classifier=clf, transformer=transformer,
     #     results_folder_name='test_geotranform_basev2')
@@ -502,7 +504,8 @@ if __name__ == '__main__':
         results_folder_name='test_geotranform_basev2')
     model_folder = os.path.join(
         PROJECT_PATH,
-        'results/test_geotranform_basev2/GeoTransform_Basev2_deep_hitsv2_20201028-001230/')
+        # 'results/test_geotranform_basev2/GeoTransform_Basev2_deep_hitsv2_20201028-001230/')
+        'results/test_geotranform_basev2/GeoTransform_Basev2_WRNv2_20201028-025210/')
     model_weights_path = os.path.join(model_folder, 'checkpoints',
                                       'best_weights.ckpt')
     model.load_model(model_weights_path)

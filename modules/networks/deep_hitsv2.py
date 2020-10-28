@@ -3,7 +3,6 @@ Final version of DeepHiTS classifier in tf2 format
 
 taken from modules/networks/streaming_network/refactored_deep_hits.py
 
-TODO: merge with modules/networks/streaming_network/streaming_transformation_deep_hits.py
 """
 
 import os
@@ -24,11 +23,9 @@ from modules import utils
 from modules.print_manager import PrintManager
 
 
-# TODO: manage weights saved in a better manner: save_path, non saving when not given, etc
 class DeepHitsv2(tf.keras.Model):
 
-    def __init__(
-        self, n_classes, drop_rate=0.5, name='deep_hitsv2',
+    def __init__(self, n_classes, drop_rate=0.5, name='deep_hitsv2',
         results_folder_name=None):
         super().__init__(name=name)
         self.results_folder_path, self.best_model_weights_path = \
@@ -375,7 +372,7 @@ if __name__ == '__main__':
         x_val)
 
     # model training
-    mdl = DeepHits(n_classes=transformer.n_transforms,
+    mdl = DeepHitsv2(n_classes=transformer.n_transforms,
                    results_folder_name='deep_hitsv2_tinkering')
     mdl.save_initial_weights(x_train, os.path.join(PROJECT_PATH, 'results',
                                                    'deep_hitsv2_tinkering'))
@@ -407,7 +404,7 @@ if __name__ == '__main__':
                  verbose=True)
 
     del mdl
-    mdl = DeepHits(n_classes=transformer.n_transforms)
+    mdl = DeepHitsv2(n_classes=transformer.n_transforms)
     mdl.load_weights(
         os.path.join(PROJECT_PATH, 'results', 'deep_hitsv2_tinkering',
                      'init.ckpt'))
