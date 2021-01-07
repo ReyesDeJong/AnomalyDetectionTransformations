@@ -15,7 +15,7 @@ import pandas as pd
 from modules.data_loaders.frame_to_input import FrameToInput
 import numpy as np
 from modules import utils
-from data_generator.thesis_ztf import load_ztf_stamp_clf_datasets, \
+from data_generator.thesis_ztf import get_ztf_stamp_clf_datasets, \
     display_dataset
 from modules.data_set_generic import Dataset
 
@@ -32,17 +32,21 @@ if __name__ == '__main__':
         PROJECT_PATH, 'figure_creation/thesis/figs', FOLDER_SAVE_NAME)
     utils.check_path(folder_save_root_path)
     # stmp_clf_data
-    train_set, val_set, test_set = load_ztf_stamp_clf_datasets()
+    train_set, val_set, test_set = get_ztf_stamp_clf_datasets()
     # display_dataset(train_set, 0, False, 'train')
-    all_dataset = Dataset(train_set.data_array, train_set.data_label)
+    all_dataset = Dataset(train_set.data_array, train_set.data_label,
+                          meta_data=train_set.meta_data)
     all_dataset.append_dataset(val_set).append_dataset(test_set)
     # display_dataset(all_dataset, 0, False, 'all data dataset')
-    outlier_detection_dataset = Dataset(train_set.data_array, train_set.data_label)
+    outlier_detection_dataset = Dataset(train_set.data_array,
+                                        train_set.data_label,
+                                        meta_data=train_set.meta_data)
     outlier_detection_dataset.append_dataset(val_set)
     # display_dataset(outlier_detection_dataset, 0, False, 'outlier_detection_dataset')
     # outlier_det_data
     outlier_detection_data_folder_path = os.path.join(
-        PROJECT_PATH, '..', 'datasets', 'thesis_data')
+        PROJECT_PATH, '..', 'datasets', 'thesis_data', 'ztfv7',
+        'preprocessed_21')
     small_file_name = 'ztf_small_dict.pkl'
     large_file_name = 'ztf_large_dict.pkl'
     small_data_dict = pd.read_pickle(os.path.join(outlier_detection_data_folder_path, small_file_name))
